@@ -22,6 +22,9 @@ disasm: main.elf
 main.hex: main.elf
 	avr-objcopy -j .text -j .data -O ihex main.elf main.hex
 
+read-eeprom:
+	$(AVRDUDE) -U eeprom:r:-:i
+
 flash: main.hex
 	$(FLASH_CMD)
 
