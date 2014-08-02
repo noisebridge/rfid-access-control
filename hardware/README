@@ -1,0 +1,6 @@
+Boards
+  - interface board with RFID-RC522, providing a serial interface and potentially
+    local switching
+  - interface board on 'server' side, interfacing the Raspberry Pi or Beaglebone
+    with the physical world of serial interfaces an relay switching.
+

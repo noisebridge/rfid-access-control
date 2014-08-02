@@ -1,0 +1,5 @@
+Firmware to run on the external nodes, interfacing a RFID-RC522 type reader
+providing a serial interface on the other side.
+
+Initial implementation directly reads the RFID and unlocks the door (until there
+is the hardware infrastructure to connect the cables)
