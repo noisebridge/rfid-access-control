@@ -4,7 +4,7 @@
 TARGET_ARCH=-mmcu=atmega8
 CXX=avr-g++
 CXXFLAGS=-std=c++11 -Os -g -Wall -mcall-prologues -DF_CPU=8000000UL
-AVRDUDE     = avrdude -p m8 -c avrusb500
+AVRDUDE     = avrdude -p m8 -c stk500v2 -P /dev/ttyUSB0
 FLASH_CMD   = $(AVRDUDE) -e -U flash:w:main.hex
 LINK=avr-g++ -g $(TARGET_ARCH)
 OBJECTS=lock-main.o mfrc522.o

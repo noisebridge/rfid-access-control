@@ -3,3 +3,6 @@ providing a serial interface on the other side.
 
 Initial implementation directly reads the RFID and unlocks the door (until there
 is the hardware infrastructure to connect the cables)
+
+To compile, you need the avr toolchain installed
+  sudo aptitude install gcc-avr avr-libc avrdude
