@@ -3,12 +3,38 @@
 #include <avr/io.h>
 #include <string.h>
 #include <util/delay.h>
-#include <stdio.h>   // snprintf
 
 #include "mfrc522.h"
 
 #define AUX_PORT PORTC
 #define AUX_BITS 0x3F
+
+static char to_hex(unsigned char c) { return c < 0x0a ? c + '0' : c + 'a' - 10; }
+
+// returns value 0x00..0x0f or 0xff for failure.
+static unsigned char from_hex(unsigned char c) {
+  if (c >= '0' && c <= '9') return c - '0';
+  if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+  if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+  return 0xff;
+}
+
+static inline bool isWhitespace(char c) { return c == ' ' || c == '\t'; }
+
+// Skips whitespace, reads the last available two digits into result. If there
+// are no digits, returns 0.
+static unsigned char parseHex(const char *buffer) {
+  unsigned char result = 0;
+  while (isWhitespace(*buffer)) buffer++;
+  while (*buffer) {
+    unsigned char nibble = from_hex(*buffer++);
+    if (nibble > 0x0f)
+      break;
+    result <<= 4;
+    result |= nibble;
+  }
+  return result;
+}
 
 class SerialComm {
 public:
@@ -46,8 +72,6 @@ public:
       ;
     return UDR;
   }
-private:
-  char to_hex(unsigned char c) { return c < 0x0a ? c + '0' : c + 'a' - 10; }
 };
 
 // A line buffer reading from the serial communication line. Provides a
@@ -98,16 +122,12 @@ static void printHelp(SerialComm *out) {
 }
 
 static void setAuxBits(const char *buffer, SerialComm *out) {
-  int value;
-  if (1 == sscanf(buffer, "S%x", &value)) {
-    value &= AUX_BITS;
-    PORTC = value;
-    char buf[8];
-    snprintf(buf, sizeof(buf), "S%02x", value);
-    out->println(buf);
-  } else {
-    out->println("S<invalid>");
-  }
+  unsigned char value = parseHex(buffer + 1);
+  value &= AUX_BITS;
+  PORTC = value;
+  out->write('S');
+  out->printHex(value);
+  out->println("");
 }
 
 static void writeUid(const MFRC522::Uid &uid, SerialComm *out) {
