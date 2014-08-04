@@ -3,12 +3,38 @@
 #include <avr/io.h>
 #include <string.h>
 #include <util/delay.h>
-#include <stdio.h>   // snprintf
 
 #include "mfrc522.h"
 
 #define AUX_PORT PORTC
 #define AUX_BITS 0x3F
+
+static char to_hex(unsigned char c) { return c < 0x0a ? c + '0' : c + 'a' - 10; }
+
+// returns value 0x00..0x0f or 0xff for failure.
+static unsigned char from_hex(unsigned char c) {
+  if (c >= '0' && c <= '9') return c - '0';
+  if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+  if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+  return 0xff;
+}
+
+static inline bool isWhitespace(char c) { return c == ' ' || c == '\t'; }
+
+// Skips whitespace, reads the last available two digits into result. If there
+// are no digits, returns 0.
+static unsigned char parseHex(const char *buffer) {
+  unsigned char result = 0;
+  while (isWhitespace(*buffer)) buffer++;
+  while (*buffer) {
+    unsigned char nibble = from_hex(*buffer++);
+    if (nibble > 0x0f)
+      break;
+    result <<= 4;
+    result |= nibble;
+  }
+  return result;
+}
 
 class SerialComm {
 public:
@@ -27,13 +53,12 @@ public:
     UDR = c;
   }
 
-  // Convenience method.
-  void writeString(const char *str) {
+  // Convenience methods.
+  void println(const char *str) {
     while (*str) write(*str++);
+    write('\r');write('\n');
   }
-
-  // Convenience method.
-  void writeHex(unsigned char c) {
+  void printHex(unsigned char c) {
     write(to_hex(c >> 4));
     write(to_hex(c & 0x0f));
   }
@@ -47,8 +72,6 @@ public:
       ;
     return UDR;
   }
-private:
-  char to_hex(unsigned char c) { return c < 0x0a ? c + '0' : c + 'a' - 10; }
 };
 
 // A line buffer reading from the serial communication line. Provides a
@@ -87,7 +110,7 @@ private:
 
 static void printHelp(SerialComm *out) {
   // Keep short or memory explodes :)
-  out->writeString(
+  out->println(
     "? Noisebridge RFID outpost | v0.1 | 8/2014\r\n"
     "? Sends:\r\n"
     "? R <num-bytes-hex> <uid-hex-str>\r\n"
@@ -95,31 +118,27 @@ static void printHelp(SerialComm *out) {
     "?\t?      This help\r\n"
     "?\tP      Ping\r\n"
     "?\tr      Reset reader\r\n"
-    "?\tS<xx>  Set output bits; param 8bit hex\r\n");
+    "?\tS<xx>  Set output bits; param 8bit hex");
 }
 
 static void setAuxBits(const char *buffer, SerialComm *out) {
-  int value;
-  if (1 == sscanf(buffer, "S%x", &value)) {
-    value &= AUX_BITS;
-    PORTC = value;
-    char buf[8];
-    snprintf(buf, sizeof(buf), "S%02x\r\n", value);
-    out->writeString(buf);
-  } else {
-    out->writeString("S<invalid>\r\n");
-  }
+  unsigned char value = parseHex(buffer + 1);
+  value &= AUX_BITS;
+  PORTC = value;
+  out->write('S');
+  out->printHex(value);
+  out->println("");
 }
 
 static void writeUid(const MFRC522::Uid &uid, SerialComm *out) {
   if (uid.size > 15) return;  // fishy.
-  out->writeString("R ");
-  out->writeHex((unsigned char) uid.size);
+  out->write('R');
+  out->printHex((unsigned char) uid.size);
   out->write(' ');
   for (int i = 0; i < uid.size; ++i) {
-    out->writeHex(uid.uidByte[i]);
+    out->printHex(uid.uidByte[i]);
   }
-  out->writeString("\r\n");
+  out->println("");
 }
 
 int main() {
@@ -134,7 +153,7 @@ int main() {
 
   SerialComm comm;
   LineBuffer lineBuffer;
-  comm.writeString("Noisebridge access control outpost. '?' for help.\r\n");
+  comm.println("Noisebridge access control outpost. '?' for help.");
   int rate_limit = 0;
 
   for (;;) {
@@ -145,7 +164,7 @@ int main() {
         printHelp(&comm);
         break;
       case 'P':
-        comm.writeString("Pong\r\n");
+        comm.println("Pong");
         break;
       case 'S':
         setAuxBits(lineBuffer.line(), &comm);
@@ -154,12 +173,13 @@ int main() {
         card_reader.PCD_Reset();
         card_reader.PCD_Init();
         current_uid.size = 0;
-        comm.writeString("reset RFID reader.\r\n");
+        comm.println("reset RFID reader.");
         break;
       case '\r': case '\n':
         break;  // ignore spurious newline.
       default:
-        comm.writeString("? Unknown command; '?' for help.\r\n");
+        comm.write(lineBuffer.line()[0]);
+        comm.println(" Unknown command; '?' for help.");
       }
     }
 
