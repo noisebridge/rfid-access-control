@@ -27,13 +27,12 @@ public:
     UDR = c;
   }
 
-  // Convenience method.
-  void writeString(const char *str) {
+  // Convenience methods.
+  void println(const char *str) {
     while (*str) write(*str++);
+    write('\r');write('\n');
   }
-
-  // Convenience method.
-  void writeHex(unsigned char c) {
+  void printHex(unsigned char c) {
     write(to_hex(c >> 4));
     write(to_hex(c & 0x0f));
   }
@@ -87,7 +86,7 @@ private:
 
 static void printHelp(SerialComm *out) {
   // Keep short or memory explodes :)
-  out->writeString(
+  out->println(
     "? Noisebridge RFID outpost | v0.1 | 8/2014\r\n"
     "? Sends:\r\n"
     "? R <num-bytes-hex> <uid-hex-str>\r\n"
@@ -95,7 +94,7 @@ static void printHelp(SerialComm *out) {
     "?\t?      This help\r\n"
     "?\tP      Ping\r\n"
     "?\tr      Reset reader\r\n"
-    "?\tS<xx>  Set output bits; param 8bit hex\r\n");
+    "?\tS<xx>  Set output bits; param 8bit hex");
 }
 
 static void setAuxBits(const char *buffer, SerialComm *out) {
@@ -104,22 +103,22 @@ static void setAuxBits(const char *buffer, SerialComm *out) {
     value &= AUX_BITS;
     PORTC = value;
     char buf[8];
-    snprintf(buf, sizeof(buf), "S%02x\r\n", value);
-    out->writeString(buf);
+    snprintf(buf, sizeof(buf), "S%02x", value);
+    out->println(buf);
   } else {
-    out->writeString("S<invalid>\r\n");
+    out->println("S<invalid>");
   }
 }
 
 static void writeUid(const MFRC522::Uid &uid, SerialComm *out) {
   if (uid.size > 15) return;  // fishy.
-  out->writeString("R ");
-  out->writeHex((unsigned char) uid.size);
+  out->write('R');
+  out->printHex((unsigned char) uid.size);
   out->write(' ');
   for (int i = 0; i < uid.size; ++i) {
-    out->writeHex(uid.uidByte[i]);
+    out->printHex(uid.uidByte[i]);
   }
-  out->writeString("\r\n");
+  out->println("");
 }
 
 int main() {
@@ -134,7 +133,7 @@ int main() {
 
   SerialComm comm;
   LineBuffer lineBuffer;
-  comm.writeString("Noisebridge access control outpost. '?' for help.\r\n");
+  comm.println("Noisebridge access control outpost. '?' for help.");
   int rate_limit = 0;
 
   for (;;) {
@@ -145,7 +144,7 @@ int main() {
         printHelp(&comm);
         break;
       case 'P':
-        comm.writeString("Pong\r\n");
+        comm.println("Pong");
         break;
       case 'S':
         setAuxBits(lineBuffer.line(), &comm);
@@ -154,12 +153,12 @@ int main() {
         card_reader.PCD_Reset();
         card_reader.PCD_Init();
         current_uid.size = 0;
-        comm.writeString("reset RFID reader.\r\n");
+        comm.println("reset RFID reader.");
         break;
       case '\r': case '\n':
         break;  // ignore spurious newline.
       default:
-        comm.writeString("? Unknown command; '?' for help.\r\n");
+        comm.println("? Unknown command; '?' for help.");
       }
     }
 
