@@ -178,7 +178,8 @@ int main() {
       case '\r': case '\n':
         break;  // ignore spurious newline.
       default:
-        comm.println("? Unknown command; '?' for help.");
+        comm.write(lineBuffer.line()[0]);
+        comm.println(" Unknown command; '?' for help.");
       }
     }
 
