@@ -24,6 +24,7 @@ character in each line denotes the command, followed by optional parameters.
            Responds with S<yy> with <yy> the actual bits being set.
            Can be used to switch on fancy LEDs or even remotely trigger a
            relay or transistor to open the strike.
+   r     : Reset RFID reader (Should typically not be necessary).
    P     : Ping; responds with "Pong". Useful to check aliveness.
 
 Responses generally are prefixed with the letter of the command. Makes

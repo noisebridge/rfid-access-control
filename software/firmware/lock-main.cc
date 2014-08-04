@@ -33,9 +33,9 @@ public:
   }
 
   // Convenience method.
-  void writeHex(char c) {
-    write(to_hex[(unsigned char) c >> 4]);
-    write(to_hex[(unsigned char) c & 0x0f]);
+  void writeHex(unsigned char c) {
+    write(to_hex(c >> 4));
+    write(to_hex(c & 0x0f));
   }
 
   inline bool read_ready() {
@@ -48,10 +48,8 @@ public:
     return UDR;
   }
 private:
-  static const char to_hex[16];
+  char to_hex(unsigned char c) { return c < 0x0a ? c + '0' : c + 'a' - 10; }
 };
-const char SerialComm::to_hex[] = { '0','1','2','3','4','5','6','7',
-                                    '8','9','a','b','c','d','e','f' };
 
 // A line buffer reading from the serial communication line. Provides a
 // nonblocking way to fill a buffer.
@@ -88,21 +86,16 @@ private:
 };
 
 static void printHelp(SerialComm *out) {
+  // Keep short or memory explodes :)
   out->writeString(
-    "? Noisebridge RFID reader protocol v0.1 8/2014\r\n"
-    "? Continuously monitors keypad and RFID. Whenever one of these are read,\r\n"
-    "? sends out a single line, prefixed with 'K' or 'R' followed by the content:\r\n"
-    "? K <digits-typed-in-keypad-ending-with-#>\r\n"
-    "?   or\r\n"
-    "? R <number-of-bytes-hex> <serial-id-from-rfid-as-hex-string>\r\n"
-    "? (Note: keypad not implemented yet)\r\n"
-    "? The prototocol understands a few commands. They are all one-line commands\r\n"
-    "? starting with a single command character. The response can be\r\n"
-    "? one or multiple lines, prefixed with the command character.\r\n"
+    "? Noisebridge RFID outpost | v0.1 | 8/2014\r\n"
+    "? Sends:\r\n"
+    "? R <num-bytes-hex> <uid-hex-str>\r\n"
     "? Commands:\r\n"
-    "? \t?      This help.\r\n"
-    "? \tP      Ping (to check for aliveness).\r\n"
-    "? \tS<xx>  Set output bits. <xx> is an 8-bit hex number.\r\n");
+    "?\t?      This help\r\n"
+    "?\tP      Ping\r\n"
+    "?\tr      Reset reader\r\n"
+    "?\tS<xx>  Set output bits; param 8bit hex\r\n");
 }
 
 static void setAuxBits(const char *buffer, SerialComm *out) {
@@ -118,36 +111,21 @@ static void setAuxBits(const char *buffer, SerialComm *out) {
   }
 }
 
-static void handleCommand(const char *buffer, SerialComm *out) {
-  switch (buffer[0]) {
-  case '?':
-    printHelp(out);
-    break;
-  case 'P':
-    out->writeString("Pong\r\n");
-    break;
-  case 'S':
-    setAuxBits(buffer, out);
-    break;
-  case '\r': case '\n':
-    break;  // ignore spurious newline.
-  default:
-    out->writeString("? Unknown command. Try '?' for help.\r\n");
-  }
-}
-
 static void writeUid(const MFRC522::Uid &uid, SerialComm *out) {
-    out->writeString("R ");
-    out->writeHex((unsigned char) uid.size);
-    out->write(' ');
-    for (int i = 0; i < uid.size; ++i) {
-      out->writeHex(uid.uidByte[i]);
-    }
-    out->writeString("\r\n");
+  if (uid.size > 15) return;  // fishy.
+  out->writeString("R ");
+  out->writeHex((unsigned char) uid.size);
+  out->write(' ');
+  for (int i = 0; i < uid.size; ++i) {
+    out->writeHex(uid.uidByte[i]);
+  }
+  out->writeString("\r\n");
 }
 
 int main() {
   DDRC = AUX_BITS;
+
+  _delay_ms(100);  // Wait for voltage to settle before we reset the 522
 
   MFRC522 card_reader;
   card_reader.PCD_Init();
@@ -160,8 +138,32 @@ int main() {
   int rate_limit = 0;
 
   for (;;) {
-    if (lineBuffer.noblockReadline(&comm) != 0)
-      handleCommand(lineBuffer.line(), &comm);
+    // See if there is a command incoming.
+    if (lineBuffer.noblockReadline(&comm) != 0) {
+      switch (lineBuffer.line()[0]) {
+      case '?':
+        printHelp(&comm);
+        break;
+      case 'P':
+        comm.writeString("Pong\r\n");
+        break;
+      case 'S':
+        setAuxBits(lineBuffer.line(), &comm);
+        break;
+      case 'r':
+        card_reader.PCD_Reset();
+        card_reader.PCD_Init();
+        current_uid.size = 0;
+        comm.writeString("reset RFID reader.\r\n");
+        break;
+      case '\r': case '\n':
+        break;  // ignore spurious newline.
+      default:
+        comm.writeString("? Unknown command; '?' for help.\r\n");
+      }
+    }
+
+    // ... or some new card found.
     if (!card_reader.PICC_IsNewCardPresent())
       continue;
     if (!card_reader.PICC_ReadCardSerial()) {
