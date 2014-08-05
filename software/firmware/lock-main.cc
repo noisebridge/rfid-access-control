@@ -89,15 +89,16 @@ private:
 static void printHelp(SerialCom *out) {
   // Keep short or memory explodes :)
   print(out,
-    "? Noisebridge RFID outpost | v0.1 | 8/2014\r\n"
-    "? Sends:\r\n"
-    "? R <num-bytes-hex> <uid-hex-str>\r\n"
-    "? Commands:\r\n"
-    "?\t?\tThis help\r\n"
-    "?\tP\tPing\r\n"
-    "?\tr\tReset reader.\r\n"
-    "?\tM<n><msg> Write msg on LCD-line n=0,1.\r\n"
-    "?\tS<xx>\tSet output bits; param 8bit hex.\r\n? dropped-bytes: ");
+        "? Noisebridge RFID outpost | v0.1 | 8/2014\r\n"
+        "? Sends:\r\n"
+        "? I<num-bytes-hex> <uid-hex-str>\r\n"
+        "? Commands:\r\n"
+        "?\t?\tThis help\r\n"
+        "?\tP\tPing\r\n"
+        "?\tr\tReset reader.\r\n"
+        "?\tM<n><msg> Write msg on LCD-line n=0,1.\r\n"
+        "?\tW<xx>\tWrite output bits; param 8bit hex.\r\n"
+        "? dropped-bytes: ");
   printHex(out, out->dropped_bytes() >> 8);
   printHex(out, out->dropped_bytes() & 0xff);
   print(out, "\r\n");
@@ -107,14 +108,14 @@ static void setAuxBits(const char *buffer, SerialCom *out) {
   unsigned char value = parseHex(buffer + 1);
   value &= AUX_BITS;
   PORTC = value;
-  out->write('S');
+  out->write('W');
   printHex(out, value);
   println(out, "");
 }
 
 static void writeUid(const MFRC522::Uid &uid, SerialCom *out) {
   if (uid.size > 15) return;  // fishy.
-  out->write('R');
+  out->write('I');
   printHex(out, (unsigned char) uid.size);
   out->write(' ');
   for (int i = 0; i < uid.size; ++i) {
@@ -153,7 +154,7 @@ int main() {
       case 'P':
         println(&comm, "Pong");
         break;
-      case 'S':
+      case 'W':
         setAuxBits(lineBuffer.line(), &comm);
         break;
       case 'r':
@@ -168,7 +169,9 @@ int main() {
         break;
       default:
         comm.write(lineBuffer.line()[0]);
-        println(&comm, " Unknown command; '?' for help.");
+        print(&comm, " Unknown command 0x");
+        printHex(&comm, lineBuffer.line()[0]);
+        println(&comm, "; '?' for help.");
       }
     }
 
