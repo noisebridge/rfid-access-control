@@ -5,7 +5,7 @@
 #ifndef _AVR_SERIAL_H_
 #define _AVR_SERIAL_H_
 
-// Since we can't really do memory allocation but want a configurable
+// Since we can't really do dynamic memory allocation but want a configurable
 // size, we'll just use a template.
 // Meant to be used one-sided in an interrupt handler, so everything is volatile.
 template<int BUFFER_BITS> class RingBuffer {
