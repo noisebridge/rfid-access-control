@@ -53,6 +53,7 @@ static void printHex(SerialCom *com, unsigned char c) {
 
 // A line buffer wrapping around the serial read. Nonblocking fills until either
 // the buffer is full or newline reached.
+// TODO: actually do clipping and not return the overlong line.
 class LineBuffer {
 public:
   LineBuffer() : pos_(buffer_) { }
@@ -96,7 +97,7 @@ static void printHelp(SerialCom *out) {
         "?\tI<num-bytes-hex> <uid-hex-str>\r\n");
   print(out,"? Commands:\r\n"
         "?\t?\tThis help\r\n"
-        "?\tP\tPing\r\n"
+        "?\te<msg>\tEcho back msg (testing)\r\n"
         "?\tr\tReset reader.\r\n"
         "?\tM<n><msg> Write msg on LCD-line n=0,1.\r\n"
         "?\tW<xx>\tWrite output bits; param 8bit hex.\r\n");
@@ -153,8 +154,8 @@ int main() {
       case '?':
         printHelp(&comm);
         break;
-      case 'P':
-        println(&comm, "Pong");
+      case 'e':
+        println(&comm, lineBuffer.line());
         break;
       case 'W':
         setAuxBits(lineBuffer.line(), &comm);

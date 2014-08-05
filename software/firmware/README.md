@@ -71,6 +71,7 @@ Each value **sent** from the terminal comes as full line
 because that displays well out of the box with any terminal emulator
 (e.g. minicom), without too much configuration.
 Lines **received** from the host are accepted with `<CR>` or `<LF>` or both.
+Lines received are clipped if too long.
 
 We only use RX and TX, so hardware flow control needs to be switched off. Other
 communication parameters are 9600 8N1 (TODO: reconsider speed if we go
@@ -126,7 +127,8 @@ with a `<CR>` or `<LF>` or both.
              writes this message to the second line.
      r     : Reset RFID reader (Should typically not be necessary except after
              physical connection reconnect of its SPI bus).
-     P     : Ping; responds with "Pong". Useful to check aliveness.
+     e<msg>: Just echo back given message. Useful for line-reliability test.
+             (Use with line length ~ <= 30 characters)
      (TODO: specialized command to buzz or silent open, color leds etc)
 
 Each command is acknowledged with a line prefixed with the letter of the
