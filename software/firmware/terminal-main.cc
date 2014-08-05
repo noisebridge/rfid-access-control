@@ -91,9 +91,9 @@ static void printHelp(SerialCom *out) {
   // Atmel chips requires that the strings are first copied to memory.
   // Better split up in multiple calls with shorter strings.
   print(out,
-        "? Noisebridge RFID outpost | v0.1 | 8/2014\r\n"
-        "? Sends:\r\n"
-        "? I<num-bytes-hex> <uid-hex-str>\r\n");
+        "? Noisebridge access terminal | v0.1 | 8/2014\r\n"
+        "? Sends card-IDs with:\r\n"
+        "?\tI<num-bytes-hex> <uid-hex-str>\r\n");
   print(out,"? Commands:\r\n"
         "?\t?\tThis help\r\n"
         "?\tP\tPing\r\n"
