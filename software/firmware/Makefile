@@ -2,7 +2,9 @@
 ##
 
 # CPU frequency and baudrate as used at compile time. We want to have
-# a slow communication as we have pretty long lines and don't use RS422.
+# a slow communication as we have pretty long lines and don't use RS422, so
+# consider to reduce the baudrate for production use to something that works on
+# the line.
 DEFINES=-DF_CPU=8000000UL -DSERIAL_BAUDRATE=9600
 
 TARGET_ARCH=-mmcu=atmega8
