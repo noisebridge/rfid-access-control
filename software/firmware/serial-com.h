@@ -8,6 +8,8 @@
 // Since we can't really do dynamic memory allocation but want a configurable
 // size, we'll just use a template.
 // Meant to be used one-sided in an interrupt handler, so everything is volatile.
+// Template parameter is bits to represent the buffer size, so buffer size
+// is 2^BUFFER_BITS (that way, modulo operations are cheap mask operations).
 template<int BUFFER_BITS> class RingBuffer {
 public:
   RingBuffer();
@@ -28,6 +30,9 @@ private:
   volatile unsigned char write_pos_;
   volatile unsigned char read_pos_;
   char buffer_[1<<BUFFER_BITS];
+  enum {
+    MODULO_MASK = (1<<BUFFER_BITS)-1
+  };
 };
 
 class SerialCom {

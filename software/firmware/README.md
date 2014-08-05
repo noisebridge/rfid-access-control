@@ -74,16 +74,16 @@ with RS232 instad of RS422 on the physical wire).
 
 #### RFID
 
-Whenever a new RFID card is seen, is sent to the host:
+Whenever a new RFID card is seen, its ID is sent to the host:
 
      Ixx yyyyyyyy<CR><LF>
 
 (Example: `I07 c41abefa24238d`)
-With xx being the number of bytes (RFID IDs come in 4, 7 and 10 bytes. The
-number is written in hex, so values right now `04`, `07`, `0a`) followed
-by the actual bytes. All numbers (xx and yy...) are in hex.
+With xx being the number of bytes (RFID IDs come in 4, 7 and 10 bytes). All
+numbers are in hex, so values for length would be one of `04`, `07`, `0a`,
+followed by the actual bytes as hex-string.
 
-While the card is seen, this line is repeated every couple of 100ms
+While the card is in range, this line is repeated every couple of 100ms.
 
 #### Keypad
 (not implemented yet)

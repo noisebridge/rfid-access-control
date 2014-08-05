@@ -13,26 +13,26 @@ template<int BUFFER_BITS> RingBuffer<BUFFER_BITS>::RingBuffer()
 
 template<int BUFFER_BITS> unsigned char
 RingBuffer<BUFFER_BITS>::write_available() volatile {
-  return (read_pos_ - (write_pos_ + 1)) & ((1<<BUFFER_BITS)-1);
+  return (read_pos_ - (write_pos_ + 1)) & MODULO_MASK;
 }
 
 template<int BUFFER_BITS> void RingBuffer<BUFFER_BITS>::write(char c) volatile {
   while (!write_available())
     ;
   buffer_[write_pos_] = c;
-  write_pos_ = (write_pos_ + 1) & ((1<<BUFFER_BITS)-1);
+  write_pos_ = (write_pos_ + 1) & MODULO_MASK;
 }
 
 template<int BUFFER_BITS> unsigned char
 RingBuffer<BUFFER_BITS>::read_available() volatile {
-  return (write_pos_ - read_pos_) & ((1<<BUFFER_BITS)-1);
+  return (write_pos_ - read_pos_) & MODULO_MASK;
 }
 
 template<int BUFFER_BITS> char RingBuffer<BUFFER_BITS>::read() volatile {
   while (!read_available())
     ;
   char c = buffer_[read_pos_];
-  read_pos_ = (read_pos_ + 1) & ((1<<BUFFER_BITS)-1);
+  read_pos_ = (read_pos_ + 1) & MODULO_MASK;
   return c;
 }
 
