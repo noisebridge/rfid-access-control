@@ -107,11 +107,14 @@ with a `<CR>` or `<LF>` or both.
 
              W ff
 
-     M<r><msg> : Write a message to the LCD screen. Example:
+     M<r><msg>
+           : Write a message to the LCD screen. <r> is a single digit
+             giving the row to print in, can be 0 or 1).
+             Example:
 
                  M1Hello World
 
-                 writes this message to the second line.
+             writes this message to the second line.
      r     : Reset RFID reader (Should typically not be necessary except after
              physical connection reconnect of its SPI bus).
      P     : Ping; responds with "Pong". Useful to check aliveness.
@@ -119,11 +122,15 @@ with a `<CR>` or `<LF>` or both.
 Responses generally are prefixed with the letter of the command. Makes
 interfacing simple.
 
+Compiling
+---------
 To compile, you need the avr toolchain installed:
 
      sudo aptitude install gcc-avr avr-libc avrdude
 
-Work in progress :)
+... and a programmer.
+
+Hacking in progress:
 
 ![Work in progress][work]
 
