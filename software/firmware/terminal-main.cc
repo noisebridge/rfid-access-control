@@ -87,20 +87,22 @@ private:
 };
 
 static void printHelp(SerialCom *out) {
-  // Keep short or memory explodes :)
+  // Keep strings short or memory explodes :) The Harvard architecture of the
+  // Atmel chips requires that the strings are first copied to memory.
+  // Better split up in multiple calls with shorter strings.
   print(out,
         "? Noisebridge RFID outpost | v0.1 | 8/2014\r\n"
         "? Sends:\r\n"
-        "? I<num-bytes-hex> <uid-hex-str>\r\n"
-        "? Commands:\r\n"
+        "? I<num-bytes-hex> <uid-hex-str>\r\n");
+  print(out,"? Commands:\r\n"
         "?\t?\tThis help\r\n"
         "?\tP\tPing\r\n"
         "?\tr\tReset reader.\r\n"
         "?\tM<n><msg> Write msg on LCD-line n=0,1.\r\n"
-        "?\tW<xx>\tWrite output bits; param 8bit hex.\r\n"
-        "? dropped-bytes: ");
-  printHex(out, out->dropped_bytes() >> 8);
-  printHex(out, out->dropped_bytes() & 0xff);
+        "?\tW<xx>\tWrite output bits; param 8bit hex.\r\n");
+  print(out, "? dropped-reads: 0x");
+  printHex(out, out->dropped_reads() >> 8);
+  printHex(out, out->dropped_reads() & 0xff);
   print(out, "\r\n");
 }
 

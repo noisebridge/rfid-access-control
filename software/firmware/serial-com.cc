@@ -7,6 +7,35 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
+template<int BUFFER_BITS> RingBuffer<BUFFER_BITS>::RingBuffer()
+  : write_pos_(0), read_pos_(0) {
+}
+
+template<int BUFFER_BITS> unsigned char RingBuffer<BUFFER_BITS>::write_ready()
+  volatile {
+  return (read_pos_ - (write_pos_ + 1)) & ((1<<BUFFER_BITS)-1);
+}
+
+template<int BUFFER_BITS> void RingBuffer<BUFFER_BITS>::write(char c) volatile {
+  while (!write_ready())
+    ;
+  buffer_[write_pos_] = c;
+  write_pos_ = (write_pos_ + 1) & ((1<<BUFFER_BITS)-1);
+}
+
+template<int BUFFER_BITS> unsigned char RingBuffer<BUFFER_BITS>::read_ready()
+  volatile {
+  return (write_pos_ - read_pos_) & ((1<<BUFFER_BITS)-1);
+}
+
+template<int BUFFER_BITS> char RingBuffer<BUFFER_BITS>::read() volatile {
+  while (!read_ready())
+    ;
+  char c = buffer_[read_pos_];
+  read_pos_ = (read_pos_ + 1) & ((1<<BUFFER_BITS)-1);
+  return c;
+}
+
 static volatile SerialCom *global_ser = 0; // ISR needs to access the Serial.
 
 // Work around private visibility.
@@ -23,7 +52,7 @@ ISR(USART_RXC_vect) {
   }
 }
 
-SerialCom::SerialCom() : write_pos_(0), read_pos_(0), dropped_bytes_(0) {
+SerialCom::SerialCom() : dropped_reads_(0) {
   global_ser = this;  // our ISR needs access.
   const unsigned int divider = (F_CPU  / 17 / SERIAL_BAUDRATE) - 1;
   UBRRH = (unsigned char)(divider >> 8);
@@ -40,22 +69,16 @@ void SerialCom::write(char c) {
 }
 
 void SerialCom::StuffByte(char c) volatile {
-  buffer[write_pos_] = c;
-  unsigned char new_pos = (write_pos_ + 1) & ((1<<BUFFER_BITS)-1);
-  if (new_pos != read_pos_)
-    write_pos_ = new_pos;
+  if (read_buffer_.write_ready())
+    read_buffer_.write(c);
   else
-    ++dropped_bytes_;
+    ++dropped_reads_;
 }
 
-unsigned char SerialCom::read_ready() {
-  return (write_pos_ - read_pos_) & ((1<<BUFFER_BITS)-1);
+unsigned char SerialCom::read_ready() volatile {
+  return read_buffer_.read_ready();
 }
 
-char SerialCom::read() {
-  while (!read_ready())
-    ;
-  char c = buffer[read_pos_];
-  read_pos_ = (read_pos_ + 1) & ((1<<BUFFER_BITS)-1);
-  return c;
+char SerialCom::read() volatile {
+  return read_buffer_.read();
 }
