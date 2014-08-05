@@ -48,7 +48,8 @@ public:
   // Read a single chracter. Blocks if nothing in buffer.
   char read() volatile;
 
-  // Number of bytes we dropped reading.
+  // Number of incoming bytes that were dropped on the floor because read()
+  // was not called in time to pick them up.
   unsigned short dropped_reads() const { return dropped_reads_; }
 
 private:
