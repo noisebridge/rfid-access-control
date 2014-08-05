@@ -7,6 +7,7 @@
 
 #include "mfrc522.h"
 #include "lcd.h"
+#include "serial-com.h"
 
 #define AUX_PORT PORTC
 #define AUX_BITS 0x3F
@@ -38,46 +39,17 @@ static unsigned char parseHex(const char *buffer) {
   return result;
 }
 
-class SerialComm {
-public:
-  // SERIAL_BAUDRATE, 8 bit, no parity, 1 stop
-  SerialComm() {
-    const unsigned int divider = (F_CPU  / 17 / SERIAL_BAUDRATE) - 1;
-    UBRRH = (unsigned char)(divider >> 8);
-    UBRRL = (unsigned char) divider;
-    UCSRB = (1<<RXEN) | (1<<TXEN);  // read and write
-    UCSRC = (1<<URSEL) /*write-reg*/ | (1<<UCSZ1) | (1<<UCSZ0); /*8bit*/
-  }
+static void println(SerialCom *com, const char *str) {
+  while (*str) com->write(*str++);
+  com->write('\r'); com->write('\n');
+}
+static void printHex(SerialCom *com, unsigned char c) {
+  com->write(to_hex(c >> 4));
+  com->write(to_hex(c & 0x0f));
+}
 
-  void write(char c) {
-    while ( !( UCSRA & (1<<UDRE)) )  // wait for transmit buffer to be ready.
-      ;
-    UDR = c;
-  }
-
-  // Convenience methods.
-  void println(const char *str) {
-    while (*str) write(*str++);
-    write('\r');write('\n');
-  }
-  void printHex(unsigned char c) {
-    write(to_hex(c >> 4));
-    write(to_hex(c & 0x0f));
-  }
-
-  inline bool read_ready() {
-    return (UCSRA & (1<<RXC));
-  }
-
-  char read() {
-    while (!read_ready())
-      ;
-    return UDR;
-  }
-};
-
-// A line buffer reading from the serial communication line. Provides a
-// nonblocking way to fill a buffer.
+// A line buffer wrapping around the serial read. Nonblocking fills until either
+// the buffer is full or newline reached.
 class LineBuffer {
 public:
   LineBuffer() : pos_(buffer_) { }
@@ -85,7 +57,7 @@ public:
   // Empties serial input buffer and stores in internal buffer.
   // Returns number of characters if newline reached or buffer full.
   // Returns '0' while this condition is not yet reached.
-  byte noblockReadline(SerialComm *comm) {
+  byte ReadlineNoblock(SerialCom *comm) {
     const char *end_buf = buffer_ + sizeof(buffer_) - 1;
     bool newline_seen = false;
     while (!newline_seen && comm->read_ready() && pos_ < end_buf) {
@@ -103,7 +75,7 @@ public:
     }
   }
 
-  // Returns current line, '\0' terminated.
+  // Returns current line, '\0' terminated, newline stripped.
   const char *line() const { return buffer_; }
 
 private:
@@ -111,9 +83,9 @@ private:
   char *pos_;
 };
 
-static void printHelp(SerialComm *out) {
+static void printHelp(SerialCom *out) {
   // Keep short or memory explodes :)
-  out->println(
+  println(out,
     "? Noisebridge RFID outpost | v0.1 | 8/2014\r\n"
     "? Sends:\r\n"
     "? R <num-bytes-hex> <uid-hex-str>\r\n"
@@ -125,24 +97,24 @@ static void printHelp(SerialComm *out) {
     "?\tS<xx>\tSet output bits; param 8bit hex.");
 }
 
-static void setAuxBits(const char *buffer, SerialComm *out) {
+static void setAuxBits(const char *buffer, SerialCom *out) {
   unsigned char value = parseHex(buffer + 1);
   value &= AUX_BITS;
   PORTC = value;
   out->write('S');
-  out->printHex(value);
-  out->println("");
+  printHex(out, value);
+  println(out, "");
 }
 
-static void writeUid(const MFRC522::Uid &uid, SerialComm *out) {
+static void writeUid(const MFRC522::Uid &uid, SerialCom *out) {
   if (uid.size > 15) return;  // fishy.
   out->write('R');
-  out->printHex((unsigned char) uid.size);
+  printHex(out, (unsigned char) uid.size);
   out->write(' ');
   for (int i = 0; i < uid.size; ++i) {
-    out->printHex(uid.uidByte[i]);
+    printHex(out, uid.uidByte[i]);
   }
-  out->println("");
+  println(out, "");
 }
 
 int main() {
@@ -155,25 +127,25 @@ int main() {
 
   MFRC522::Uid current_uid;
 
-  SerialComm comm;
+  SerialCom comm;
   LcdDisplay lcd(24);
   lcd.print(0, "  Noisebridge  ");
   lcd.print(1, "");
 
   LineBuffer lineBuffer;
-  comm.println("Noisebridge access control outpost. '?' for help.");
+  println(&comm, "Noisebridge access control outpost. '?' for help.");
   int rate_limit = 0;
 
   for (;;) {
     // See if there is a command incoming.
     char line_len;
-    if ((line_len = lineBuffer.noblockReadline(&comm)) != 0) {
+    if ((line_len = lineBuffer.ReadlineNoblock(&comm)) != 0) {
       switch (lineBuffer.line()[0]) {
       case '?':
         printHelp(&comm);
         break;
       case 'P':
-        comm.println("Pong");
+        println(&comm, "Pong");
         break;
       case 'S':
         setAuxBits(lineBuffer.line(), &comm);
@@ -182,7 +154,7 @@ int main() {
         card_reader.PCD_Reset();
         card_reader.PCD_Init();
         current_uid.size = 0;
-        comm.println("reset RFID reader.");
+        println(&comm, "reset RFID reader.");
         break;
       case 'M':
         if (line_len >= 2)
@@ -190,7 +162,7 @@ int main() {
         break;
       default:
         comm.write(lineBuffer.line()[0]);
-        comm.println(" Unknown command; '?' for help.");
+        println(&comm, " Unknown command; '?' for help.");
       }
     }
 
