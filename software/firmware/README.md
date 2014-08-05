@@ -22,6 +22,8 @@ probably be simplified, because it is quite a chunk of code). But hey, it was
 already there and I have 8kiB to waste (also, I tell the linker to throw out
 unused stuff as much as possible).
 
+Uses the SPI port and part of port B.
+
 LCD
 ---
 If this terminal should have an LCD to display messages or interact wit the
