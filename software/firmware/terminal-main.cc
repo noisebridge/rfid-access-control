@@ -166,12 +166,17 @@ int main() {
         println(&comm, "reset RFID reader.");
         break;
       case 'M':
-        if (line_len >= 2)
+        if (line_len >= 2 && lineBuffer.line()[1] - '0' < 2) {
           lcd.print(lineBuffer.line()[1] - '0', lineBuffer.line() + 2);
+          println(&comm, "M ok");
+        } else {
+          println(&comm, "E row number must be 0 or 1");
+        }
+        break;
+      case '\0': // TODO: the lineBuffer sometimes returns empty lines.
         break;
       default:
-        comm.write(lineBuffer.line()[0]);
-        print(&comm, " Unknown command 0x");
+        print(&comm, "E Unknown command 0x");
         printHex(&comm, lineBuffer.line()[0]);
         println(&comm, "; '?' for help.");
       }

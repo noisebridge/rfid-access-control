@@ -37,7 +37,7 @@ dual voltage on the board just to power the display.
 
 The LCD typically has 14 or 16 connector pins.
    - **LCD 1** _(GND)_ to **GND**
-   - **LCD 2** _(+5V)_ to **5V** 
+   - **LCD 2** _(+5V)_ to **5V**
    - **LCD 3** _(contrast)_ to **GND**
        _the contrast is controllable with a resistor, but connecting it to GND
        is just fine_
@@ -62,12 +62,18 @@ Output bits in PC0..PC5 if there is no LCD display. (TBD: and some leftover pins
 
 Serial Protocol
 ---------------
-Line based protocol. Right now, we end all lines with `<CR><LF>` because that
-works right out of the box with any terminal emulator (e.g. minicom), without
-too much configuration. We only use RX and TX, so hardware flow control needs
-to be switched off.
+Simple line based protocol (the previous generation of the Noisebridge
+access terminal was character based, but this doesn't work well anymore with
+increased functionality).
 
-The serial protocol communicates with 9600 8N1 (TODO: reconsider speed if we go
+Each value **sent** from the terminal comes as full line
+(or lines in case of the help command). All lines end with `<CR><LF>`
+because that displays well out of the box with any terminal emulator
+(e.g. minicom), without too much configuration.
+Lines **received** from the host are accepted with `<CR>` or `<LF>` or both.
+
+We only use RX and TX, so hardware flow control needs to be switched off. Other
+communication parameters are 9600 8N1 (TODO: reconsider speed if we go
 with RS232 instad of RS422 on the physical wire).
 
 ### Terminal -> Host
@@ -121,9 +127,11 @@ with a `<CR>` or `<LF>` or both.
      r     : Reset RFID reader (Should typically not be necessary except after
              physical connection reconnect of its SPI bus).
      P     : Ping; responds with "Pong". Useful to check aliveness.
+     (TODO: specialized command to buzz or silent open, color leds etc)
 
-Responses generally are prefixed with the letter of the command. Makes
-interfacing simple.
+Each command is acknowledged with a line prefixed with the letter of the
+command, *or* on error, the returned value starts with `E`.
+Makes interfacing the protocol simple.
 
 Compiling
 ---------
