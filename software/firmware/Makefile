@@ -11,7 +11,7 @@ CXXFLAGS=-std=c++11 -Os -g -Wall -ffunction-sections -fdata-sections -mcall-prol
 AVRDUDE     = avrdude -p m8 -c stk500v2 -P /dev/ttyUSB0
 FLASH_CMD   = $(AVRDUDE) -e -U flash:w:main.hex
 LINK=avr-g++ -g $(TARGET_ARCH) -Wl,-gc-sections
-OBJECTS=lock-main.o mfrc522.o lcd.o serial-com.o
+OBJECTS=terminal-main.o mfrc522.o lcd.o serial-com.o
 
 all : main.hex
 
