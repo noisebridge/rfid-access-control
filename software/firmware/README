@@ -11,12 +11,13 @@ already there and I have 8k to waste.
 
 The serial protocol communicates with 9600 8N1. Whenever a new card is seen,
 a line is sent to the host
-  R xx yyyyyyyy
+  `Rxx yyyyyyyy`
 With xx being the number of bytes (RFID IDs come in 4, 7 and 10 bytes) followed
 by the actual bytes. All numbers (xx and yy...) are in hex.
 
-Also responds to one-line commands from the host. The first
-character in each line denotes the command, followed by optional parameters.
+Also responds to one-line commands from the host (all commands must be
+sent with <CR> or <LF> or both). The first character in each line denotes
+the command, followed by optional parameters.
 
    ?     : Prints help.
    S<xx> : set output pins. Understands 8-bit hex number, but only
@@ -24,7 +25,11 @@ character in each line denotes the command, followed by optional parameters.
            Responds with S<yy> with <yy> the actual bits being set.
            Can be used to switch on fancy LEDs or even remotely trigger a
            relay or transistor to open the strike.
-   r     : Reset RFID reader (Should typically not be necessary).
+           Example: `S ff`
+   M<r><msg> : Write a message to the LCD screen.
+           Example: `M1Hello World` writes 'Hello world' to the second line.
+   r     : Reset RFID reader (Should typically not be necessary except after
+           physical connection reconnect of its SPI bus).
    P     : Ping; responds with "Pong". Useful to check aliveness.
 
 Responses generally are prefixed with the letter of the command. Makes

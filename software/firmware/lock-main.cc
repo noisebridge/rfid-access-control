@@ -39,9 +39,12 @@ static unsigned char parseHex(const char *buffer) {
   return result;
 }
 
-static void println(SerialCom *com, const char *str) {
+static void print(SerialCom *com, const char *str) {
   while (*str) com->write(*str++);
-  com->write('\r'); com->write('\n');
+}
+
+static void println(SerialCom *com, const char *str) {
+  print(com, str); print(com, "\r\n");
 }
 static void printHex(SerialCom *com, unsigned char c) {
   com->write(to_hex(c >> 4));
@@ -85,7 +88,7 @@ private:
 
 static void printHelp(SerialCom *out) {
   // Keep short or memory explodes :)
-  println(out,
+  print(out,
     "? Noisebridge RFID outpost | v0.1 | 8/2014\r\n"
     "? Sends:\r\n"
     "? R <num-bytes-hex> <uid-hex-str>\r\n"
@@ -94,7 +97,10 @@ static void printHelp(SerialCom *out) {
     "?\tP\tPing\r\n"
     "?\tr\tReset reader.\r\n"
     "?\tM<n><msg> Write msg on LCD-line n=0,1.\r\n"
-    "?\tS<xx>\tSet output bits; param 8bit hex.");
+    "?\tS<xx>\tSet output bits; param 8bit hex.\r\n? dropped-bytes: ");
+  printHex(out, out->dropped_bytes() >> 8);
+  printHex(out, out->dropped_bytes() & 0xff);
+  print(out, "\r\n");
 }
 
 static void setAuxBits(const char *buffer, SerialCom *out) {
@@ -165,6 +171,11 @@ int main() {
         println(&comm, " Unknown command; '?' for help.");
       }
     }
+
+    // While we still have bytes ready to read, handle these first, otherwise
+    // we might run out of buffer because the RFID reading takes its sweet time.
+    if (comm.read_ready())
+      continue;
 
     // ... or some new card found.
     if (!card_reader.PICC_IsNewCardPresent())
