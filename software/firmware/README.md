@@ -33,7 +33,7 @@ The LCD typically has 14 or 16 connector pins.
    - **LCD 1** _(GND)_ to **GND**
    - **LCD 2** _(+5V)_ to **5V** (unfortunately, many displays only work with
       5V instead of 3.3V. Might need dual voltage on the board).
-   - **LCD 3** _(contrast)_ to **LCD 1** (GND)
+   - **LCD 3** _(contrast)_ to **GND**
        _the contrast is controllable with a resistor, but connecting it to GND
        is just fine_
    - **LCD 4** _(RS)_ to **PC4** (Pin 27 on PDIP Atmega8)
@@ -70,11 +70,11 @@ with RS232 instad of RS422 on the physical wire).
 
 #### RFID
 
-Whenever a new RFID card is seen,
-a line, prefixed with `I` (for ID), is sent to the host:
+Whenever a new RFID card is seen, is sent to the host:
 
      Ixx yyyyyyyy<CR><LF>
 
+(Example: `I07 c41abefa24238d`)
 With xx being the number of bytes (RFID IDs come in 4, 7 and 10 bytes. The
 number is written in hex, so values right now `04`, `07`, `0a`) followed
 by the actual bytes. All numbers (xx and yy...) are in hex.
@@ -97,14 +97,15 @@ They are one-letter commands, followed by parameters and end
 with a `<CR>` or `<LF>` or both.
 
      ?     : Prints help.
-     W<xx> : set output pins. Understands 8-bit hex number, but only
+     W<xx> : Writes output pins. Understands 8-bit hex number, but only
              6 bits are currently addressed: PC[0..5] on the Atmega8
-             Responds with S<yy> with <yy> the actual bits being set.
+             Responds with W<yy> with <yy> the actual bits being set (some
+             might not be available).
              Can be used to switch on fancy LEDs or even remotely trigger a
              relay or transistor to open the strike.
              Example:
 
-             S ff
+             W ff
 
      M<r><msg> : Write a message to the LCD screen. Example:
 
