@@ -19,7 +19,8 @@ the RC522 board, but hacked to not depend on Arduino libraries.
 
 It only uses a tiny subset of that library: to read the UID (which could
 probably be simplified, because it is quite a chunk of code). But hey, it was
-already there and I have 8k to waste.
+already there and I have 8kiB to waste (also, I tell the linker to throw out
+unused stuff as much as possible).
 
 LCD
 ---
@@ -27,12 +28,14 @@ If this terminal should have an LCD to display messages or interact wit the
 user, then these are connected to PC0..PC5 to the microcontroller.
 (TODO: make it #define-able which features are available)
 
+Unfortunately, many displays only work with 5V instead of 3.3V. Might need
+dual voltage on the board just to power the display.
+
 ![LCD connector][lcd]
 
 The LCD typically has 14 or 16 connector pins.
    - **LCD 1** _(GND)_ to **GND**
-   - **LCD 2** _(+5V)_ to **5V** (unfortunately, many displays only work with
-      5V instead of 3.3V. Might need dual voltage on the board).
+   - **LCD 2** _(+5V)_ to **5V** 
    - **LCD 3** _(contrast)_ to **GND**
        _the contrast is controllable with a resistor, but connecting it to GND
        is just fine_
@@ -50,7 +53,6 @@ The LCD typically has 14 or 16 connector pins.
 Keypad
 ------
 TBD
-Sends `K` followed by keypress followed by <CR><LF>
 
 Output Pins
 -----------
@@ -82,8 +84,7 @@ by the actual bytes. All numbers (xx and yy...) are in hex.
 While the card is seen, this line is repeated every couple of 100ms
 
 #### Keypad
-(TBD)
-
+(not implemented yet)
 Each Key pressed on the phonepad is transmitted with a single line
 
      K*<CR><LF>
