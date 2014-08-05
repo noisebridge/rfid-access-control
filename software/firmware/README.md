@@ -9,7 +9,7 @@ It only uses a tiny subset of that library: to read the UID (which could
 probably be simplified, because it is quite a chunk of code). But hey, it was
 already there and I have 8k to waste.
 
-The serial protocol communicates with 9600 8N1 (TODO: reconsider if we go
+The serial protocol communicates with 9600 8N1 (TODO: reconsider speed if we go
 with RS232 instad of RS422 on the physical wire). Whenever a new card is seen,
 a line is sent to the host
 
@@ -29,10 +29,14 @@ the command, followed by optional parameters.
              Can be used to switch on fancy LEDs or even remotely trigger a
              relay or transistor to open the strike.
              Example:
-	       S ff
+
+             S ff
+
      M<r><msg> : Write a message to the LCD screen. Example:
-		   M1Hello World
-		 writes this message to the second line.
+
+		 M1Hello World
+
+                 writes this message to the second line.
      r     : Reset RFID reader (Should typically not be necessary except after
              physical connection reconnect of its SPI bus).
      P     : Ping; responds with "Pong". Useful to check aliveness.
