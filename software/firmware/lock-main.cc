@@ -9,6 +9,9 @@
 #define AUX_PORT PORTC
 #define AUX_BITS 0x3F
 
+// According to datasheet, common operations take up to ~37usec
+#define LCD_DISPLAY_OPERATION_WAIT_USEC 50
+
 static char to_hex(unsigned char c) { return c < 0x0a ? c + '0' : c + 'a' - 10; }
 
 // returns value 0x00..0x0f or 0xff for failure.
@@ -36,9 +39,66 @@ static unsigned char parseHex(const char *buffer) {
   return result;
 }
 
+class LcdDisplay {
+public:
+  LcdDisplay(int width) : width_(width) {
+    // -- This seems to be a reliable initialization sequence:
+
+    // Start with 8 bit mode, then instruct to switch to 4 bit mode.
+    WriteNibble(true, 0x03);
+    _delay_us(5000);       // If we were in 4 bit mode, timeout makes this 0x30
+    WriteNibble(true, 0x03);
+    _delay_us(5000);
+
+    // Transition to 4 bit mode.
+    WriteNibble(true, 0x02); // Interpreted as 0x20: 8-bit cmd: switch to 4-bit.
+    _delay_us(LCD_DISPLAY_OPERATION_WAIT_USEC);
+
+    // From now on, we can write full bytes that we transfer in nibbles.
+    WriteByte(true, 0x28);  // Function set: 4-bit mode, two lines, 5x8 font
+    WriteByte(true, 0x06);  // Entry mode: increment, no shift
+    WriteByte(true, 0x0c);  // Display control: on, no cursor
+
+    WriteByte(true, 0x01);  // Clear display
+    _delay_us(2000);        // ... which takes up to 1.6ms
+  }
+
+  void print(unsigned char row, const char *str) {
+    if (row > 1) return;
+    // Set address to write to; line 2 starts at 0x40
+    WriteByte(true, 0x80 + ((row > 0) ? 0x40 : 0));
+    unsigned char pos;
+    for (pos = 0; *str && pos < width_; str++, pos++) {
+      WriteByte(false, *str);
+    }
+    for (/**/; pos < width_; ++pos) {
+      WriteByte(false, ' ');  // fill rest with spaces.
+    }
+  }
+
+private:
+  enum {
+    BIT_RS = 0x10,
+    BIT_ENABLE = 0x20
+  };
+  void WriteNibble(bool is_command, unsigned char b) {
+    PORTC = b & 0x0f;
+    PORTC |= (is_command ? 0 : BIT_RS) | BIT_ENABLE;
+    for (int i = 0; i < 10; ++i) {}
+    PORTC &= ~BIT_ENABLE;
+  }
+  void WriteByte(bool is_command, unsigned char b) {
+    WriteNibble(is_command, (b >> 4) & 0xf);
+    WriteNibble(is_command, b & 0xf);
+    _delay_us(LCD_DISPLAY_OPERATION_WAIT_USEC);
+  }
+
+  const unsigned char width_;
+};
+
 class SerialComm {
 public:
-  // 9600 baud, 8 bit, no parity, 1 stop
+  // SERIAL_BAUDRATE, 8 bit, no parity, 1 stop
   SerialComm() {
     const unsigned int divider = (F_CPU  / 17 / SERIAL_BAUDRATE) - 1;
     UBRRH = (unsigned char)(divider >> 8);
@@ -91,6 +151,7 @@ public:
       newline_seen = (c == '\r' || c == '\n');
     }
     *pos_ = '\0';  // We always have at least one byte space.
+    if (newline_seen) *--pos_ = '\0';  // Don't return newline.
     if (newline_seen || pos_ >= end_buf) {
       byte len = pos_ - buffer_;
       pos_ = buffer_;
@@ -115,10 +176,11 @@ static void printHelp(SerialComm *out) {
     "? Sends:\r\n"
     "? R <num-bytes-hex> <uid-hex-str>\r\n"
     "? Commands:\r\n"
-    "?\t?      This help\r\n"
-    "?\tP      Ping\r\n"
-    "?\tr      Reset reader\r\n"
-    "?\tS<xx>  Set output bits; param 8bit hex");
+    "?\t?\tThis help\r\n"
+    "?\tP\tPing\r\n"
+    "?\tr\tReset reader.\r\n"
+    "?\tM<n><msg> Write msg on LCD-line n=0,1.\r\n"
+    "?\tS<xx>\tSet output bits; param 8bit hex.");
 }
 
 static void setAuxBits(const char *buffer, SerialComm *out) {
@@ -152,13 +214,18 @@ int main() {
   MFRC522::Uid current_uid;
 
   SerialComm comm;
+  LcdDisplay lcd(24);
+  lcd.print(0, "  Noisebridge  ");
+  lcd.print(1, "");
+
   LineBuffer lineBuffer;
   comm.println("Noisebridge access control outpost. '?' for help.");
   int rate_limit = 0;
 
   for (;;) {
     // See if there is a command incoming.
-    if (lineBuffer.noblockReadline(&comm) != 0) {
+    char line_len;
+    if ((line_len = lineBuffer.noblockReadline(&comm)) != 0) {
       switch (lineBuffer.line()[0]) {
       case '?':
         printHelp(&comm);
@@ -175,8 +242,10 @@ int main() {
         current_uid.size = 0;
         comm.println("reset RFID reader.");
         break;
-      case '\r': case '\n':
-        break;  // ignore spurious newline.
+      case 'M':
+        if (line_len >= 2)
+          lcd.print(lineBuffer.line()[1] - '0', lineBuffer.line() + 2);
+        break;
       default:
         comm.write(lineBuffer.line()[0]);
         comm.println(" Unknown command; '?' for help.");

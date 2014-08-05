@@ -1,7 +1,8 @@
 # <h.zeller@acm.org>
 ##
 
-# CPU frequency and baudrate as used at compile time.
+# CPU frequency and baudrate as used at compile time. We want to have
+# a slow communication as we have pretty long lines and don't use RS422.
 DEFINES=-DF_CPU=8000000UL -DSERIAL_BAUDRATE=9600
 
 TARGET_ARCH=-mmcu=atmega8
