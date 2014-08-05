@@ -34,7 +34,7 @@ the command, followed by optional parameters.
 
      M<r><msg> : Write a message to the LCD screen. Example:
 
-		 M1Hello World
+                 M1Hello World
 
                  writes this message to the second line.
      r     : Reset RFID reader (Should typically not be necessary except after
