@@ -13,13 +13,13 @@ public:
   RingBuffer();
 
   // Number of spots available to write.
-  unsigned char write_ready() volatile;
+  unsigned char write_available() volatile;
 
   // Write. Blocks until write_ready()
   void write(char c) volatile;
 
   // Number of bytes ready to read.
-  unsigned char read_ready() volatile;
+  unsigned char read_available() volatile;
 
   // Read a byte. Blocks if read_ready() == 0.
   char read() volatile;
@@ -31,7 +31,7 @@ private:
 };
 
 class SerialCom {
-  enum { RX_BUFFER_BITS = 5 };  // Buffer uses 2^BUFFER_BITS bytes.
+  enum { RX_BUFFER_BITS = 6 };  // Buffer uses 2^BUFFER_BITS bytes.
 public:
   // Setting up the serial interface. Baudrate is given as -DSERIAL_BAUDRATE
   // Otherwise simply 8N1.
@@ -43,7 +43,7 @@ public:
   void write(char c);
 
   // Bytes ready to read. Can be up to buffer-size.
-  unsigned char read_ready() volatile;
+  unsigned char read_available() volatile;
 
   // Read a single chracter. Blocks if nothing in buffer.
   char read() volatile;

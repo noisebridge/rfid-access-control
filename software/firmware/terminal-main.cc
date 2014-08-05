@@ -63,7 +63,7 @@ public:
   byte ReadlineNoblock(SerialCom *comm) {
     const char *end_buf = buffer_ + sizeof(buffer_) - 1;
     bool newline_seen = false;
-    while (!newline_seen && comm->read_ready() && pos_ < end_buf) {
+    while (!newline_seen && comm->read_available() && pos_ < end_buf) {
       const char c = (*pos_++ = comm->read());
       newline_seen = (c == '\r' || c == '\n');
     }
@@ -179,7 +179,7 @@ int main() {
 
     // While we still have bytes ready to read, handle these first, otherwise
     // we might run out of buffer because the RFID reading takes its sweet time.
-    if (comm.read_ready())
+    if (comm.read_available())
       continue;
 
     // ... or some new card found.

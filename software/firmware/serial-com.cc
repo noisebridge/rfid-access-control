@@ -11,25 +11,25 @@ template<int BUFFER_BITS> RingBuffer<BUFFER_BITS>::RingBuffer()
   : write_pos_(0), read_pos_(0) {
 }
 
-template<int BUFFER_BITS> unsigned char RingBuffer<BUFFER_BITS>::write_ready()
-  volatile {
+template<int BUFFER_BITS> unsigned char
+RingBuffer<BUFFER_BITS>::write_available() volatile {
   return (read_pos_ - (write_pos_ + 1)) & ((1<<BUFFER_BITS)-1);
 }
 
 template<int BUFFER_BITS> void RingBuffer<BUFFER_BITS>::write(char c) volatile {
-  while (!write_ready())
+  while (!write_available())
     ;
   buffer_[write_pos_] = c;
   write_pos_ = (write_pos_ + 1) & ((1<<BUFFER_BITS)-1);
 }
 
-template<int BUFFER_BITS> unsigned char RingBuffer<BUFFER_BITS>::read_ready()
-  volatile {
+template<int BUFFER_BITS> unsigned char
+RingBuffer<BUFFER_BITS>::read_available() volatile {
   return (write_pos_ - read_pos_) & ((1<<BUFFER_BITS)-1);
 }
 
 template<int BUFFER_BITS> char RingBuffer<BUFFER_BITS>::read() volatile {
-  while (!read_ready())
+  while (!read_available())
     ;
   char c = buffer_[read_pos_];
   read_pos_ = (read_pos_ + 1) & ((1<<BUFFER_BITS)-1);
@@ -69,14 +69,14 @@ void SerialCom::write(char c) {
 }
 
 void SerialCom::StuffByte(char c) volatile {
-  if (read_buffer_.write_ready())
+  if (read_buffer_.write_available())
     read_buffer_.write(c);
   else
     ++dropped_reads_;
 }
 
-unsigned char SerialCom::read_ready() volatile {
-  return read_buffer_.read_ready();
+unsigned char SerialCom::read_available() volatile {
+  return read_buffer_.read_available();
 }
 
 char SerialCom::read() volatile {
