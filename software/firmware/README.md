@@ -104,7 +104,8 @@ The star representing the key in this case.
 
 The terminal also responds to one-line commands from the host.
 They are one-letter commands, followed by parameters and end
-with a `<CR>` or `<LF>` or both.
+with a `<CR>` or `<LF>` or both. Commands with upper-case letters modify
+the state of the system, lower-case letters just read information.
 
      ?     : Prints help.
      W<xx> : Writes output pins. Understands 8-bit hex number, but only
@@ -125,10 +126,11 @@ with a `<CR>` or `<LF>` or both.
                  M1Hello World
 
              writes this message to the second line.
-     r     : Reset RFID reader (Should typically not be necessary except after
+     R     : Reset RFID reader (Should typically not be necessary except after
              physical connection reconnect of its SPI bus).
      e<msg>: Just echo back given message. Useful for line-reliability test.
              (Use with line length ~ <= 30 characters)
+     s     : Read stats.
      (TODO: specialized command to buzz or silent open, color leds etc)
 
 Each command is acknowledged with a line prefixed with the letter of the

@@ -12,6 +12,10 @@
 #define AUX_PORT PORTC
 #define AUX_BITS 0x3F
 
+// TODO: move this repository to noisebridge github.
+#define CODE_URL "https://github.com/hzeller/rfid-access-control"
+#define HEADER_TEXT "Noisebridge access terminal | v0.1 | 8/2014"
+
 static char to_hex(unsigned char c) { return c < 0x0a ? c + '0' : c + 'a' - 10; }
 
 // returns value 0x00..0x0f or 0xff for failure.
@@ -39,16 +43,20 @@ static unsigned char parseHex(const char *buffer) {
   return result;
 }
 
-static void print(SerialCom *com, const char *str) {
-  while (*str) com->write(*str++);
+// Some convenience methods around the serial line.
+static void print(SerialCom *out, const char *str) {
+  while (*str) out->write(*str++);
 }
-
-static void println(SerialCom *com, const char *str) {
-  print(com, str); print(com, "\r\n");
+static void println(SerialCom *out, const char *str) {
+  print(out, str); print(out, "\r\n");
 }
-static void printHex(SerialCom *com, unsigned char c) {
-  com->write(to_hex(c >> 4));
-  com->write(to_hex(c & 0x0f));
+static void printHexByte(SerialCom *out, unsigned char c) {
+  out->write(to_hex(c >> 4));
+  out->write(to_hex(c & 0x0f));
+}
+static void printHexShort(SerialCom *out, unsigned short s) {
+  printHexByte(out, (s >> 8));
+  printHexByte(out, (s & 0xff));
 }
 
 // A line buffer wrapping around the serial read. Nonblocking fills until either
@@ -91,19 +99,35 @@ static void printHelp(SerialCom *out) {
   // Keep strings short or memory explodes :) The Harvard architecture of the
   // Atmel chips requires that the strings are first copied to memory.
   // Better split up in multiple calls with shorter strings.
+  print(out, "? ");
+  println(out, HEADER_TEXT);
+  print(out, "? ");
+  println(out, CODE_URL);
+
+  // What it sends.
   print(out,
-        "? Noisebridge access terminal | v0.1 | 8/2014\r\n"
         "? Sends card-IDs with:\r\n"
         "?\tI<num-bytes-hex> <uid-hex-str>\r\n");
-  print(out,"? Commands:\r\n"
+
+  // state-modifying commands.
+  print(out,
+        "? Commands:\r\n"
         "?\t?\tThis help\r\n"
-        "?\te<msg>\tEcho back msg (testing)\r\n"
-        "?\tr\tReset reader.\r\n"
+        "?\tR\tReset reader.\r\n"
         "?\tM<n><msg> Write msg on LCD-line n=0,1.\r\n"
         "?\tW<xx>\tWrite output bits; param 8bit hex.\r\n");
-  print(out, "? dropped-reads: 0x");
-  printHex(out, out->dropped_reads() >> 8);
-  printHex(out, out->dropped_reads() & 0xff);
+
+  // Passive commands.
+  print(out,
+        "?\te<msg>\tEcho back msg (testing)\r\n"
+        "?\ts\tShow stats.\r\n");
+}
+
+static void PrintStats(SerialCom *out, unsigned short cmd_count) {
+  print(out, "s commands-seen=0x");
+  printHexShort(out, cmd_count);
+  print(out, "; dropped-rx-bytes=0x");
+  printHexShort(out, out->dropped_rx());
   print(out, "\r\n");
 }
 
@@ -112,17 +136,17 @@ static void setAuxBits(const char *buffer, SerialCom *out) {
   value &= AUX_BITS;
   PORTC = value;
   out->write('W');
-  printHex(out, value);
+  printHexByte(out, value);
   println(out, "");
 }
 
 static void writeUid(const MFRC522::Uid &uid, SerialCom *out) {
   if (uid.size > 15) return;  // fishy.
   out->write('I');
-  printHex(out, (unsigned char) uid.size);
+  printHexByte(out, (unsigned char) uid.size);
   out->write(' ');
   for (int i = 0; i < uid.size; ++i) {
-    printHex(out, uid.uidByte[i]);
+    printHexByte(out, uid.uidByte[i]);
   }
   println(out, "");
 }
@@ -143,28 +167,30 @@ int main() {
   lcd.print(1, "");
 
   LineBuffer lineBuffer;
-  println(&comm, "Noisebridge access control outpost. '?' for help.");
-  int rate_limit = 0;
+  print(&comm, "# ");
+  print(&comm, HEADER_TEXT);
+  println(&comm, "; '?' for help.");
 
+  int rate_limit = 0;
+  unsigned short commands_seen_stat = 0;
   for (;;) {
     // See if there is a command incoming.
     char line_len;
     if ((line_len = lineBuffer.ReadlineNoblock(&comm)) != 0) {
+      ++commands_seen_stat;
       switch (lineBuffer.line()[0]) {
       case '?':
         printHelp(&comm);
         break;
-      case 'e':
-        println(&comm, lineBuffer.line());
-        break;
+        // Commands that modify stuff. Upper case letters.
       case 'W':
         setAuxBits(lineBuffer.line(), &comm);
         break;
-      case 'r':
+      case 'R':
         card_reader.PCD_Reset();
         card_reader.PCD_Init();
         current_uid.size = 0;
-        println(&comm, "reset RFID reader.");
+        println(&comm, "Reset RFID reader.");
         break;
       case 'M':
         if (line_len >= 2 && lineBuffer.line()[1] - '0' < 2) {
@@ -174,11 +200,20 @@ int main() {
           println(&comm, "E row number must be 0 or 1");
         }
         break;
+
+        // Lower case letters don't modify any state.
+      case 'e':
+        println(&comm, lineBuffer.line());
+        break;
+      case 's':
+        PrintStats(&comm, commands_seen_stat);
+        break;
+
       case '\0': // TODO: the lineBuffer sometimes returns empty lines.
         break;
       default:
         print(&comm, "E Unknown command 0x");
-        printHex(&comm, lineBuffer.line()[0]);
+        printHexByte(&comm, lineBuffer.line()[0]);
         println(&comm, "; '?' for help.");
       }
     }

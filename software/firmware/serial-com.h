@@ -55,7 +55,7 @@ public:
 
   // Number of incoming bytes that were dropped on the floor because read()
   // was not called in time to pick them up.
-  unsigned short dropped_reads() const { return dropped_reads_; }
+  unsigned short dropped_rx() const { return dropped_reads_; }
 
 private:
   friend class SerialComISRWriter;
