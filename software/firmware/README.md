@@ -10,8 +10,11 @@ They interface with a serial interface with a simple protocol with the host.
 Based on Atmega8 (because I had a bunch lying around). Running on 3.3V as
 this is the voltage needed by the RFID reader.
 
-RFID-RC522
-----------
+Peripherals
+-----------
+
+### RFID-RC522
+
 The reader to interface is the RFID-RC522; there are a bunch available everywhere
 and they are cheap - in the order of $5. They interface via SPI with the
 microcontroller. Uses https://github.com/miguelbalboa/rfid to interface with
@@ -30,8 +33,8 @@ This is how a typical board looks like
 
 TBD: describe connections.
 
-LCD
----
+### LCD
+
 If this terminal should have an LCD to display messages or interact wit the
 user, then these are connected to PC0..PC5 to the microcontroller.
 (TODO: make it #define-able which features are available)
@@ -58,12 +61,12 @@ The LCD typically has 14 or 16 connector pins.
    - **LCD 14** _(Data 7)_ to **PC3** (Pin 26 on PDIP Atmega8)
    - If availble: LCD 15 and LCD 16 are for background light.
 
-Keypad
-------
+### Keypad
+
 TBD
 
-Output Pins
------------
+### Output Pins
+
 Output bits in PC0..PC5 if there is no LCD display. (TBD: and some leftover pins)
 
 Serial Protocol
