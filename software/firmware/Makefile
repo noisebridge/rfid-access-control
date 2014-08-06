@@ -20,7 +20,11 @@ all : main.hex
 main.elf: $(OBJECTS)
 	$(LINK) -o $@ $(OBJECTS)
 	avr-size $@
-	avr-objdump -S main.elf > /tmp/screen-`avr-size -d main.elf | grep main.elf | awk '{print $$4}'`.S
+
+# To compare different sized assembly outputs. Creates files with names including
+# size
+space-output: main.elf
+	avr-objdump -S $^ > /tmp/terminal-`avr-size -d main.elf | grep main.elf | awk '{print $$4}'`.S
 
 disasm: main.elf
 	avr-objdump -S main.elf
