@@ -24,6 +24,12 @@ unused stuff as much as possible).
 
 Uses the SPI port and part of port B.
 
+This is how a typical board looks like
+
+![RFID-board][rfid-board]
+
+TBD: describe connections.
+
 LCD
 ---
 If this terminal should have an LCD to display messages or interact wit the
@@ -171,4 +177,5 @@ Hacking in progress:
 ![Work in progress][work]
 
 [work]: https://github.com/hzeller/rfid-access-control/raw/master/img/work-in-progress.jpg
+[rfid-board]: https://github.com/hzeller/rfid-access-control/raw/master/img/rfid-rc522.jpg
 [lcd]: https://github.com/hzeller/rfid-access-control/raw/master/img/lcd-connector.jpg
