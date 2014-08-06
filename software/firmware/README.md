@@ -154,12 +154,12 @@ To compile, you need the avr toolchain installed:
 Testing line speed
 ------------------
 To test if the line speed is working for the given environment (long cable,
-noisy line etc.) you can use the `e`cho command to see if you get the same
+noisy line etc.) you can use the `e`-cho command to see if you get the same
 data out as you get in. Let's generate some test-data and compare input and
 output.
 
      $ i=1 ; while [ $i -lt 5000 ] ; do echo -en "eTest Echo $i\r\n" ; i=$[i+1]; done > /tmp/a.txt
-     $ cat /tmp/orig-file.txt | socat -b 256 STDIO /dev/ttyUSB1,raw,echo=0,b9600 > /tmp/b.txt
+     $ cat /tmp/a.txt | socat -b 256 STDIO /dev/ttyUSB1,raw,echo=0,b9600 > /tmp/b.txt
      $ md5sum /tmp/a.txt /tmp/b.txt
      622671e0f2fd2bea09dd8e0e43ac3e89  /tmp/a.txt
      622671e0f2fd2bea09dd8e0e43ac3e89  /tmp/b.txt
