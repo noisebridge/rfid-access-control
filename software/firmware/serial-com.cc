@@ -69,16 +69,16 @@ void SerialCom::write(char c) {
 }
 
 void SerialCom::StuffByte(char c) volatile {
-  if (read_buffer_.write_available())
-    read_buffer_.write(c);
+  if (rx_buffer_.write_available())
+    rx_buffer_.write(c);
   else
     ++dropped_reads_;
 }
 
 unsigned char SerialCom::read_available() volatile {
-  return read_buffer_.read_available();
+  return rx_buffer_.read_available();
 }
 
 char SerialCom::read() volatile {
-  return read_buffer_.read();
+  return rx_buffer_.read();
 }

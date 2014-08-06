@@ -62,8 +62,9 @@ private:
   void StuffByte(char c) volatile;  // Stuff into buffer. Called by ISR.
   unsigned short dropped_reads_;
 
-  RingBuffer<RX_BUFFER_BITS> read_buffer_;
-  // TODO: ring buffer for writing.
+  RingBuffer<RX_BUFFER_BITS> rx_buffer_;
+  // Note: using interrupt driven transmit didn't change performance at all
+  // so not bothering for code simplicity sake.
 };
 
 #endif  // _AVR_SERIAL_H_
