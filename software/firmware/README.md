@@ -63,7 +63,8 @@ The LCD typically has 14 or 16 connector pins.
 
 ### Keypad
 
-TBD
+Can read a standard 3 column x 4 row phone style keypad and output its debounced
+values on the serial line.
 
 ### Output Pins
 
@@ -102,7 +103,6 @@ followed by the actual bytes as hex-string.
 While the card is in range, this line is repeated every couple of 100ms.
 
 #### Keypad
-(not implemented yet)
 Each Key pressed on the phonepad is transmitted with a single line
 
      K*<CR><LF>

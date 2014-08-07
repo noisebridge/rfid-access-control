@@ -5,8 +5,10 @@
 #include <string.h>
 #include <util/delay.h>
 
-#include "mfrc522.h"
+#include "clock.h"
+#include "keypad.h"
 #include "lcd.h"
+#include "mfrc522.h"
 #include "serial-com.h"
 
 #define AUX_PORT PORTC
@@ -42,6 +44,7 @@ static unsigned char parseHex(const char *buffer) {
   }
   return result;
 }
+
 
 // Some convenience methods around the serial line.
 static void print(SerialCom *out, const char *str) {
@@ -123,7 +126,7 @@ static void printHelp(SerialCom *out) {
         "?\ts\tShow stats.\r\n");
 }
 
-static void PrintStats(SerialCom *out, unsigned short cmd_count) {
+static void SendStats(SerialCom *out, unsigned short cmd_count) {
   print(out, "s commands-seen=0x");
   printHexShort(out, cmd_count);
   print(out, "; dropped-rx-bytes=0x");
@@ -131,7 +134,7 @@ static void PrintStats(SerialCom *out, unsigned short cmd_count) {
   print(out, "\r\n");
 }
 
-static void setAuxBits(const char *buffer, SerialCom *out) {
+static void SetAuxBits(const char *buffer, SerialCom *out) {
   unsigned char value = parseHex(buffer + 1);
   value &= AUX_BITS;
   PORTC = value;
@@ -140,7 +143,7 @@ static void setAuxBits(const char *buffer, SerialCom *out) {
   println(out, "");
 }
 
-static void writeUid(const MFRC522::Uid &uid, SerialCom *out) {
+static void SendUid(const MFRC522::Uid &uid, SerialCom *out) {
   if (uid.size > 15) return;  // fishy.
   out->write('I');
   printHexByte(out, (unsigned char) uid.size);
@@ -151,25 +154,35 @@ static void writeUid(const MFRC522::Uid &uid, SerialCom *out) {
   println(out, "");
 }
 
+static void SendKeypadCharIfAvailable(SerialCom *out, char keypad_char) {
+  if (!keypad_char) return;
+  char buf[3] = { 'K', keypad_char, 0 };
+  println(out, buf);
+}
+
 int main() {
   DDRC = AUX_BITS;
 
   _delay_ms(100);  // Wait for voltage to settle before we reset the 522
 
+  Clock::init();
+
+  KeyPad keypad;
+
   MFRC522 card_reader;
   card_reader.PCD_Init();
 
-  MFRC522::Uid current_uid;
-
-  SerialCom comm;
   LcdDisplay lcd(24);
   lcd.print(0, "  Noisebridge  ");
   lcd.print(1, "");
 
-  LineBuffer lineBuffer;
+  SerialCom comm;
   print(&comm, "# ");
   print(&comm, HEADER_TEXT);
   println(&comm, "; '?' for help.");
+
+  LineBuffer lineBuffer;
+  MFRC522::Uid current_uid;
 
   int rate_limit = 0;
   unsigned short commands_seen_stat = 0;
@@ -184,7 +197,7 @@ int main() {
         break;
         // Commands that modify stuff. Upper case letters.
       case 'W':
-        setAuxBits(lineBuffer.line(), &comm);
+        SetAuxBits(lineBuffer.line(), &comm);
         break;
       case 'R':
         card_reader.PCD_Reset();
@@ -206,7 +219,7 @@ int main() {
         println(&comm, lineBuffer.line());
         break;
       case 's':
-        PrintStats(&comm, commands_seen_stat);
+        SendStats(&comm, commands_seen_stat);
         break;
 
       case '\0': // TODO: the lineBuffer sometimes returns empty lines.
@@ -223,6 +236,8 @@ int main() {
     if (comm.read_available())
       continue;
 
+    SendKeypadCharIfAvailable(&comm, keypad.ReadKeypad());
+
     // ... or some new card found.
     if (!card_reader.PICC_IsNewCardPresent())
       continue;
@@ -237,6 +252,6 @@ int main() {
       continue;
     rate_limit = 10;
     current_uid = card_reader.uid;
-    writeUid(current_uid, &comm);
+    SendUid(current_uid, &comm);
   }
 }
