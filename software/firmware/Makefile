@@ -9,7 +9,7 @@ DEFINES=-DF_CPU=8000000UL -DSERIAL_BAUDRATE=9600
 
 TARGET_ARCH=-mmcu=atmega8
 CXX=avr-g++
-CXXFLAGS=-std=c++11 -Os -g -Wall -ffunction-sections -fdata-sections -mcall-prologues $(DEFINES)
+CXXFLAGS=-Os -g -Wall -ffunction-sections -fdata-sections -mcall-prologues $(DEFINES)
 AVRDUDE     = avrdude -p m8 -c stk500v2 -P /dev/ttyUSB0
 FLASH_CMD   = $(AVRDUDE) -e -U flash:w:main.hex
 LINK=avr-g++ -g $(TARGET_ARCH) -Wl,-gc-sections

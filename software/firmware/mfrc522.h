@@ -328,8 +328,8 @@ public:
   bool PICC_ReadCardSerial();
 
 private:
-  byte _chipSelectPin;		// Arduino pin connected to MFRC522's SPI slave select input (Pin 24, NSS, active low)
-  byte _resetPowerDownPin;	// Arduino pin connected to MFRC522's reset and power down input (Pin 6, NRSTPD, active low)
+  const byte _chipSelectPin;		// Arduino pin connected to MFRC522's SPI slave select input (Pin 24, NSS, active low)
+  const byte _resetPowerDownPin;	// Arduino pin connected to MFRC522's reset and power down input (Pin 6, NRSTPD, active low)
   byte MIFARE_TwoStepHelper(byte command, byte blockAddr,	long data);
 };
 

@@ -26,7 +26,6 @@ namespace {
     PIN_RST = 1,
   };
 
-
   enum PinMode {
     INPUT,
     OUTPUT
@@ -70,9 +69,9 @@ namespace {
 
   class SPI {
   public:
-    static void Init() {
-      PORTB |= (1<<PIN_SS);  // set chip select high initially.
-      DDRB |= (1<<PIN_SS) | (1<<PIN_SCK) | (1<<PIN_MOSI);
+    static void Init(byte chip_select) {
+      PORTB |= (1<<chip_select);  // set chip select high initially.
+      DDRB |= (1<<chip_select) | (1<<PIN_SCK) | (1<<PIN_MOSI);
       SPCR |= _BV(MSTR);
       SPCR |= _BV(SPE);
     }
@@ -102,17 +101,12 @@ namespace {
  * Constructor.
  * Prepares the output pins.
  */
-MFRC522::MFRC522() : MFRC522(PIN_SS, PIN_RST) {}
-MFRC522::MFRC522(byte chipSelectPin,    ///< Arduino pin connected to MFRC522's SPI slave select input (Pin 24, NSS, active low)
-                 byte resetPowerDownPin  ///< Arduino pin connected to MFRC522's reset and power down input (Pin 6, NRSTPD, active low)
-                 ) {
+MFRC522::MFRC522() : _chipSelectPin(PIN_SS), _resetPowerDownPin(PIN_RST) {
   // Set the chipSelectPin as digital output, do not select the slave yet
-  _chipSelectPin = chipSelectPin;
   pinMode(_chipSelectPin, OUTPUT);
   digitalWrite(_chipSelectPin, HIGH);
 
   // Set the resetPowerDownPin as digital output, do not reset or power down.
-  _resetPowerDownPin = resetPowerDownPin;
   pinMode(_resetPowerDownPin, OUTPUT);
   digitalWrite(_resetPowerDownPin, LOW);
 
@@ -125,7 +119,7 @@ MFRC522::MFRC522(byte chipSelectPin,    ///< Arduino pin connected to MFRC522's 
  * Please call this function if you have changed the SPI config since the MFRC522 constructor was run.
  */
 void MFRC522::setSPIConfig() {
-  SPI::Init();
+  SPI::Init(PIN_SS);
   SPI::setBitOrder(MSBFIRST);
   SPI::setDataMode(SPI_MODE0);
 } // End setSPIConfig()
