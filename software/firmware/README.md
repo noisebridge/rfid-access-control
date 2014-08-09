@@ -31,7 +31,17 @@ This is how a typical board looks like
 
 ![RFID-board][rfid-board]
 
-TBD: describe connections.
+Connections from board to Atmega8
+   - **SDA** _(-CS)_ to **PB2**   (Pin 16 on PDIP Atmega8)
+       (and good to have a pull-up to 3.3V so that in-circuit programming works
+        reliably)
+   - **SCK** to **SCK**   (Pin 19 on PDIP Atmega8)
+   - **MOSI** to **MOSI** (Pin 17 on PDIP Atmega8)
+   - **MISO** to **MISO** (Pin 18 on PDIP Atmega8)
+   - **IRQ** (not connected)
+   - **GND** to **GND**
+   - **RST** _(-Reset)_ to **PB1**   (Pin 15 on PDIP Atmega8)
+   - **3.3V** to **3.3V**
 
 ### LCD
 
@@ -44,7 +54,7 @@ dual voltage on the board just to power the display.
 
 ![LCD connector][lcd]
 
-The LCD typically has 14 or 16 connector pins.
+The LCD typically has 14 or 16 connector pins. Connections from LCD to Atmega8
    - **LCD 1** _(GND)_ to **GND**
    - **LCD 2** _(+5V)_ to **5V**
    - **LCD 3** _(contrast)_ to **GND**
