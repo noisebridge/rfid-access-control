@@ -1,3 +1,5 @@
+// (c) 2014 h.zeller@acm.org. GNU General Public License 2.0 or higher.
+// --
 $fn=96;
 case_fn=96;   // make that 8 for faster development, >= 60 for 'pretty'
 border_roundness=6;
@@ -19,7 +21,7 @@ case_height=12;
 // inner volume
 v_width=rfid_w + 2;
 v_height=rfid_h + 8;
-v_depth=case_height-base_thick;
+v_depth=case_height;
 
 top_radius=0.7*rfid_h;  // the longer part.
 base_radius=top_radius + 5;
@@ -27,8 +29,8 @@ slope_start_fraction=0.6;  // fraction of the height the slope starts.
 logo_size=0.75*top_radius;
 
 cleat_angle=35;
-
 cleat_wall_thick = 1.2;
+screw_block_offset=42;
 
 module logo() {
     scale([logo_size,logo_size,1]) linear_extrude(height = logo_imprint + 2*epsilon, convexity = 10)
@@ -98,15 +100,39 @@ module inner_cleat_frame() {
     }
 }
 
+module clearance_cleat_volume() {
+    padded_cleat_volume(p=[2*cleat_wall_thick + 2*clearance,2*cleat_wall_thick+2*clearance,epsilon]);
+}
+
 // The larger cleat frame, mounted on the top.
 module outer_cleat_frame() {
     difference() {
 	padded_cleat_volume(p=[4*cleat_wall_thick + 2*clearance,4*cleat_wall_thick + 2*clearance, epsilon]);
-	translate([0,0,epsilon]) padded_cleat_volume(p=[2*cleat_wall_thick + 2*clearance,2*cleat_wall_thick+2*clearance,epsilon]);
-	translate([0,0,-epsilon]) padded_cleat_volume(p=[2*cleat_wall_thick + 2*clearance,2*cleat_wall_thick+2*clearance,epsilon]);
+	translate([0,0,epsilon]) clearance_cleat_volume();
+	translate([0,0,-epsilon]) clearance_cleat_volume();
     }
 }
 
+// A block that is diagonally split like our cleats. The 'b' parameter is the
+// block size, which is centered around x and y. The slit point is at y=0
+module diagonal_split_block(b=[1,1,1], left=1) {
+    if (left) {
+	difference() {
+	    translate([-b[0]/2, -b[1]/2, 0]) cube(b);
+	    translate([0,0,clearance]) rotate([-cleat_angle, 0, 0]) translate([-50,0,-50]) cube([100,100,100]);
+	}
+    } else {
+	intersection() {
+	    translate([-b[0]/2, -b[1]/2, 0]) cube(b);
+	    translate([0,0,-clearance]) rotate([-cleat_angle, 0, 0]) translate([-50,0,-50]) cube([100,100,100]);
+	}
+    }
+}
+
+module screw_block(w=15,left=1,padding=0,h=slope_start_fraction * case_height) {
+    translate([0,-screw_block_offset,0]) diagonal_split_block(b=[w + padding,base_radius,h + padding], left=left);
+}
+    
 module base_assembly() {
     // Some angles of the cleat collide with the inner volume. Give it enough
     // clearance. Since base assembly grows bottom up, we just cut with
@@ -114,25 +140,43 @@ module base_assembly() {
     intersection() {
 	translate([0,0,-clearance]) case_inner_volume();
 	union() {
-	    color("blue") translate([0,0,base_thick-epsilon]) inner_cleat_frame();
+	    color("blue") inner_cleat_frame();
 	    base_plate();
 	}
+    }
+
+    // Now the screw holder is actually extending to the outside world
+    intersection() {
+	case_outer_volume();
+	color("blue") screw_block(left=1);
     }
 }
 
 module case_and_cleat() {
-    // the cleat-walls poke through the casing. Clip them with intersection.
+    // The cleat-walls poke through the casing. Clip them with intersection.
     intersection() {
 	top_outer_volume();
-	union() {
-	    intersection() {
-		// TODO: something is broken somewhere else, otherwise we
-		// should only need 1x clearance here.
-		translate([0,0,+3*clearance]) case_inner_volume();
-		translate([0,0,case_height - v_depth + epsilon]) color("red") outer_cleat_frame();
-	    }
-	    top_case();
+	intersection() {
+	    // Trim fram on the bottom to not interfere with the base.
+	    translate([0,0,base_thick+clearance]) case_inner_volume();
+	    color("red") outer_cleat_frame();
 	}
+    }
+
+    // The screw block also needs to be trimmed on the bottom.
+    intersection() {
+	translate([0,0,base_thick+clearance]) case_inner_volume();
+	difference() {
+	    // We print upside down, so the block must be the full height
+	    // otherwise we have overhang.
+	    screw_block(left=0,h=case_height);
+	    clearance_cleat_volume();
+	}
+    }
+
+    difference() {
+	top_case();
+	screw_block(left=1, padding=clearance);
     }
 }
 
@@ -147,12 +191,11 @@ module xray() {
 }
 
 module print() {
-    base_assembly();
+    translate([-oval_ratio * base_radius,0,0]) base_assembly();
 
     // We turn the case-assembly upside down and print next to it.
-    translate([2 * oval_ratio * base_radius,0,0]) rotate([0,180,0]) translate([0,0,-case_height - top_thick]) case_and_cleat();
+    translate([oval_ratio * base_radius,0,0]) rotate([0,180,0]) translate([0,0,-case_height - top_thick]) case_and_cleat();
 }
 
-print();
-//xray();
-
+//print();
+xray();
