@@ -12,12 +12,12 @@ rfid_h=60;
 
 top_thick =  1.2;  // Thickness of the top shell.
 base_thick = 1;    // Thickness of the base-plate, mounted to the wall.
-clearance  = 0.5;  // clearance between moving parts.
+clearance  = 0.8;  // clearance between moving parts. Depends on printer-Q.
 logo_imprint=0.3;  // depth of the logo imprint.
 
 oval_ratio=rfid_w/rfid_h;
 
-case_height=12;
+case_height=12;    // More precisely: the inner height. Outer is + top_thick.
 // inner volume
 v_width=rfid_w + 2;
 v_height=rfid_h + 8;
@@ -28,9 +28,10 @@ base_radius=top_radius + 5;
 slope_start_fraction=0.7;  // fraction of the height the slope starts.
 logo_size=0.75*top_radius;
 
-cleat_angle=35;
-cleat_wall_thick = 1.2;
-screw_block_offset=42;
+cleat_angle=25;
+cleat_wall_thick = 1.2; // The thickness of the inner walls of the cleat.
+screw_block_offset=42;  // Distance from y-center where the screw-block cut is.
+                        // TODO: calculate from other parameters.
 
 module logo() {
     scale([logo_size,logo_size,1]) linear_extrude(height = logo_imprint + 2*epsilon, convexity = 10)
@@ -147,7 +148,7 @@ module diagonal_split_block(b=[1,1,1], left=1) {
 }
 
 module screw_block(w=15,left=1,padding=0,h=slope_start_fraction * case_height) {
-    color("red") translate([0,-screw_block_offset,0]) diagonal_split_block(b=[w + padding,base_radius,h + padding], left=left);
+    color("red") translate([0,-screw_block_offset,0]) diagonal_split_block(b=[w + 2 * padding,base_radius,h + padding], left=left);
 }
     
 module base_assembly() {
@@ -162,20 +163,24 @@ module base_assembly() {
 	}
     }
 
-    // Now the screw holder is actually extending to the outside world
+    // Swrew block.
+    // The screw holder is actually extending to the outside world, so we
+    // intersect it with the outer volume.
     difference() {
 	intersection() {
 	    case_outer_volume();
 	    screw_block(left=1);
 	}
 	mount_screw();
+	// Fudging away some sharp corner. Not calculated, needs mnual fiddling.
+	translate([-10,-screw_block_offset+3.2,0]) cube([20,5,case_height]);
     }
 }
 
 module case_and_cleat() {
     // The cleat-walls poke through the casing. Clip them with intersection.
     intersection() {
-	top_outer_volume();
+	case_outer_volume();
 	intersection() {
 	    // Trim fram on the bottom to not interfere with the base.
 	    translate([0,0,base_thick+clearance]) case_inner_volume();
@@ -192,9 +197,12 @@ module case_and_cleat() {
 	    screw_block(left=0,h=case_height);
 	    clearance_cleat_volume();
 	    mount_screw(r=1);  // use self-cutting screw for now. Predrill.
+	    // Fudging away some sharp corner. manual fiddling.
+	    translate([-10,-screw_block_offset-3,0]) cube([20,5,case_height]);
 	}
     }
 
+    // The base-plate screw block pokes out of outer case. Cut it out.
     difference() {
 	top_case();
 	screw_block(left=1, padding=clearance);
