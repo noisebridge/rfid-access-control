@@ -33,8 +33,8 @@ logo_size=0.75*top_radius;
 
 cleat_angle=25;
 cleat_wall_thick = 1.2; // The thickness of the inner walls of the cleat.
-screw_block_offset=42;  // Distance from y-center where the screw-block cut is.
-                        // TODO: calculate from other parameters.
+screw_block_offset=base_radius - 6;  // Distance from y-center where the
+                                     // diagonal mount-screw cut is.
 
 // X/Y locations for the wall mount screws. Some manual fiddling involved.
 drywall_mount_locations=[ [0, base_radius - 6],
@@ -82,7 +82,7 @@ module drywall_screw() {
 }
 
 module positioned_mount_screw(r=3.2/2) {
-    translate([0,-base_radius-top_thick,slope_start_fraction*case_height/2]) rotate([-90,0,0]) countersunk_screw(r=r);
+    translate([0,-base_radius-top_thick,slope_start_fraction*case_height/2]) rotate([-90,0,0]) countersunk_screw(r=r,h=17);
 }
 
 module base_plate() {
