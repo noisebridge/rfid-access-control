@@ -26,7 +26,7 @@ v_width=rfid_w + 2;
 v_height=rfid_h + 8;
 v_depth=case_height;
 
-top_radius=0.7*rfid_h;  // the longer part.
+top_radius=0.72*rfid_h;  // the longer part.
 base_radius=top_radius + 5;
 slope_start_fraction=0.7;  // fraction of the height the slope starts.
 logo_size=0.75*top_radius;
@@ -183,7 +183,7 @@ module screw_block(w=15,left=1,padding=0,h=slope_start_fraction * case_height) {
 
 module base_screws_podests(raised=4) {
     for (s = drywall_mount_locations) {
-	translate([s[0],s[1],0]) cylinder(r=5,h=raised);
+	translate([s[0],s[1],0]) cylinder(r=5.4,h=raised);
     }
 }
 
