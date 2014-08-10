@@ -1,7 +1,7 @@
 // (c) 2014 h.zeller@acm.org. GNU General Public License 2.0 or higher.
 // --
 $fn=96;
-case_fn=96;   // make that 8 for faster development, >= 60 for 'pretty'
+case_fn=96;
 border_roundness=6;
 
 epsilon=0.05;
@@ -25,7 +25,7 @@ v_depth=case_height;
 
 top_radius=0.7*rfid_h;  // the longer part.
 base_radius=top_radius + 5;
-slope_start_fraction=0.6;  // fraction of the height the slope starts.
+slope_start_fraction=0.7;  // fraction of the height the slope starts.
 logo_size=0.75*top_radius;
 
 cleat_angle=35;
@@ -40,6 +40,18 @@ module logo() {
 // For testing.
 module pcb_board() {
     color("blue") cube([rfid_w,rfid_h,1.5], center=true);
+}
+
+// Screw, standing on its head on the z-plane. Extends a bit on the negative
+// z-plane to be able to 'punch' holes.
+module countersink_screw(h=15,r=3.2/2,head_r=5.5/2,head_depth=1.6) {
+    cylinder(r=r,h=h);
+    cylinder(r1=head_r,r2=r,h=head_depth);
+    translate([0,0,-1+epsilon]) cylinder(r=head_r,h=1);
+}
+
+module mount_screw(r=3.2/2) {
+    translate([0,-base_radius-top_thick,slope_start_fraction*case_height/2]) rotate([-90,0,0]) countersink_screw(r=r);
 }
 
 module base_plate() {
@@ -70,6 +82,11 @@ module top_case() {
 	translate([0,0,case_height+top_thick - logo_imprint]) logo();
     }
 }
+
+// ----
+// The cleats are essentially a parallelogram that pushes the case towards
+// the back when pulled down. The down-pulling happens with a screw.
+// ---
 
 module inner_cleat_volume() {
     b=40;  // cut-away block thickness
@@ -130,7 +147,7 @@ module diagonal_split_block(b=[1,1,1], left=1) {
 }
 
 module screw_block(w=15,left=1,padding=0,h=slope_start_fraction * case_height) {
-    translate([0,-screw_block_offset,0]) diagonal_split_block(b=[w + padding,base_radius,h + padding], left=left);
+    color("red") translate([0,-screw_block_offset,0]) diagonal_split_block(b=[w + padding,base_radius,h + padding], left=left);
 }
     
 module base_assembly() {
@@ -146,9 +163,12 @@ module base_assembly() {
     }
 
     // Now the screw holder is actually extending to the outside world
-    intersection() {
-	case_outer_volume();
-	color("blue") screw_block(left=1);
+    difference() {
+	intersection() {
+	    case_outer_volume();
+	    screw_block(left=1);
+	}
+	mount_screw();
     }
 }
 
@@ -171,6 +191,7 @@ module case_and_cleat() {
 	    // otherwise we have overhang.
 	    screw_block(left=0,h=case_height);
 	    clearance_cleat_volume();
+	    mount_screw(r=1);  // use self-cutting screw for now. Predrill.
 	}
     }
 
@@ -197,5 +218,6 @@ module print() {
     translate([oval_ratio * base_radius,0,0]) rotate([0,180,0]) translate([0,0,-case_height - top_thick]) case_and_cleat();
 }
 
-//print();
-xray();
+print();
+//xray();
+
