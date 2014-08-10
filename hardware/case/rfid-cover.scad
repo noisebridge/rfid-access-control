@@ -1,7 +1,7 @@
 // (c) 2014 h.zeller@acm.org. GNU General Public License 2.0 or higher.
 // --
-$fn=96;
-case_fn=96;
+$fn=32;
+case_fn=96;       // Resolution of the case. Also funky with lo-res 8
 border_roundness=6;
 
 epsilon=0.05;
@@ -86,12 +86,12 @@ module positioned_mount_screw(r=3.2/2) {
 }
 
 module base_plate() {
-    scale([oval_ratio,1,1]) cylinder(r=base_radius - clearance,h=base_thick);
+    scale([oval_ratio,1,1]) cylinder(r=base_radius - clearance,h=base_thick, $fn=case_fn);
 }
 
 module case_inner_volume() {
     scale([oval_ratio,1,1]) {
-	cylinder(r=base_radius, h=slope_start_fraction * case_height);
+	cylinder(r=base_radius, h=slope_start_fraction * case_height, $fn=case_fn);
 	translate([0,0,slope_start_fraction*case_height - epsilon])
 	   cylinder(r1=base_radius, r2=top_radius, h=(1-slope_start_fraction)*case_height, $fn=case_fn);	    
     }
