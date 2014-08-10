@@ -8,11 +8,17 @@ The case for the RFID reader.
 
 ![Case][case-image]
 
-This 'xray' view reveals the french cleat system to hold the top case in place.
-The mounting screw on the bottom pulls down the inner assembly thus pulls it
-towards the wall. Removing that screw allows to remove the case easily to the
-top:
+The case comes in two pieces, the base and the top case. The base is mounted
+permanently to the wall (with three drywall-screws), the top case slides on
+top of it and is held in place almost invisible with a single mounting screw
+at the bottom.
 
+Even without that mounting screw, gravity holds the case in place.
+The mounting screw pulls down the inner assembly and thus firmly pulls it towards
+the wall.
+Removing that screw allows to slide the case off easily moving slightly upwards.
+
+This 'xray' view reveals the 'french cleat' system that does the magic.
 ![On the inside][xray]
 
 [case-image]: https://github.com/hzeller/rfid-access-control/raw/master/img/rfid-reader-case.png
