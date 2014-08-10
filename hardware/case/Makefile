@@ -1,6 +1,6 @@
-all : rfid-case.stl 
+all : rfid-cover.stl
 
-rfid-case.stl: Noisebridge-logo.dxf
+rfid-cover.stl: Noisebridge-logo.dxf
 
 Noisebridge-logo.dxf:
 
@@ -14,4 +14,4 @@ Noisebridge-logo.dxf:
 	openscad -o $@ -d $@.deps $<
 
 clean:
-	rm -f $(THING_STL)
+	rm -f rfid-cover.stl Noisebridge-logo.dxf
