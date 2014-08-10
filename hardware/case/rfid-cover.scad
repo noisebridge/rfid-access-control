@@ -72,7 +72,7 @@ module top_case() {
 module inner_cleat_volume() {
     b=40;  // cut-away block thickness
     // Mmmh, there certainly must be a simpler way to build a parallelogram
-    difference() {
+    translate([0,2,0]) difference() {
 	translate([0, 0, v_depth/2]) cube([v_width, v_height, v_depth], center=true);
 	// aligned to the bottom plane
 	translate([0,-v_height/2,0]) rotate([-cleat_angle,0,0]) translate([-v_width/2-epsilon,-b,-25]) cube([v_width + 2*epsilon, b, v_depth+50]);
