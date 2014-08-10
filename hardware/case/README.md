@@ -1,6 +1,13 @@
 The case for the RFID reader.
+=============================
 
-TODO: someone knowledeable with inkscape please make the "RFID-waves" not
-a single trace with a thickness, but rather a filled shape - so thin trace, but
-filled 'arc volume. ... otherwise the DXF export just generates an infinite small
-line...
+   - Mounting holes for the wall on the base-plate, invisible from top.
+   - Cleat system allows for single-screw fixing of outer shell to wall.
+   - Cabeling behind the board
+   - Noisebridge Logo lends itself to a nice RFID-logo modification :)
+
+![Case][case-image]
+
+[case-image]: https://github.com/hzeller/rfid-access-control/raw/master/img/rfid-reader-case.png
+
+

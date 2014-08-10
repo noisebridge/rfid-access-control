@@ -48,7 +48,7 @@ rfid_center_offset=[0,3,0];
 
 module logo() {
     scale([logo_size,logo_size,1]) linear_extrude(height = logo_imprint + 2*epsilon, convexity = 10)
-        translate([-0.8,-0.55,0]) import(file = "Noisebridge-logo.dxf");
+        translate([-0.82,-0.55,0]) import(file = "Noisebridge-logo.dxf");
 }
 
 // For testing.
@@ -226,7 +226,7 @@ module base_assembly() {
     }
 }
 
-module case_and_cleat() {
+module top_assembly() {
     // Cleat walls.
     // They poke through the casing. Clip them with intersection.
     intersection() {
@@ -260,11 +260,16 @@ module case_and_cleat() {
     }
 }
 
+module show() {
+    base_assembly();
+    top_assembly();
+
+}
+
 module xray() {
     difference() {
 	union() {
-	    base_assembly();
-	    case_and_cleat();
+	    show();
 	    translate([0,0,rfid_mount_height]) pcb_board();
 	    %base_screws();
 	    %positioned_mount_screw();
@@ -278,8 +283,10 @@ module print() {
     translate([-oval_ratio * base_radius,0,0]) base_assembly();
 
     // We turn the case-assembly upside down and print next to it.
-    translate([oval_ratio * base_radius,0,0]) rotate([0,180,0]) translate([0,0,-case_height - top_thick]) case_and_cleat();
+    translate([oval_ratio * base_radius,0,0]) rotate([0,180,0]) translate([0,0,-case_height - top_thick]) top_assembly();
 }
 
-print();
+//show();
 //xray();
+print();
+
