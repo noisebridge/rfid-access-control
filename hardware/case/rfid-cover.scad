@@ -274,7 +274,7 @@ module xray() {
 	    %base_screws();
 	    %positioned_mount_screw();
 	}
-	translate([0,-50,-50]) cube([100,100,100]);
+	translate([0,-60,-60]) cube([120,120,120]);
 	rotate([45,0,0]) translate([-108,top_radius-15,-50]) cube([100,100,100]);
     }
 }
