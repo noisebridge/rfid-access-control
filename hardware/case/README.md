@@ -21,6 +21,16 @@ Removing that screw allows to slide the case off easily moving slightly upwards.
 This 'xray' view reveals the 'french cleat' system that does the magic.
 ![On the inside][xray]
 
+Hacking
+-------
+The case is written in OpenSCAD. The code could use a run of cleanup now that
+it is clear how the result should look like :)
+
+To get he logo, you have to first generate the dxf file from svg:
+
+     make Noisebridge-logo.dxf
+
+
 [case-image]: https://github.com/hzeller/rfid-access-control/raw/master/img/rfid-reader-case.png
 [xray]: https://github.com/hzeller/rfid-access-control/raw/master/img/rfid-reader-xray-view.png
 
