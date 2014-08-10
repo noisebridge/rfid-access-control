@@ -6,9 +6,9 @@ border_roundness=6;
 
 epsilon=0.05;
 
-// The RFID 522 board size
-rfid_w=40;
-rfid_h=60;
+// The RFID 522 board size. Plus some clearance.
+rfid_w=40 + 2;
+rfid_h=60 + 2;
 
 top_thick =  1.2;  // Thickness of the top shell.
 base_thick = 1;    // Thickness of the base-plate, mounted to the wall.
@@ -33,6 +33,11 @@ cleat_wall_thick = 1.2; // The thickness of the inner walls of the cleat.
 screw_block_offset=42;  // Distance from y-center where the screw-block cut is.
                         // TODO: calculate from other parameters.
 
+// X/Y locations for the wall mount screws. Some manual fiddling involved.
+drywall_mount_locations=[ [0, base_radius - 6],
+                          [-rfid_w/2+4, -rfid_h/2 + 6],
+			  [ rfid_w/2-4, -rfid_h/2 + 6] ];
+
 module logo() {
     scale([logo_size,logo_size,1]) linear_extrude(height = logo_imprint + 2*epsilon, convexity = 10)
         translate([-0.8,-0.55,0]) import(file = "Noisebridge-logo.dxf");
@@ -45,14 +50,19 @@ module pcb_board() {
 
 // Screw, standing on its head on the z-plane. Extends a bit on the negative
 // z-plane to be able to 'punch' holes.
-module countersink_screw(h=15,r=3.2/2,head_r=5.5/2,head_depth=1.6) {
+module countersunk_screw(h=15,r=3.2/2,head_r=5.5/2,head_depth=1.6) {
     cylinder(r=r,h=h);
     cylinder(r1=head_r,r2=r,h=head_depth);
     translate([0,0,-1+epsilon]) cylinder(r=head_r,h=1);
 }
 
-module mount_screw(r=3.2/2) {
-    translate([0,-base_radius-top_thick,slope_start_fraction*case_height/2]) rotate([-90,0,0]) countersink_screw(r=r);
+// Some pre-parametrized
+module drywall_screw() {
+    countersunk_screw(h=45,r=4.2/2,head_r=8.4/2,head_depth=4);
+}
+
+module positioned_mount_screw(r=3.2/2) {
+    translate([0,-base_radius-top_thick,slope_start_fraction*case_height/2]) rotate([-90,0,0]) countersunk_screw(r=r);
 }
 
 module base_plate() {
@@ -150,20 +160,37 @@ module diagonal_split_block(b=[1,1,1], left=1) {
 module screw_block(w=15,left=1,padding=0,h=slope_start_fraction * case_height) {
     color("red") translate([0,-screw_block_offset,0]) diagonal_split_block(b=[w + 2 * padding,base_radius,h + padding], left=left);
 }
-    
+
+module base_screws_podests(raised=4) {
+    for (s = drywall_mount_locations) {
+	translate([s[0],s[1],0]) cylinder(r=5,h=raised);
+    }
+}
+
+module base_screws(raised=4) {
+    for (s = drywall_mount_locations) {
+	translate([s[0],s[1],0])
+	     translate([0,0,raised]) rotate([180,0,0]) drywall_screw();
+    }
+}
+
 module base_assembly() {
     // Some angles of the cleat collide with the inner volume. Give it enough
     // clearance. Since base assembly grows bottom up, we just cut with
     // translation
     intersection() {
 	translate([0,0,-clearance]) case_inner_volume();
-	union() {
-	    color("blue") inner_cleat_frame();
-	    base_plate();
+	difference() {
+	    union() {
+		color("green") inner_cleat_frame();
+		base_plate();
+		base_screws_podests();
+	    }
+	    base_screws();
 	}
     }
 
-    // Swrew block.
+    // Screw block to mount the top
     // The screw holder is actually extending to the outside world, so we
     // intersect it with the outer volume.
     difference() {
@@ -171,14 +198,15 @@ module base_assembly() {
 	    case_outer_volume();
 	    screw_block(left=1);
 	}
-	mount_screw();
+	positioned_mount_screw();
 	// Fudging away some sharp corner. Not calculated, needs mnual fiddling.
-	translate([-10,-screw_block_offset+3.2,0]) cube([20,5,case_height]);
+	translate([-10,-screw_block_offset+2.5,0]) cube([20,5,case_height]);
     }
 }
 
 module case_and_cleat() {
-    // The cleat-walls poke through the casing. Clip them with intersection.
+    // Cleat walls.
+    // They poke through the casing. Clip them with intersection.
     intersection() {
 	case_outer_volume();
 	intersection() {
@@ -188,7 +216,8 @@ module case_and_cleat() {
 	}
     }
 
-    // The screw block also needs to be trimmed on the bottom.
+    // The screw block needs some clearance to the base-plate, so intersect
+    // with translated inner volume.
     intersection() {
 	translate([0,0,base_thick+clearance]) case_inner_volume();
 	difference() {
@@ -196,7 +225,7 @@ module case_and_cleat() {
 	    // otherwise we have overhang.
 	    screw_block(left=0,h=case_height);
 	    clearance_cleat_volume();
-	    mount_screw(r=1);  // use self-cutting screw for now. Predrill.
+	    positioned_mount_screw(r=1);  // Predrill: self-cutting screw for now
 	    // Fudging away some sharp corner. manual fiddling.
 	    translate([-10,-screw_block_offset-3,0]) cube([20,5,case_height]);
 	}
@@ -214,8 +243,12 @@ module xray() {
 	union() {
 	    base_assembly();
 	    case_and_cleat();
+	    translate([0,4, case_height-2]) pcb_board();
+	    %base_screws();
+	    %positioned_mount_screw();
 	}
-	translate([0,-50,-epsilon]) cube([100,100,100]);
+	translate([0,-50,-50]) cube([100,100,100]);
+	rotate([45,0,0]) translate([-108,top_radius-15,-50]) cube([100,100,100]);
     }
 }
 
@@ -228,4 +261,3 @@ module print() {
 
 print();
 //xray();
-
