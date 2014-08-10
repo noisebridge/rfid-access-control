@@ -13,7 +13,7 @@ rfid_h=60 + 2;
 rfid_hole_r=3.2/2;
 rfid_holes = [ [-17,-14], [17,-14], [-12.5, 23], [12.5, 23] ];
 
-top_thick =  1.2;  // Thickness of the top shell.
+top_thick  = 1.2;  // Thickness of the top shell.
 base_thick = 1;    // Thickness of the base-plate, mounted to the wall.
 clearance  = 0.8;  // clearance between moving parts. Depends on printer-Q.
 logo_imprint=0.3;  // depth of the logo imprint.
@@ -21,10 +21,10 @@ logo_imprint=0.3;  // depth of the logo imprint.
 oval_ratio=rfid_w/rfid_h;
 
 case_height=12;    // More precisely: the inner height. Outer is + top_thick.
-// inner volume
-v_width=rfid_w + 2;
-v_height=rfid_h + 8;
-v_depth=case_height;
+
+// inner volume of the cleat-boxed part.
+cleat_volume_width  = rfid_w + 2;
+cleat_volume_height = rfid_h + 8;
 
 top_radius=0.72*rfid_h;  // the longer part.
 base_radius=top_radius + 5;
@@ -119,16 +119,18 @@ module top_case() {
 // the back when pulled down. The down-pulling happens with a screw.
 // ---
 
-module inner_cleat_volume() {
+module inner_cleat_volume(w=cleat_volume_width,
+                          h=cleat_volume_height,
+		          depth=case_height) {
     b=40;  // cut-away block thickness
-    // Mmmh, there certainly must be a simpler way to build a parallelogram
+    // Mmmh, there certainly must be a simpler way to build a parallelogram...
     translate([0,2,0]) difference() {
-	translate([0, 0, v_depth/2]) cube([v_width, v_height, v_depth], center=true);
+	translate([0, 0, depth/2]) cube([w, h, depth], center=true);
 	// aligned to the bottom plane
-	translate([0,-v_height/2,0]) rotate([-cleat_angle,0,0]) translate([-v_width/2-epsilon,-b,-25]) cube([v_width + 2*epsilon, b, v_depth+50]);
+	translate([0,-h/2,0]) rotate([-cleat_angle,0,0]) translate([-w/2-epsilon,-b,-25]) cube([w + 2*epsilon, b, depth+50]);
 
 	// aligned to the top plane
-	translate([0,v_height/2,v_depth]) rotate([-cleat_angle,0,0]) translate([-v_width/2-epsilon,0,-25]) cube([v_width + 2*epsilon, b, v_depth+50]);
+	translate([0,h/2,depth]) rotate([-cleat_angle,0,0]) translate([-w/2-epsilon,0,-25]) cube([w + 2*epsilon, b, depth+50]);
     }
 }
 
@@ -260,12 +262,13 @@ module top_assembly() {
     }
 }
 
+// Show the whole assembly together.
 module show() {
     base_assembly();
     top_assembly();
-
 }
 
+// Like show, but revaling some insight.
 module xray() {
     difference() {
 	union() {
@@ -279,6 +282,7 @@ module xray() {
     }
 }
 
+// The printable form: flat surfaces on the print-bed
 module print() {
     translate([-oval_ratio * base_radius,0,0]) base_assembly();
 
