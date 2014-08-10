@@ -5,6 +5,8 @@ The case for the RFID reader.
    - Cleat system allows for single-screw fixing of outer shell to wall.
    - Cabeling behind the board
    - Noisebridge Logo lends itself to a nice RFID-logo modification :)
+   - The Logo is a bit recessed, so that it can be scrape-filled with a bit
+     of black paint.
 
 ![Case][case-image]
 
