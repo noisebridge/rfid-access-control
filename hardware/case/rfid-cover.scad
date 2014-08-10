@@ -9,6 +9,9 @@ epsilon=0.05;
 // The RFID 522 board size. Plus some clearance.
 rfid_w=40 + 2;
 rfid_h=60 + 2;
+// from center of board
+rfid_hole_r=3.2/2;
+rfid_holes = [ [-17,-14], [17,-14], [-12.5, 23], [12.5, 23] ];
 
 top_thick =  1.2;  // Thickness of the top shell.
 base_thick = 1;    // Thickness of the base-plate, mounted to the wall.
@@ -37,6 +40,11 @@ screw_block_offset=42;  // Distance from y-center where the screw-block cut is.
 drywall_mount_locations=[ [0, base_radius - 6],
                           [-rfid_w/2+4, -rfid_h/2 + 6],
 			  [ rfid_w/2-4, -rfid_h/2 + 6] ];
+cable_hole_location = [0,rfid_h/4,-epsilon];
+
+// There is some chrystal on top that needs some space
+rfid_mount_height=case_height - 4.6;
+rfid_center_offset=[0,3,0];
 
 module logo() {
     scale([logo_size,logo_size,1]) linear_extrude(height = logo_imprint + 2*epsilon, convexity = 10)
@@ -45,7 +53,19 @@ module logo() {
 
 // For testing.
 module pcb_board() {
-    color("blue") cube([rfid_w,rfid_h,1.5], center=true);
+    translate(rfid_center_offset) difference() {
+	color("blue") translate([0,0,1.5/2]) cube([rfid_w,rfid_h,1.5], center=true);
+	for (h = rfid_holes) {
+	    translate([h[0], h[1], -epsilon]) cylinder(r=rfid_hole_r,h=2);
+	}
+    }
+}
+
+module pcb_podests() {
+    translate(rfid_center_offset) for (h = rfid_holes) {
+	translate([h[0], h[1], 0]) cylinder(r=rfid_hole_r,h=case_height);
+	translate([h[0], h[1], 0]) cylinder(r=2*rfid_hole_r,h=rfid_mount_height);
+    }
 }
 
 // Screw, standing on its head on the z-plane. Extends a bit on the negative
@@ -185,8 +205,10 @@ module base_assembly() {
 		color("green") inner_cleat_frame();
 		base_plate();
 		base_screws_podests();
+		pcb_podests();
 	    }
 	    base_screws();
+	    translate(cable_hole_location) cylinder(r=5,h=5);
 	}
     }
 
@@ -243,7 +265,7 @@ module xray() {
 	union() {
 	    base_assembly();
 	    case_and_cleat();
-	    translate([0,4, case_height-2]) pcb_board();
+	    translate([0,0,rfid_mount_height]) pcb_board();
 	    %base_screws();
 	    %positioned_mount_screw();
 	}
