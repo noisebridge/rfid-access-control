@@ -240,12 +240,13 @@ module base_assembly() {
 		color("green") inner_cleat_frame();
 		base_plate();
 		base_screws_podests();
-		pcb_podests();
 	    }
 	    base_screws();
 	    cable_drills(widening = -0.5); // thus outer shells fit comfortably.
 	}
     }
+
+    pcb_podests(); // allow these to use the full height, e.g. for heatstaking.
 
     // Screw block to mount the top
     // The screw holder is actually extending to the outside world, so we
