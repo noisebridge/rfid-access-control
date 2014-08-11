@@ -1,8 +1,13 @@
+// -*- mode: scad; c-basic-offset: 4; indent-tabs-mode: nil; -*-
 // (c) 2014 h.zeller@acm.org. GNU General Public License 2.0 or higher.
 // --
 $fn=32;
 case_fn=96;       // Resolution of the case. Also funky with lo-res 8
 border_roundness=6;
+
+// Various cable outlets. Negative number to switch off that hole.
+cable_to_back_r  = 5;   // radius for cable out the backplane or < 0 for not
+cable_to_top_r   = 3.2; // radius for cable out of the top, or < 0 for not.
 
 epsilon=0.05;
 
@@ -100,7 +105,7 @@ module case_inner_volume() {
     scale([oval_ratio,1,1]) {
 	cylinder(r=base_radius, h=slope_start_fraction * case_height, $fn=case_fn);
 	translate([0,0,slope_start_fraction*case_height - epsilon])
-	   cylinder(r1=base_radius, r2=top_radius, h=(1-slope_start_fraction)*case_height, $fn=case_fn);	    
+	   cylinder(r1=base_radius, r2=top_radius, h=(1-slope_start_fraction)*case_height, $fn=case_fn);
     }
 }
 
@@ -187,6 +192,23 @@ module diagonal_split_block(b=[1,1,1], left=1) {
     }
 }
 
+// A cable hole that optionally can have a cutout to the bottom.
+module cable_duct(r=1,cutout=14,xoffset=-18) {
+    translate([xoffset,0,base_thick + r]) {
+        rotate([-90, 0, 0]) {
+            cylinder(r=r, h=base_radius);
+            rotate([0,0,90]) translate([0,-r,0]) cube([cutout, 2*r, base_radius]);
+        }
+    }
+}
+
+module cable_drills(cutout=0, widening=0) {
+    if (cable_to_back_r > 0)
+       translate(cable_hole_location) cylinder(r=cable_to_back_r,h=5);
+    if (cable_to_top_r > 0)
+       cable_duct(cable_to_top_r + widening, cutout=cutout);
+}
+
 module screw_block(w=15,left=1,padding=0,h=slope_start_fraction * case_height) {
     color("red") translate([0,-screw_block_offset,0]) diagonal_split_block(b=[w + 2 * padding,base_radius,h + padding], left=left);
 }
@@ -218,7 +240,7 @@ module base_assembly() {
 		pcb_podests();
 	    }
 	    base_screws();
-	    translate(cable_hole_location) cylinder(r=5,h=5);
+	    cable_drills(widening = -0.5); // thus outer shells fit comfortably.
 	}
     }
 
@@ -237,15 +259,18 @@ module base_assembly() {
 }
 
 module top_assembly() {
-    // Cleat walls.
-    // They poke through the casing. Clip them with intersection.
-    intersection() {
-	case_outer_volume();
+    difference() {
+	// Cleat walls.
+	// They poke through the casing. Clip them with intersection.
 	intersection() {
-	    // Trim fram on the bottom to not interfere with the base.
-	    translate([0,0,base_thick+clearance]) case_inner_volume();
-	    color("red") outer_cleat_frame();
+	    case_outer_volume();
+	    intersection() {
+		// Trim fram on the bottom to not interfere with the base.
+		translate([0,0,base_thick+clearance]) case_inner_volume();
+		color("red") outer_cleat_frame();
+	    }
 	}
+	cable_drills(cutout=case_height);
     }
 
     // The screw block needs some clearance to the base-plate, so intersect
@@ -267,6 +292,7 @@ module top_assembly() {
     difference() {
 	top_case();
 	screw_block(left=1, padding=clearance);
+	cable_drills(cutout=case_height);
     }
 }
 
@@ -301,4 +327,3 @@ module print() {
 //show();
 //xray();
 print();
-
