@@ -10,8 +10,10 @@ epsilon=0.05;
 rfid_w=40 + 2;
 rfid_h=60 + 2;
 // from center of board
-rfid_hole_r=3.2/2;
-rfid_holes = [ [-17,-14], [17,-14], [-12.5, 23], [12.5, 23] ];
+rfid_hole_r=2.9/2;
+rfid_hole_pos = [ [-17,-14], [17,-14], [-12.5, 23], [12.5, 23] ];
+rfid_mount_upside_down=true;  // Upside down mounting brings coil closer to top
+rfid_board_thick=1.6;
 
 top_thick  = 1.2;  // Thickness of the top shell.
 base_thick = 1;    // Thickness of the base-plate, mounted to the wall.
@@ -43,8 +45,8 @@ drywall_mount_locations=[ [0, base_radius - 6],
 cable_hole_location = [0,rfid_h/4,-epsilon];
 
 // There is some chrystal on top that needs some space
-rfid_mount_height=case_height - 4.6;
-rfid_center_offset=[0,3,0];
+rfid_mount_height=case_height - (rfid_mount_upside_down ? rfid_board_thick : 4.6) - clearance;
+rfid_center_offset=[0,rfid_mount_upside_down?4:2.5,rfid_board_thick/2];
 
 module logo() {
     scale([logo_size,logo_size,1]) linear_extrude(height = logo_imprint + 2*epsilon, convexity = 10)
@@ -52,19 +54,24 @@ module logo() {
 }
 
 // For testing.
-module pcb_board() {
-    translate(rfid_center_offset) difference() {
-	color("blue") translate([0,0,1.5/2]) cube([rfid_w,rfid_h,1.5], center=true);
-	for (h = rfid_holes) {
-	    translate([h[0], h[1], -epsilon]) cylinder(r=rfid_hole_r,h=2);
+module pcb_board(board_thick=rfid_board_thick) {
+    translate(rfid_center_offset) rotate([0,rfid_mount_upside_down?180:0, 0])
+    difference() {
+	union() {
+	    color("blue") translate([0,0,0]) cube([rfid_w,rfid_h,board_thick], center=true);
+	    // Simulate quartz as the highest point.
+	    translate([-2,-28,board_thick/2]) color("silver") cube([4,10,3.4]);
+	}
+	for (h = rfid_hole_pos) {
+	    translate([h[0], h[1], -1]) cylinder(r=rfid_hole_r,h=2);
 	}
     }
 }
 
 module pcb_podests() {
-    translate(rfid_center_offset) for (h = rfid_holes) {
+    translate(rfid_center_offset) for (h = rfid_hole_pos) {
 	translate([h[0], h[1], 0]) cylinder(r=rfid_hole_r,h=case_height);
-	translate([h[0], h[1], 0]) cylinder(r=2*rfid_hole_r,h=rfid_mount_height);
+	translate([h[0], h[1], 0]) cylinder(r=1.5*rfid_hole_r,h=rfid_mount_height);
     }
 }
 
@@ -165,6 +172,7 @@ module outer_cleat_frame() {
 
 // A block that is diagonally split like our cleats. The 'b' parameter is the
 // block size, which is centered around x and y. The slit point is at y=0
+// This is somewhat hacky. Need to reformulate that concept.
 module diagonal_split_block(b=[1,1,1], left=1) {
     if (left) {
 	difference() {
