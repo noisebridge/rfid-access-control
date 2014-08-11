@@ -7,7 +7,8 @@ border_roundness=6;
 
 // Various cable outlets. Negative number to switch off that hole.
 cable_to_back_r  = 5;   // radius for cable out the backplane or < 0 for not
-cable_to_top_r   = 3.2; // radius for cable out of the top, or < 0 for not.
+cable_to_left_top_r  = 3.2; // radius for cable out of the top, or < 0 for not.
+cable_to_right_top_r = 3.2; // radius for cable out of the top, or < 0 for not.
 
 epsilon=0.05;
 
@@ -205,8 +206,10 @@ module cable_duct(r=1,cutout=14,xoffset=-18) {
 module cable_drills(cutout=0, widening=0) {
     if (cable_to_back_r > 0)
        translate(cable_hole_location) cylinder(r=cable_to_back_r,h=5);
-    if (cable_to_top_r > 0)
-       cable_duct(cable_to_top_r + widening, cutout=cutout);
+    if (cable_to_left_top_r > 0)
+       cable_duct(xoffset=-18, cable_to_left_top_r + widening, cutout=cutout);
+    if (cable_to_right_top_r > 0)
+       cable_duct(xoffset=18,cable_to_right_top_r + widening, cutout=cutout);
 }
 
 module screw_block(w=15,left=1,padding=0,h=slope_start_fraction * case_height) {
