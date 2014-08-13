@@ -7,8 +7,8 @@ border_roundness=6;
 
 // Various cable outlets. Negative number to switch off that hole.
 cable_to_back_r  = 5;   // radius for cable out the backplane or < 0 for not
-cable_to_left_top_r  = 3.2; // radius for cable out of the top, or < 0 for not.
-cable_to_right_top_r = 3.2; // radius for cable out of the top, or < 0 for not.
+cable_to_left_top_r  = 3.5; // radius for cable out of the top, or < 0 for not.
+cable_to_right_top_r = 3.5; // radius for cable out of the top, or < 0 for not.
 
 epsilon=0.05;
 
@@ -77,7 +77,7 @@ module pcb_board(board_thick=rfid_board_thick) {
 module pcb_podests() {
     translate(rfid_center_offset) for (h = rfid_hole_pos) {
 	translate([h[0], h[1], 0]) cylinder(r=rfid_hole_r,h=case_height);
-	translate([h[0], h[1], 0]) cylinder(r=1.5*rfid_hole_r,h=rfid_mount_height);
+	translate([h[0], h[1], 0]) cylinder(r1=2.2*rfid_hole_r,r2=1.5*rfid_hole_r,h=rfid_mount_height);
     }
 }
 
