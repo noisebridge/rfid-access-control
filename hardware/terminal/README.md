@@ -26,14 +26,17 @@ For a simple housing of this board and the RFID reader, have a look at `../case`
      this optimized crosstalk between RX and TX. How .. why ... I don't even ..).
      RJ45 from view of the terminal, the DCE side
      (=data circuit-terminating equipment; DCE).
-       - Line 1: Not connected (usually: DCE:RTS (out) / DTE:CTS (in)) DB9-8
-       - Line 2: Not connected (usually: DCE:DTR (out) / DTE:DSR (in)) DB9-1
-       - Line 3: **TxD**  (on host DTE:RxD) DB9-2
-       - Line 4: **GND** (on host DTE:RI, 'Ring indicator') DB9-9/DB9-5
-       - Line 5: **GND** (GND) DB9-5
-       - Line 6: **RxD** (on host DTE:TxD) DB9-3
-       - Line 7: **12V** supply in ('standard': DTE:DTR (out)) DB9-4
-       - Line 8: **12V** supply in ('standard': DTE:RTS (out)) DB9-7
+     The *Line* in the following list represent the RJ45 pin. Also as reference
+     gives the [9-pin Sub-D connector (DB9)][db9-pinout] equivalent connection
+     on a 'standard' connector.
+       - Line 1: Not connected (usually: DCE:RTS (out) / DTE:CTS (in)) *DB9-8*
+       - Line 2: Not connected (usually: DCE:DTR (out) / DTE:DSR (in)) *DB9-1*
+       - Line 3: **TxD**  (on host DTE:RxD) *DB9-2*
+       - Line 4: **GND** (on host DTE:RI, 'Ring indicator') DB9-9/ *DB9-5*
+       - Line 5: **GND** (GND) *DB9-5*
+       - Line 6: **RxD** (on host DTE:TxD) *DB9-3*
+       - Line 7: **12V** supply in (usually: DTE:DTR (out), DB9-4; but now just constantly powered.)
+       - Line 8: **12V** supply in (usually: DTE:RTS (out), DB9-7; powered, dito)
     (Let's see how well RS232 works, if lines too long, consider RS422 physical).
    - Separate 4-pin header to connect without RJ45
    - In-circuit programming header.
@@ -50,5 +53,6 @@ For a simple housing of this board and the RFID reader, have a look at `../case`
 
 [pcb]: https://github.com/hzeller/rfid-access-control/raw/master/img/terminal-pcb.png
 [sp3232-spec]: http://www.exar.com/common/content/document.ashx?id=619
-[rj45-terminal-1] http://www.allpinouts.org/index.php/Cisco_Console_RJ45_to_DB9_Pin
-[rj45-terminal-2] http://kb.juniper.net/InfoCenter/index?page=content&id=KB13272
+[rj45-terminal-1]: http://www.allpinouts.org/index.php/Cisco_Console_RJ45_to_DB9_Pin
+[rj45-terminal-2]: http://kb.juniper.net/InfoCenter/index?page=content&id=KB13272
+[db9-pinout]: http://www.db9-pinout.com/
