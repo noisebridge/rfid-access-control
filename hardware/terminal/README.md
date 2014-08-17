@@ -64,10 +64,12 @@ RS422 physical).
 
 Hakcing DB9 to RJ45 connector
 ------------------------------
-If you want to connect a standard DB9-female to RJ45 connector to the terminal,
-you need to hack it: open it up, and *disconnect* the cables that go to
-**DB4** and **DB7** and instead connect them to a 12V power supply,
-with ground connected to **DB5**.
+If you want to have a standard DB9-female to RJ45 connector work with
+this terminal, you need to hack it: open it up, and *disconnect* the cables
+that go to **DB4** and **DB7** and instead connect them to an external 12V
+power supply, with ground connected to **DB5** (ideally, you'd provide some
+current limiting like 500mA to the 12V line; so if things go wrong, not
+catastrophically so).
 
 Double check on the RJ45 connector, that line 4 and 5 are on ground,
 Line 7 and 8 on +12V.
