@@ -31,11 +31,6 @@ Feature overview
 
 Serial connection with RJ45
 ---------------------------
-Powered on RJ45 with 12V: We use the fact that the lines `DTR` and `RTS`
-can safely always be set to +12V (within RS232 voltage range) from the host
-(=[Data Terminal Equipment; DTE][DTE]). We use that to provide power to our
-terminal (for a regular terminal, it would look like an 'always ready' flow
-control signal).
 
 Pinout of RJ45 is a somewhat 'standard' way to connect an RJ45 with RS232
 and is used in [Various][rj45-terminal-1] [router][rj45-terminal-2]
@@ -44,21 +39,28 @@ terminal connections.
 **bad choice**! Pin 3 and 6 are twisted together in an ethernet cable, so
 this optimized crosstalk between RX and TX. How .. why ... I don't even ..).
 
+We also power the circuit via the RJ45. We use the fact that the lines `DTR`
+and `RTS` can safely always be set to +12V (within RS232 voltage range) from
+the host (=[Data Terminal Equipment; DTE][DTE]). We use that to provide power
+to our terminal (for a regular terminal, it would look like a benign
+'always ready' flow control signal).
+
 The following list is the RJ45 connections from view of the terminal,
 the [DCE side][DCE].
-The *Line* in the following list represent the RJ45 pin. Also as reference
-gives the [9-pin Sub-D connector (DB9)][db9-pinout] equivalent connection
-on a 'standard' connector.
+The *Line* in the following list represents the corresponding RJ45 pin.
+Also as reference gives the [9-pin Sub-D connector (DB9)][db9-pinout]
+equivalent connection on a 'standard' connector.
    - Line 1: Not connected (usually: DCE:RTS (out) / DTE:CTS (in)) *DB9-8*
    - Line 2: Not connected (usually: DCE:DTR (out) / DTE:DSR (in)) *DB9-1*
    - Line 3: **TxD**  (on host DTE:RxD) *DB9-2*
-   - Line 4: **GND** (on host DTE:RI, 'Ring indicator') DB9-9/ *DB9-5*
+   - Line 4: **GND** (on host DTE:RI, 'Ring indicator') *DB9-5* (DB9-9).
    - Line 5: **GND** (GND) *DB9-5*
    - Line 6: **RxD** (on host DTE:TxD) *DB9-3*
-   - Line 7: **12V** supply in (usually: DCE:DSR (in) / DTE:DTR (out), DB9-4; but now just constantly powered.)
+   - Line 7: **12V** supply in (usually: DCE:DSR (in) / DTE:DTR (out), DB9-4; but not connected there, just constantly powered.)
    - Line 8: **12V** supply in (usually: DCE:CTS (in) / DTE:RTS (out), DB9-7; powered, dito)
 
-(Let's see how well RS232 works, if lines too long, consider RS422 physical).
+(Let's see how well RS232 works, if long lines create trouble, we might consider
+RS422 physical).
 
 ![PCB][pcb]
 
