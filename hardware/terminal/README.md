@@ -62,6 +62,16 @@ equivalent connection on a 'standard' connector.
 (Let's see how well RS232 works, if long lines create trouble, we might consider
 RS422 physical).
 
+Hakcing DB9 to RJ45 connector
+------------------------------
+If you want to connect a standard DB9-female to RJ45 connector to the terminal,
+you need to hack it: open it up, and *disconnect* the cables that go to
+**DB4** and **DB7** and instead connect them to a 12V power supply,
+with ground connected to **DB5**.
+
+Double check on the RJ45 connector, that line 4 and 5 are on ground,
+Line 7 and 8 on +12V.
+
 ![PCB][pcb]
 
 [pcb]: https://github.com/hzeller/rfid-access-control/raw/master/img/terminal-pcb.png
