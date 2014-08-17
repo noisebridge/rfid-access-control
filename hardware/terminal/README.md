@@ -34,16 +34,16 @@ Serial connection with RJ45
 
 Pinout of RJ45 is a somewhat 'standard' way to connect an RJ45 with RS232
 and is used in [Various][rj45-terminal-1] [router][rj45-terminal-2]
-terminal connections.
-(But note to whoever came up with this first probably 20 years ago:
-**bad choice**! Pin 3 and 6 are twisted together in an ethernet cable, so
-this optimized crosstalk between RX and TX. How .. why ... I don't even ..).
+terminal connections (But note to whoever came up with this first probably 20
+years ago: **bad choice**! Pin 3 and 6 are twisted together in an ethernet
+cable, so this just optimized crosstalk between RX and TX...).
 
-We also power the circuit via the RJ45. We use the fact that the lines `DTR`
-and `RTS` can safely always be set to +12V (within RS232 voltage range) from
-the host (=[Data Terminal Equipment; DTE][DTE]). We use that to provide power
-to our terminal (for a regular terminal, it would look like a benign
-'always ready' flow control signal).
+We also power the terminal circuit via the RJ45. We use the fact that the
+lines `DTR` and `RTS` can always be set to +12V safely (within RS232 voltage
+range) from the host (=[Data Terminal Equipment; DTE][DTE]). We use that to
+provide power to our terminal (for any other endpoint with RJ45, this set-up
+would look like a benign 'always ready' flow control signal; so does not damage
+equipment).
 
 The following list is the RJ45 connections from view of the terminal,
 the [DCE side][DCE].
