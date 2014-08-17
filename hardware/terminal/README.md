@@ -62,7 +62,7 @@ equivalent connection on a 'standard' connector.
 (Let's see how well RS232 works, if long lines create trouble, we might consider
 RS422 physical).
 
-Hakcing DB9 to RJ45 connector
+Hacking DB9 to RJ45 connector
 ------------------------------
 If you want to have a standard DB9-female to RJ45 connector work with
 this terminal, you need to hack it: open it up, and *disconnect* the cables
