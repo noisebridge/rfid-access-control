@@ -15,7 +15,7 @@ Terminal PCB
    - Uses Atmega8 in PDIP cases, mostly because I had a bunch lying around :)
    - Allows to connect RFID-RC522, 4x3 keypad, HD44780 LCD, 2 aux; supported
      by firmware.
-   - Uses a [sp3232-spec][SP3232E], essentially a MAX232 compatible chip
+   - Uses a [SP3232E][sp3232-spec], essentially a MAX232 compatible chip
      for 3.3V and only 100nF capcitors needed.
    - Uses the SP3232E charge pump to get the negative voltage needed to drive
      LCD contrast (untested)
