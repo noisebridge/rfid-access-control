@@ -43,7 +43,9 @@ lines `DTR` and `RTS` can always be set to +12V safely (within RS232 voltage
 range) from the host (=[Data Terminal Equipment; DTE][DTE]). We use that to
 provide power to our terminal (for any other endpoint with RJ45, this set-up
 would look like a benign 'always ready' flow control signal; so does not damage
-equipment).
+equipment). With two lines providing power, it should be possible to power
+smallish loads such as an electric strike even over a longer line without too
+much voltage drop.
 
 The following list is the RJ45 connections from view of the terminal,
 the [DCE side][DCE].
