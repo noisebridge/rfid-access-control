@@ -12,37 +12,12 @@ The software in `../../software/firmware` makes it useful.
 
 For a simple housing of this board and the RFID reader, have a look at `../case`
 
+Feature overview
+----------------
+
    - Sized so that it can be sandwiched with a RFID-RC522 board (40mmx60mm),
      including the same mounting holes.
    - Communication via RS232, using standard RJ45 plug.
-   - Powered on RJ45 with 12V: We use the fact that the lines `DTR` and `RTS`
-     can safely always be set to +12V (within RS232 voltage range) from the host
-     (=[Data Terminal Equipment; DTE][DTE]). We use that to provide power to our
-     terminal (for a regular terminal, it would look like an 'always ready' flow
-     control signal).
-
-     Pinout of RJ45 is a somewhat 'standard' way to connect an RJ45 with RS232
-     and is used in [Various][rj45-terminal-1] [router][rj45-terminal-2]
-     terminal connections.
-     (But note to whoever came up with this first probably 20 years ago:
-     **bad choice**! Pin 3 and 6 are twisted together in an ethernet cable, so
-     this optimized crosstalk between RX and TX. How .. why ... I don't even ..).
-
-     The following list is the RJ45 connections from view of the terminal,
-     the [DCE side][DCE].
-     The *Line* in the following list represent the RJ45 pin. Also as reference
-     gives the [9-pin Sub-D connector (DB9)][db9-pinout] equivalent connection
-     on a 'standard' connector.
-       - Line 1: Not connected (usually: DCE:RTS (out) / DTE:CTS (in)) *DB9-8*
-       - Line 2: Not connected (usually: DCE:DTR (out) / DTE:DSR (in)) *DB9-1*
-       - Line 3: **TxD**  (on host DTE:RxD) *DB9-2*
-       - Line 4: **GND** (on host DTE:RI, 'Ring indicator') DB9-9/ *DB9-5*
-       - Line 5: **GND** (GND) *DB9-5*
-       - Line 6: **RxD** (on host DTE:TxD) *DB9-3*
-       - Line 7: **12V** supply in (usually: DCE:DSR (in) / DTE:DTR (out), DB9-4; but now just constantly powered.)
-       - Line 8: **12V** supply in (usually: DCE:CTS (in) / DTE:RTS (out), DB9-7; powered, dito)
-
-    (Let's see how well RS232 works, if lines too long, consider RS422 physical).
    - Separate 4-pin header to connect without RJ45
    - In-circuit programming header.
    - Uses Atmega8 in PDIP cases, mostly because I had a bunch lying around :)
@@ -53,6 +28,37 @@ For a simple housing of this board and the RFID reader, have a look at `../case`
    - Uses the SP3232E charge pump to get the negative voltage needed to drive
      LCD contrast (untested)
    - Little 'breadboard area' for quick hacks.
+
+Serial connection with RJ45
+---------------------------
+Powered on RJ45 with 12V: We use the fact that the lines `DTR` and `RTS`
+can safely always be set to +12V (within RS232 voltage range) from the host
+(=[Data Terminal Equipment; DTE][DTE]). We use that to provide power to our
+terminal (for a regular terminal, it would look like an 'always ready' flow
+control signal).
+
+Pinout of RJ45 is a somewhat 'standard' way to connect an RJ45 with RS232
+and is used in [Various][rj45-terminal-1] [router][rj45-terminal-2]
+terminal connections.
+(But note to whoever came up with this first probably 20 years ago:
+**bad choice**! Pin 3 and 6 are twisted together in an ethernet cable, so
+this optimized crosstalk between RX and TX. How .. why ... I don't even ..).
+
+The following list is the RJ45 connections from view of the terminal,
+the [DCE side][DCE].
+The *Line* in the following list represent the RJ45 pin. Also as reference
+gives the [9-pin Sub-D connector (DB9)][db9-pinout] equivalent connection
+on a 'standard' connector.
+   - Line 1: Not connected (usually: DCE:RTS (out) / DTE:CTS (in)) *DB9-8*
+   - Line 2: Not connected (usually: DCE:DTR (out) / DTE:DSR (in)) *DB9-1*
+   - Line 3: **TxD**  (on host DTE:RxD) *DB9-2*
+   - Line 4: **GND** (on host DTE:RI, 'Ring indicator') DB9-9/ *DB9-5*
+   - Line 5: **GND** (GND) *DB9-5*
+   - Line 6: **RxD** (on host DTE:TxD) *DB9-3*
+   - Line 7: **12V** supply in (usually: DCE:DSR (in) / DTE:DTR (out), DB9-4; but now just constantly powered.)
+   - Line 8: **12V** supply in (usually: DCE:CTS (in) / DTE:RTS (out), DB9-7; powered, dito)
+
+(Let's see how well RS232 works, if lines too long, consider RS422 physical).
 
 ![PCB][pcb]
 
