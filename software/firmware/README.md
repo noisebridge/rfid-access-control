@@ -127,34 +127,34 @@ with a `<CR>` or `<LF>` or both. Commands with upper-case letters modify
 the state of the system, lower-case letters just read information.
 
      # The following, lower-case letters read state, don't modify
-     ?     : Prints help.
-     e<msg>: Just echo back given message. Useful for line-reliability test.
-             (Use with line length ~ <= 30 characters).
-     s     : Read stats.
-     n     : Read name of terminal as set with 'N'.
+     ?       : Prints help.
+     e<msg>  : Just echo back given message. Useful for line-reliability test.
+               (Use with line length ~ <= 30 characters).
+     s       : Read stats.
+     n       : Read name of terminal as set with 'N'.
 
      # Commands with upper-case letters modify the state.
-     W<xx> : Writes output pins. Understands 8-bit hex number, but only
-             6 bits are currently addressed: PC[0..5] on the Atmega8
-             Responds with W<yy> with <yy> the actual bits being set (some
-             might not be available).
-             Can be used to switch on fancy LEDs or even remotely trigger a
-             relay or transistor to open the strike.
-             Example:
+     W<xx>   : Writes output pins. Understands 8-bit hex number, but only
+               6 bits are currently addressed: PC[0..5] on the Atmega8
+               Responds with W<yy> with <yy> the actual bits being set (some
+               might not be available).
+               Can be used to switch on fancy LEDs or even remotely trigger a
+               relay or transistor to open the strike.
+               The following example sets all the bits:
 
-             W ff
+               W ff
 
      M<r><msg>
-           : Write a message to the LCD screen. <r> is a single digit
-             giving the row to print in, can be 0 or 1).
-             The following example writes 'Hello World' into the second line:
+             : Write a message to the LCD screen. <r> is a single digit
+               giving the row to print in, can be 0 or 1).
+               The following example writes 'Hello World' into the second line:
 
                  M1Hello World
 
-     R     : Reset RFID reader (Mostly debug; should typically not be necessary
-             except after physical connection reconnect of its SPI bus).
+     R       : Reset RFID reader (Mostly debug; should typically not be necessary
+               except after physical connection reconnect of its SPI bus).
      N<name> : Persistently set the name of this terminal. To avoid
-               accidentally setting this, it requires do be called twice.
+               accidentally setting this, it prompts you to be called twice.
 
      (TODO: specialized command to buzz or silent open, color leds etc)
 
