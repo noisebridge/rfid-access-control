@@ -32,21 +32,21 @@ char KeyPad::ReadKeypad() {
   character_returned_ = true;
   // Columns are encoded in the higher nibble, rows in the lower one.
   switch (state) {
-  case 0b0011000: return '1';  // first row, first col.
-  case 0b0101000: return '2';
-  case 0b1001000: return '3';
+  case 0b0010001: return '1';  // first row, first col.
+  case 0b0100001: return '2';
+  case 0b1000001: return '3';
 
-  case 0b0010100: return '4';  // second row
-  case 0b0100100: return '5';
-  case 0b1000100: return '6';
+  case 0b0010010: return '4';  // second row
+  case 0b0100010: return '5';
+  case 0b1000010: return '6';
 
-  case 0b0010010: return '7';  // third row
-  case 0b0100010: return '8';
-  case 0b1000010: return '9';
+  case 0b0010100: return '7';  // third row
+  case 0b0100100: return '8';
+  case 0b1000100: return '9';
 
-  case 0b0010001: return '*';  // fourth row
-  case 0b0100001: return '0';
-  case 0b1000001: return '#';
+  case 0b0011000: return '*';  // fourth row
+  case 0b0101000: return '0';
+  case 0b1001000: return '#';
 
   default:
     return '\0';  // someone pressing the keys in a wierd way.

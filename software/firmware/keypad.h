@@ -15,8 +15,8 @@ class KeyPad {
   enum {
     ROW_PORTD_SHIFT = 4,  // We read from port-D to top 4 bits
     COL_1 = (1<<0),
-    COL_2 = (1<<7),
-    COL_3 = (1<<6),
+    COL_2 = (1<<6),
+    COL_3 = (1<<7),
 
     // columns will be outputs.
     PORTB_OUT_MASK = COL_1 | COL_2 | COL_3,
