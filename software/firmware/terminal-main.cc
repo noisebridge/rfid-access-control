@@ -1,6 +1,9 @@
 /* -*- mode: c++; c-basic-offset: 2; indent-tabs-mode: nil; -*-
  * Copyright (c) h.zeller@acm.org. GNU public License.
+ * TODO: replace all counts of [unsigned] char, [unsigned] short with the
+ * appropriate [u]int{8,16}_t. Only strings should deal with 'char'.
  */
+#include <avr/eeprom.h>
 #include <avr/io.h>
 #include <string.h>
 #include <util/delay.h>
@@ -17,6 +20,16 @@
 // TODO: move this repository to noisebridge github.
 #define CODE_URL "https://github.com/hzeller/rfid-access-control"
 #define HEADER_TEXT "Noisebridge access terminal | v0.1 | 8/2014"
+
+// Don't change sequence in here. Add stuff at end. This is the
+// raw layout in our eeprom which shouldn't change :)
+struct EepromLayout {
+  char name[32];  // shall be nul terminated. So at most 31 long.
+  // other things here.
+};
+struct EepromLayout EEMEM ee_data = {
+  /* .name = */ "terminal"
+};
 
 static char to_hex(unsigned char c) { return c < 0x0a ? c + '0' : c + 'a' - 10; }
 
@@ -45,6 +58,24 @@ static unsigned char parseHex(const char *buffer) {
   return result;
 }
 
+// Requires buffer with >= 32 bytes space (sizeof(ee_data.name)).
+static const char *GetNameEEPROM(char *buffer) {
+  eeprom_read_block(buffer, &ee_data.name, sizeof(ee_data.name));
+  buffer[sizeof(ee_data.name) - 1] = '\0';  // Ensure termination.
+  return buffer;
+}
+
+// Store NUL terminated string in eeprom. But not more than 31+1 bytes.
+static void StoreNameEEPROM(const char *name) {
+  uint8_t len = strlen(name);
+  if (len >= sizeof(ee_data.name)) {
+    len = sizeof(ee_data.name) - 1;
+  }
+  eeprom_write_block(name, &ee_data.name, len);
+  for (int i = len; i < (int)sizeof(ee_data.name); ++i) { // Rest NUL bytes.
+    eeprom_write_byte((uint8_t*)&ee_data.name + i, '\0');
+  }
+}
 
 // Some convenience methods around the serial line.
 static void print(SerialCom *out, const char *str) {
@@ -98,32 +129,37 @@ private:
   char *pos_;
 };
 
-static void printHelp(SerialCom *out) {
+static void SendHelp(SerialCom *out) {
   // Keep strings short or memory explodes :) The Harvard architecture of the
   // Atmel chips requires that the strings are first copied to memory.
   // Better split up in multiple calls with shorter strings.
   print(out, "? ");
   println(out, HEADER_TEXT);
-  print(out, "? ");
+  print(out, "# ");
   println(out, CODE_URL);
 
   // What it sends.
   print(out,
-        "? Sends card-IDs with:\r\n"
-        "?\tI<num-bytes-hex> <uid-hex-str>\r\n");
+        "# Sends:\r\n"
+        "#\tI<num-bytes-hex> <uid-hex-str> RFID in range.\r\n"
+        "#\tK<char>\tPressed keypad char 0..9, '*','#'\r\n");
 
-  // state-modifying commands.
+  // State-modifying commands.
   print(out,
-        "? Commands:\r\n"
-        "?\t?\tThis help\r\n"
-        "?\tR\tReset reader.\r\n"
-        "?\tM<n><msg> Write msg on LCD-line n=0,1.\r\n"
-        "?\tW<xx>\tWrite output bits; param 8bit hex.\r\n");
+        "# Commands:\r\n"
+        "#\t?\tThis help\r\n"
+        "#\tR\tReset RFID reader.\r\n");
+  print(out,
+        "#\tM<n><msg> Write msg on LCD-line n=0,1.\r\n"
+        "#\tW<xx>\tWrite output bits; param 8bit hex.\r\n");
+  print(out,
+        "#\tN<name> Set persistent name of this terminal. Send twice.\r\n");
 
   // Passive commands.
   print(out,
-        "?\te<msg>\tEcho back msg (testing)\r\n"
-        "?\ts\tShow stats.\r\n");
+        "#\te<msg>\tEcho back msg (testing)\r\n"
+        "#\ts\tShow stats.\r\n"
+        "#\tn\tGet persistent name.\r\n");
 }
 
 static void SendStats(SerialCom *out, unsigned short cmd_count) {
@@ -141,6 +177,30 @@ static void SetAuxBits(const char *buffer, SerialCom *out) {
   out->write('W');
   printHexByte(out, value);
   println(out, "");
+}
+
+// We require to send the same name twice in consecutive commands to make
+// sure to not set the name due to accidents or random line noise.
+static uint8_t first_name_write_command_count = 0x42;
+static uint8_t name_checksum;
+static void ReceiveName(SerialCom *com,
+                        const char *line, uint8_t command_count) {
+  uint8_t checksum = 0;
+  const char *cs_run = line;
+  while (*cs_run) checksum ^= *cs_run++;  // crude, but should do the job.
+  if (first_name_write_command_count + 1 == command_count) {
+    // The previous command was name setting as well. See if we got the same.
+    if (checksum == name_checksum) {
+      StoreNameEEPROM(line + 1);
+      println(com, "Name set.");
+    } else {
+      println(com, "Name mismatch!");
+    }
+  } else {
+    first_name_write_command_count = command_count;
+    name_checksum = checksum;
+    println(com, "Name received. Send 2nd time to confirm.");
+  }
 }
 
 static void SendUid(const MFRC522::Uid &uid, SerialCom *out) {
@@ -165,6 +225,8 @@ int main() {
 
   _delay_ms(100);  // Wait for voltage to settle before we reset the 522
 
+  char buffer[32];  // general purpose. Allocated once for no stack-surprises.
+
   Clock::init();
 
   KeyPad keypad;
@@ -180,7 +242,9 @@ int main() {
   print(&comm, "# ");
   print(&comm, HEADER_TEXT);
   println(&comm, "; '?' for help.");
-
+  print(&comm, "# Name: ");
+  println(&comm, GetNameEEPROM(buffer));
+ 
   LineBuffer lineBuffer;
   MFRC522::Uid current_uid;
 
@@ -193,7 +257,7 @@ int main() {
       ++commands_seen_stat;
       switch (lineBuffer.line()[0]) {
       case '?':
-        printHelp(&comm);
+        SendHelp(&comm);
         break;
         // Commands that modify stuff. Upper case letters.
       case 'W':
@@ -213,6 +277,9 @@ int main() {
           println(&comm, "E row number must be 0 or 1");
         }
         break;
+      case 'N':
+        ReceiveName(&comm, lineBuffer.line(), commands_seen_stat & 0xff);
+        break;
 
         // Lower case letters don't modify any state.
       case 'e':
@@ -221,7 +288,10 @@ int main() {
       case 's':
         SendStats(&comm, commands_seen_stat);
         break;
-
+      case 'n':
+        comm.write('n');
+        println(&comm, GetNameEEPROM(buffer));
+        break;
       case '\0': // TODO: the lineBuffer sometimes returns empty lines.
         break;
       default:

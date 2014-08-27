@@ -126,7 +126,14 @@ They are one-letter commands, followed by parameters and end
 with a `<CR>` or `<LF>` or both. Commands with upper-case letters modify
 the state of the system, lower-case letters just read information.
 
+     # The following, lower-case letters read state, don't modify
      ?     : Prints help.
+     e<msg>: Just echo back given message. Useful for line-reliability test.
+             (Use with line length ~ <= 30 characters).
+     s     : Read stats.
+     n     : Read name of terminal as set with 'N'.
+
+     # Commands with upper-case letters modify the state.
      W<xx> : Writes output pins. Understands 8-bit hex number, but only
              6 bits are currently addressed: PC[0..5] on the Atmega8
              Responds with W<yy> with <yy> the actual bits being set (some
@@ -140,20 +147,21 @@ the state of the system, lower-case letters just read information.
      M<r><msg>
            : Write a message to the LCD screen. <r> is a single digit
              giving the row to print in, can be 0 or 1).
-             Example:
+             The following example writes 'Hello World' into the second line:
 
                  M1Hello World
 
-             writes this message to the second line.
-     R     : Reset RFID reader (Should typically not be necessary except after
-             physical connection reconnect of its SPI bus).
-     e<msg>: Just echo back given message. Useful for line-reliability test.
-             (Use with line length ~ <= 30 characters)
-     s     : Read stats.
+     R     : Reset RFID reader (Mostly debug; should typically not be necessary
+             except after physical connection reconnect of its SPI bus).
+     N<name> : Persistently set the name of this terminal. To avoid
+               accidentally setting this, it requires do be called twice.
+
      (TODO: specialized command to buzz or silent open, color leds etc)
 
-Each command is acknowledged with a line prefixed with the letter of the
-command, *or* on error, the returned value starts with `E`.
+Each command is acknowledged with exactly one line prefixed with the letter of
+the command, *or* on error in that command, the returned line starts with `E`.
+Lines starting with `#` are informal for user interaction (e.g. startup screen
+or help output) and should just be skipped for programmatic interfaces.
 Makes interfacing the protocol simple.
 
 Compiling
