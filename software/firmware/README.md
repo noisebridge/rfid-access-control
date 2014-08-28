@@ -211,25 +211,32 @@ Setting up a new Terminal
 A checklist:
 
    - Choose default baudrate and compile-time defines in Makefile.
+
    - First time set-up of Atmega8: `make fuse`
+
    - Writing EEPROM settings (default name and baudrate): `make eeprom-flash`
      (you typically want to do that only once, later these settings can be
      changed via the protocol).
+
    - General compiling and flashing: `make flash`
+
    - Connect with a terminal program (e.g. `minicom`), test
      connected LEDs, buzzer, LCD etc. using the terminal interface and that
      RFID reader and/or keypad return data.
+
    - Optional: Test line speed as described above to optimize for your setup.
 
      Note, inputs from RFID or keypad are fine with lower speeds
      (300 or 600 baud), thus more resilient to long cables; if you have an
      LCD connected, you might want more for more 'snappy' user-interaction.
+
    - Choose a name for the terminal to be used in your system. That way,
      the host-software can distinguish the terminals no matter what serial
      line they are connected to. Use descriptive names, e.g. _'Gate Downstairs'_
      or _'Elevator-3rd-floor'_. The command to use is `N<name>`, see serial
      protocol description; you need to set it _twice_ to store permanently.
      Check the current name with the lowercase `n` command.
+
    - Optionally check the contents of the eeprom if you are
      curious: `make read-eeprom`
 
