@@ -192,19 +192,19 @@ static void SendHelp(SerialCom *out) {
            "#\r\n"
            "# [Commands]\r\n"
            "# Upper case: modify state\r\n"
-           "#\tR\tReset RFID reader.\r\n"
            "#\tM<n><msg> Write msg on LCD-line n=0,1.\r\n"
            "#\tW<xx>\tWrite output bits; param 8bit hex.\r\n"
+           "#\tR\tReset RFID reader.\r\n"
            "#\tN<name> Set persistent name of this terminal. Send twice.\r\n"
 #if ALLOW_BAUD_CHANGE
            "#\tB<baud> Set baud rate. Persists if current rate confirmed.\r\n"
 #endif
            "#\r\n"
            "# Lower case: read state\r\n"
-           "#\te<msg>\tEcho back msg (testing)\r\n"
-           "#\ts\tShow stats.\r\n"
+           "#\t?\tThis help\r\n"
            "#\tn\tGet persistent name.\r\n"
-           "#\t?\tThis help\r\n"));
+           "#\ts\tShow stats.\r\n"
+           "#\te<msg>\tEcho back msg (testing)\r\n"));
 }
 
 static void SendStats(SerialCom *out, unsigned short cmd_count) {
