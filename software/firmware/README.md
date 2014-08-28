@@ -206,6 +206,33 @@ I'd measure the best speed that doesn't produce any errors and then use
 half that). (TODO: report back what actually worked for the 10+meter cable
 at Noisebridge)
 
+Setting up a new Terminal
+-------------------------
+A checklist:
+
+   o Choose default baudrate and compile-time defines in Makefile.
+   o First time set-up of Atmega8: `make fuse`
+   o Writing EEPROM settings (default name and baudrate): `make eeprom-flash`
+     (you typically want to do that only once, later these settings can be
+      changed via the terminal)
+   o General compiling and flashing: `make flash`
+   o Connect to the terminal with a terminal program (e.g. `minicom`), test
+     connected LEDs, buzzer, LCD etc. using the terminal interface and that
+     RFID reader and/or keypad return data.
+   o Optional: Test line speed as described above to optimize for your setup.
+     Note, inputs from RFID or keypad are fine with lower speeds
+     (300 or 600 baud), thus more resilient to long cables; if you have an
+     LCD connected, you might want more for more 'snappy' user-interaction.
+   o Choose a name for the terminal to be used in your system. That way,
+     the host-software can distinguish the terminals no matter what serial
+     line they are connected to. Use descriptive names, e.g. 'Gate Downstairs'
+     or 'Elevator-3rd-floor'. The command to use is `N<name>`, see serial
+     protocol description; you need to set it twice to store permanently.
+     Check the current name with the lowercase `n` command.
+   o Optionally check the contents of the eeprom if you are
+     curious: `make read-eeprom`
+     The first 32 bytes are reserved for the name, followed by the baudrate.
+
 Hacking in progress:
 
 ![Work in progress][work]

@@ -229,12 +229,14 @@ static void ReceiveName(SerialCom *com,
                         const char *line, uint8_t command_count) {
   uint8_t checksum = 0;
   const char *cs_run = line;
-  while (*cs_run) checksum ^= *cs_run++;  // crude, but should do the job.
+  for (uint8_t i = 0; *cs_run; ++i, ++cs_run)
+    checksum ^= *cs_run + i;  // crude, but should catch typos.
   if (first_name_write_command_count + 1 == command_count) {
     // The previous command was name setting as well. See if we got the same.
     if (checksum == name_checksum) {
       StoreNameEEPROM(line + 1);
-      println(com, _P("Name set."));
+      print(com, _P("Name set: "));
+      printlnFromRam(com, line + 1);
     } else {
       println(com, _P("Name mismatch!"));
     }
