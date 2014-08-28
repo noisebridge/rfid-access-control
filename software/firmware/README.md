@@ -163,8 +163,8 @@ the state of the system, lower-case letters just read information.
                program. If you can't communicate anymore, a power-cycle brings
                the terminal back to the previous baud-rate.
                If you are already at the baud-rate you specify (which obviously
-               means that you _can_ communicate), it is persistent in EEPROM:
-               next time the terminal comes up, it will use this baudrate.
+               means that you _can_ communicate), it is persisted in EEPROM:
+               Next time the terminal comes up, it will use this baudrate.
                So essentially: similar to 'N', you have to give this command
                twice to actually persist a new baudrate.
 
@@ -210,28 +210,35 @@ Setting up a new Terminal
 -------------------------
 A checklist:
 
-   o Choose default baudrate and compile-time defines in Makefile.
-   o First time set-up of Atmega8: `make fuse`
-   o Writing EEPROM settings (default name and baudrate): `make eeprom-flash`
-     (you typically want to do that only once, later these settings can be
+    - Choose default baudrate and compile-time defines in Makefile.
+
+    - First time set-up of Atmega8: `make fuse`
+
+    - Writing EEPROM settings (default name and baudrate): `make eeprom-flash`
+      (you typically want to do that only once, later these settings can be
       changed via the terminal)
-   o General compiling and flashing: `make flash`
-   o Connect to the terminal with a terminal program (e.g. `minicom`), test
-     connected LEDs, buzzer, LCD etc. using the terminal interface and that
-     RFID reader and/or keypad return data.
-   o Optional: Test line speed as described above to optimize for your setup.
-     Note, inputs from RFID or keypad are fine with lower speeds
-     (300 or 600 baud), thus more resilient to long cables; if you have an
-     LCD connected, you might want more for more 'snappy' user-interaction.
-   o Choose a name for the terminal to be used in your system. That way,
-     the host-software can distinguish the terminals no matter what serial
-     line they are connected to. Use descriptive names, e.g. 'Gate Downstairs'
-     or 'Elevator-3rd-floor'. The command to use is `N<name>`, see serial
-     protocol description; you need to set it twice to store permanently.
-     Check the current name with the lowercase `n` command.
-   o Optionally check the contents of the eeprom if you are
-     curious: `make read-eeprom`
-     The first 32 bytes are reserved for the name, followed by the baudrate.
+
+    - General compiling and flashing: `make flash`
+
+    - Connect to the terminal with a terminal program (e.g. `minicom`), test
+      connected LEDs, buzzer, LCD etc. using the terminal interface and that
+      RFID reader and/or keypad return data.
+
+    - Optional: Test line speed as described above to optimize for your setup.
+      Note, inputs from RFID or keypad are fine with lower speeds
+      (300 or 600 baud), thus more resilient to long cables; if you have an
+      LCD connected, you might want more for more 'snappy' user-interaction.
+
+    - Choose a name for the terminal to be used in your system. That way,
+      the host-software can distinguish the terminals no matter what serial
+      line they are connected to. Use descriptive names, e.g. 'Gate Downstairs'
+      or 'Elevator-3rd-floor'. The command to use is `N<name>`, see serial
+      protocol description; you need to set it twice to store permanently.
+      Check the current name with the lowercase `n` command.
+
+    - Optionally check the contents of the eeprom if you are
+      curious: `make read-eeprom`
+      The first 32 bytes are reserved for the name, followed by the baudrate.
 
 Hacking in progress:
 
