@@ -5,15 +5,15 @@
  */
 #include <avr/eeprom.h>
 #include <avr/io.h>
+#include <avr/pgmspace.h>
 #include <string.h>
 #include <util/delay.h>
-#include <avr/pgmspace.h>
 
 #include "clock.h"
 #include "keypad.h"
 #include "lcd.h"
-#include "serial-com.h"
 #include "mfrc522/mfrc522.h"
+#include "serial-com.h"
 
 #define AUX_PORT PORTC
 #define AUX_BITS 0x3F
