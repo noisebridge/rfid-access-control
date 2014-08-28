@@ -199,8 +199,8 @@ To compile, you need the avr toolchain installed:
     make fuse   # will set the right fuses in the programmer (first time)
     make flash  # compiles code and flashes it to the system.
 
-If your avrdude is not connected to /dev/ttyUSB0, you can set the actual
-terminal as environment variable:
+If your avrdude is not connected to `/dev/ttyUSB0`, you can set the actual
+device via environment variable:
 
     AVRDUDE_DEVICE=/dev/ttyUSB1 make flash
 
