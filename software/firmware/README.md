@@ -136,6 +136,8 @@ They are one-letter commands, followed by parameters and end
 with a `<CR>` or `<LF>` or both. Commands with upper-case letters modify
 the state of the system, lower-case letters just read information.
 
+Type `?` (+ newline) to get help over the serial line.
+
      # The following, lower-case letters read state, don't modify
      ?       : Prints help.
      n       : Read name of terminal as set with 'N'.
