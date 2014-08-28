@@ -12,8 +12,8 @@
 #include "clock.h"
 #include "keypad.h"
 #include "lcd.h"
-#include "mfrc522.h"
 #include "serial-com.h"
+#include "mfrc522/mfrc522.h"
 
 #define AUX_PORT PORTC
 #define AUX_BITS 0x3F

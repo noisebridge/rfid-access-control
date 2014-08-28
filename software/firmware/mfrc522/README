@@ -1,0 +1,10 @@
+This contains the MF-RC522 library to be found on
+
+   https://github.com/miguelbalboa/rfid
+
+License: Public domain.
+
+Copied over to this project to do allow simple one-stop compile. Also
+some local changes:
+   - Don't depend on Arduino libraries.
+   - Consistent code indentation.
