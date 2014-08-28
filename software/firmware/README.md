@@ -138,12 +138,19 @@ the state of the system, lower-case letters just read information.
 
      # The following, lower-case letters read state, don't modify
      ?       : Prints help.
+     n       : Read name of terminal as set with 'N'.
+     s       : Read stats.
      e<msg>  : Just echo back given message. Useful for line-reliability test.
                (Use with line length ~ <= 30 characters).
-     s       : Read stats.
-     n       : Read name of terminal as set with 'N'.
 
      # Commands with upper-case letters modify the state.
+     M<r><msg>
+             : Write a message to the LCD screen. <r> is a single digit
+               giving the row to print in, can be 0 or 1).
+               The following example writes 'Hello World' into the second line:
+
+                 M1Hello World
+
      W<xx>   : Writes output pins. Understands 8-bit hex number, but only
                6 bits are currently addressed: PC[0..5] on the Atmega8
                Responds with W<yy> with <yy> the actual bits being set (some
@@ -153,13 +160,6 @@ the state of the system, lower-case letters just read information.
                The following example sets all the bits:
 
                W ff
-
-     M<r><msg>
-             : Write a message to the LCD screen. <r> is a single digit
-               giving the row to print in, can be 0 or 1).
-               The following example writes 'Hello World' into the second line:
-
-                 M1Hello World
 
      R       : Reset RFID reader (Mostly debug; should typically not be necessary
                except after physical connection reconnect of its SPI bus).
