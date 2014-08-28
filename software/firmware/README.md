@@ -158,8 +158,8 @@ the state of the system, lower-case letters just read information.
      B<baud> : Set baudrate. This changes the baudrate when this command returns.
                If it is changed, it is _not_ stored in EEPROM, so that you
                can test the new setting with changed parameters in your terminal
-	       program. If you can't communicate anymore, a power-cycle brings
-	       the terminal back to the previous baud-rate.
+               program. If you can't communicate anymore, a power-cycle brings
+               the terminal back to the previous baud-rate.
                If you are already at the baud-rate you specify (which obviously
                means that you _can_ communicate), it is persistent in EEPROM:
                next time the terminal comes up, it will use this baudrate.
