@@ -27,9 +27,8 @@ struct ProgmemPtr {
 #define _P(s) ProgmemPtr(PSTR((s)))
 
 // TODO: move this repository to noisebridge github.
-
-#define CODE_URL _P("https://github.com/hzeller/rfid-access-control")
-#define HEADER_TEXT _P("Noisebridge access terminal | v0.1 | 8/2014")
+const char kCodeUrl[] PROGMEM = "https://github.com/hzeller/rfid-access-control";
+const char kHeaderText[] PROGMEM = "Noisebridge access terminal | v0.1 | 8/2014";
 
 // Don't change sequence in here. Add stuff at end. This is the
 // raw layout in our eeprom which shouldn't change :)
@@ -181,27 +180,31 @@ private:
 
 static void SendHelp(SerialCom *out) {
   print(out, _P("? "));
-  println(out, HEADER_TEXT);
+  println(out, ProgmemPtr(kHeaderText));
   print(out, _P("# "));
-  println(out, CODE_URL);
+  println(out, ProgmemPtr(kCodeUrl));
 
   // What it sends.
   print(out,
-        _P("# Sends:\r\n"
+        _P("# [Sends]\r\n"
            "#\tI<num-bytes-hex> <uid-hex-str> RFID in range.\r\n"
            "#\tK<char>\tPressed keypad char 0..9, '*','#'\r\n"
-           "# Commands:\r\n"
-           "#\t?\tThis help\r\n"
+           "#\r\n"
+           "# [Commands]\r\n"
+           "# Upper case: modify state\r\n"
            "#\tR\tReset RFID reader.\r\n"
            "#\tM<n><msg> Write msg on LCD-line n=0,1.\r\n"
            "#\tW<xx>\tWrite output bits; param 8bit hex.\r\n"
            "#\tN<name> Set persistent name of this terminal. Send twice.\r\n"
 #if ALLOW_BAUD_CHANGE
-           "#\tB<baud> Set baud rate. Persist if current rate confirmed.\r\n"
+           "#\tB<baud> Set baud rate. Persists if current rate confirmed.\r\n"
 #endif
+           "#\r\n"
+           "# Lower case: read state\r\n"
            "#\te<msg>\tEcho back msg (testing)\r\n"
            "#\ts\tShow stats.\r\n"
-           "#\tn\tGet persistent name.\r\n"));
+           "#\tn\tGet persistent name.\r\n"
+           "#\t?\tThis help\r\n"));
 }
 
 static void SendStats(SerialCom *out, unsigned short cmd_count) {
@@ -295,13 +298,10 @@ int main() {
   Clock::init();
 
   KeyPad keypad;
+  LcdDisplay lcd(24);
 
   MFRC522 card_reader;
   card_reader.PCD_Init();
-
-  LcdDisplay lcd(24);
-  lcd.print(0, "  Noisebridge  ");
-  lcd.print(1, "");
 
   SerialCom comm;
 #if ALLOW_BAUD_CHANGE
@@ -309,8 +309,10 @@ int main() {
 #endif
 
   print(&comm, _P("# "));
-  print(&comm, HEADER_TEXT);
+  print(&comm, ProgmemPtr(kHeaderText));
   println(&comm, _P("; '?' for help."));
+  print(&comm, _P("# "));
+  println(&comm, ProgmemPtr(kCodeUrl));
   print(&comm, _P("# Name: "));
   printlnFromRam(&comm, GetNameEEPROM(buffer));
 
