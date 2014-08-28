@@ -93,9 +93,9 @@ because that displays well out of the box with any terminal emulator
 Lines **received** from the host are accepted with `<CR>` or `<LF>` or both.
 Lines received are clipped if too long.
 
-We only use RX and TX, so hardware flow control needs to be switched off. Other
-communication parameters are 9600 8N1 (TODO: reconsider speed if we go
-with RS232 instad of RS422 on the physical wire).
+We only use RX and TX, so hardware flow control needs to be switched off. Default
+communication parameters are **9600 8N1**, but you can set the baud-rate
+later and store in EEPROM or compile in a different speed.
 
 ### Terminal -> Host
 
@@ -156,16 +156,15 @@ the state of the system, lower-case letters just read information.
      N<name> : Persistently set the name of this terminal. To avoid
                accidentally setting this, it prompts you to be called twice.
      B<baud> : Set baudrate. This changes the baudrate when this command returns.
-               If it is changed, it is _not_ yet stored in EEPROM, so that you
-	       can test the new setting (of course, now you need to change
-	       the communication parameters of your terminal program).
-	       If you can't communicate anymore, a power-cycle brings you back
-	       to the original baud-rate.
-	       If you are already at the baud-rate you specify (which obviously
-	       means that you _can_ communicate), it is persistent in EEPROM:
-	       next time the terminal comes up, it will use the new baudrate.
-	       So essentially: similar to 'N', you have to give this command
-	       twice to actually persist a new baudrate.
+               If it is changed, it is _not_ stored in EEPROM, so that you
+               can test the new setting with changed parameters in your terminal
+	       program. If you can't communicate anymore, a power-cycle brings
+	       the terminal back to the previous baud-rate.
+               If you are already at the baud-rate you specify (which obviously
+               means that you _can_ communicate), it is persistent in EEPROM:
+               next time the terminal comes up, it will use this baudrate.
+               So essentially: similar to 'N', you have to give this command
+               twice to actually persist a new baudrate.
 
      (TODO: specialized command to buzz or silent open, color leds etc)
 
@@ -199,8 +198,11 @@ line-ending, indepenent of the input line-ending.
 If you only send one character (e.g. \n), then the echo command would have to
 write more data out than comes in - which would run out of TX buffer on writing.
 
-(Locally, it works fine up to 38400, but with long lines I'd measure the
-best speed that doesn't produce any errors and then use half that).
+While experimenting, just use the `B<baud>` command to change to different
+speeds (With a short cable, it works fine up to 38400, but with long lines
+I'd measure the best speed that doesn't produce any errors and then use
+half that). (TODO: report back what actually worked for the 10+meter cable
+at Noisebridge)
 
 Hacking in progress:
 
