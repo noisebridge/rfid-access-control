@@ -184,13 +184,18 @@ static void SendHelp(SerialCom *out) {
   print(out, _P("# "));
   println(out, ProgmemPtr(kCodeUrl));
 
-  // What it sends.
   print(out,
         _P("# [Sends]\r\n"
            "#\tI<num-bytes-hex> <uid-hex-str> RFID in range.\r\n"
            "#\tK<char>\tPressed keypad char 0..9, '*','#'\r\n"
            "#\r\n"
            "# [Commands]\r\n"
+           "# Lower case: read state\r\n"
+           "#\t?\tThis help\r\n"
+           "#\tn\tGet persistent name.\r\n"
+           "#\ts\tShow stats.\r\n"
+           "#\te<msg>\tEcho back msg (testing)\r\n"
+           "#\r\n"
            "# Upper case: modify state\r\n"
            "#\tM<n><msg> Write msg on LCD-line n=0,1.\r\n"
            "#\tW<xx>\tWrite output bits; param 8bit hex.\r\n"
@@ -199,12 +204,7 @@ static void SendHelp(SerialCom *out) {
 #if ALLOW_BAUD_CHANGE
            "#\tB<baud> Set baud rate. Persists if current rate confirmed.\r\n"
 #endif
-           "#\r\n"
-           "# Lower case: read state\r\n"
-           "#\t?\tThis help\r\n"
-           "#\tn\tGet persistent name.\r\n"
-           "#\ts\tShow stats.\r\n"
-           "#\te<msg>\tEcho back msg (testing)\r\n"));
+           ));
 }
 
 static void SendStats(SerialCom *out, unsigned short cmd_count) {
