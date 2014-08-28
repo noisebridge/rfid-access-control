@@ -185,7 +185,7 @@ Type `?` (+ newline) to get help over the serial line.
 Each command is acknowledged with exactly one line prefixed with the letter of
 the command, *or* on error in that command, the returned line starts with `E`.
 Lines starting with `#` are informal for user interaction (e.g. startup screen
-or help output) and should just be skipped for programmatic interfaces.
+or help output) and should just be skipped by programmatic interfaces.
 Makes interfacing the protocol simple.
 
 Compiling
@@ -195,6 +195,16 @@ To compile, you need the avr toolchain installed:
      sudo aptitude install gcc-avr avr-libc avrdude
 
 ... and a programmer.
+
+    make fuse   # will set the right fuses in the programmer (first time)
+    make flash  # compiles code and flashes it to the system.
+
+If your avrdude is not connected to /dev/ttyUSB0, you can set the actual
+terminal as environment variable:
+
+    AVRDUDE_DEVICE=/dev/ttyUSB1 make flash
+
+See Makefile for details.
 
 Testing line speed
 ------------------
