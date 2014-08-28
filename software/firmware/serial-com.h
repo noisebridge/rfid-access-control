@@ -5,6 +5,8 @@
 #ifndef _AVR_SERIAL_H_
 #define _AVR_SERIAL_H_
 
+#include <stdint.h>
+
 // Since we can't really do dynamic memory allocation but want a configurable
 // size, we'll just use a template.
 // Meant to be used one-sided in an interrupt handler, so everything is volatile.
@@ -44,6 +46,17 @@ public:
   // Internally maintains an incoming buffer with 2^BUFFER_BITS size.
   SerialCom();
 
+#if ALLOW_BAUD_CHANGE
+  // Supported baudrates.
+  static bool IsValidBaud(uint16_t bd);
+
+  // Set baud to one of the supported ones or default-baudrate.
+  void SetBaud(uint16_t baud);
+
+  // Returns current baudrate.
+  uint16_t baud() const { return baud_; }
+#endif
+
   // Write a single character. Blocks if buffer full.
   void write(char c);
 
@@ -60,7 +73,10 @@ public:
 private:
   friend class SerialComISRWriter;
   void StuffByte(char c) volatile;  // Stuff into buffer. Called by ISR.
-  unsigned short dropped_reads_;
+#if ALLOW_BAUD_CHANGE
+  uint16_t baud_;
+#endif
+  uint16_t dropped_reads_;
 
   RingBuffer<RX_BUFFER_BITS> rx_buffer_;
   // Note: using interrupt driven transmit didn't change performance at all

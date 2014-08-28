@@ -5,7 +5,11 @@
 # a slow communication as we have pretty long lines and don't use RS422, so
 # consider to reduce the baudrate for production use to something that works on
 # the line.
-DEFINES=-DF_CPU=8000000UL -DSERIAL_BAUDRATE=9600
+# ALLOW_BAUD_CHANGE allows to change baudrate via command. Good
+# for debugging and speed-testing in the field. But uses about 600 bytes space
+# in firmware, and fixed speed might be more useful in the field.
+# Compile-time choice.
+DEFINES=-DF_CPU=8000000UL -DSERIAL_BAUDRATE=9600 -DALLOW_BAUD_CHANGE=1
 
 TARGET_ARCH=-mmcu=atmega8
 CXX=avr-g++
@@ -28,16 +32,22 @@ space-output: main.elf
 	avr-objdump -S $^ > /tmp/terminal-`avr-size -d main.elf | grep main.elf | awk '{print $$4}'`.S
 
 disasm: main.elf
-	avr-objdump -S main.elf
+	avr-objdump -C -S main.elf
 
 main.hex: main.elf
 	avr-objcopy -j .text -j .data -O ihex main.elf main.hex
 
+eeprom.hex: main.elf
+	avr-objcopy -j .eeprom --change-section-lma .eeprom=0 -O ihex main.elf $@
+
 read-eeprom:
-	$(AVRDUDE) -U eeprom:r:-:i
+	$(AVRDUDE) -qq -U eeprom:r:-:r | od -t x1zu2
 
 flash: main.hex
 	$(FLASH_CMD)
+
+eeprom-flash: eeprom.hex
+	$(AVRDUDE) -U eeprom:w:eeprom.hex
 
 clean:
 	rm -f $(OBJECTS) main.elf main.hex

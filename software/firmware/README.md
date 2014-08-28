@@ -155,6 +155,17 @@ the state of the system, lower-case letters just read information.
                except after physical connection reconnect of its SPI bus).
      N<name> : Persistently set the name of this terminal. To avoid
                accidentally setting this, it prompts you to be called twice.
+     B<baud> : Set baudrate. This changes the baudrate when this command returns.
+               If it is changed, it is _not_ yet stored in EEPROM, so that you
+	       can test the new setting (of course, now you need to change
+	       the communication parameters of your terminal program).
+	       If you can't communicate anymore, a power-cycle brings you back
+	       to the original baud-rate.
+	       If you are already at the baud-rate you specify (which obviously
+	       means that you _can_ communicate), it is persistent in EEPROM:
+	       next time the terminal comes up, it will use the new baudrate.
+	       So essentially: similar to 'N', you have to give this command
+	       twice to actually persist a new baudrate.
 
      (TODO: specialized command to buzz or silent open, color leds etc)
 

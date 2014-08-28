@@ -7,6 +7,7 @@
 #include <avr/io.h>
 #include <string.h>
 #include <util/delay.h>
+#include <avr/pgmspace.h>
 
 #include "clock.h"
 #include "keypad.h"
@@ -17,18 +18,30 @@
 #define AUX_PORT PORTC
 #define AUX_BITS 0x3F
 
+// Pointer to progmem string. Wrapped into separate type to have a type-safe
+// way to deal with it.
+struct ProgmemPtr {
+  explicit ProgmemPtr(const char *d) : data(d) {}
+  const char *data;
+};
+#define _P(s) ProgmemPtr(PSTR((s)))
+
 // TODO: move this repository to noisebridge github.
-#define CODE_URL "https://github.com/hzeller/rfid-access-control"
-#define HEADER_TEXT "Noisebridge access terminal | v0.1 | 8/2014"
+
+#define CODE_URL _P("https://github.com/hzeller/rfid-access-control")
+#define HEADER_TEXT _P("Noisebridge access terminal | v0.1 | 8/2014")
 
 // Don't change sequence in here. Add stuff at end. This is the
 // raw layout in our eeprom which shouldn't change :)
 struct EepromLayout {
-  char name[32];  // shall be nul terminated. So at most 31 long.
+  char name[32];      // Shall be nul terminated. So at most 31 long.
+  uint16_t baud_rate; // If garbage, falls back to SERIAL_BAUDRATE
   // other things here.
 };
+// EEPROM layout with some defaults in case we'd want to prepare eeprom flash.
 struct EepromLayout EEMEM ee_data = {
-  /* .name = */ "terminal"
+  /* .name      = */ "terminal",
+  /* .baud_rate = */ SERIAL_BAUDRATE,
 };
 
 static char to_hex(unsigned char c) { return c < 0x0a ? c + '0' : c + 'a' - 10; }
@@ -58,6 +71,31 @@ static unsigned char parseHex(const char *buffer) {
   return result;
 }
 
+#if ALLOW_BAUD_CHANGE
+// Like parseHex(), but decimal numbers.
+static uint16_t parseDec(const char *buffer) {
+  uint16_t result = 0;
+  while (isWhitespace(*buffer)) buffer++;
+  while (*buffer) {
+    unsigned char nibble = from_hex(*buffer++);
+    if (nibble > 10)
+      break;
+    result *= 10;
+    result += nibble;
+  }
+  return result;
+}
+#endif
+
+#if ALLOW_BAUD_CHANGE
+static uint16_t GetBaudEEPROM() {
+  return eeprom_read_word(&ee_data.baud_rate);
+}
+static void StoreBaudEEPROM(uint16_t bd) {
+  return eeprom_write_word(&ee_data.baud_rate, bd);
+}
+#endif
+
 // Requires buffer with >= 32 bytes space (sizeof(ee_data.name)).
 static const char *GetNameEEPROM(char *buffer) {
   eeprom_read_block(buffer, &ee_data.name, sizeof(ee_data.name));
@@ -78,11 +116,23 @@ static void StoreNameEEPROM(const char *name) {
 }
 
 // Some convenience methods around the serial line.
-static void print(SerialCom *out, const char *str) {
-  while (*str) out->write(*str++);
+static void print(SerialCom *out, ProgmemPtr str) {
+ char c;
+ while ((c = pgm_read_byte(str.data++)) != 0x00)
+   out->write(c);
 }
-static void println(SerialCom *out, const char *str) {
-  print(out, str); print(out, "\r\n");
+static void println(SerialCom *out) {
+  print(out, _P("\r\n"));
+}
+static void println(SerialCom *out, ProgmemPtr str) {
+  print(out, str);
+  println(out);
+}
+// Unlike the typically used progmem versions, print buffer from RAM. Named
+// obnoxiously so that typically the ProgmemPtr versions are considered.
+static void printlnFromRam(SerialCom *out, const char *str) {
+  while (*str) out->write(*str++);
+  println(out);
 }
 static void printHexByte(SerialCom *out, unsigned char c) {
   out->write(to_hex(c >> 4));
@@ -130,44 +180,36 @@ private:
 };
 
 static void SendHelp(SerialCom *out) {
-  // Keep strings short or memory explodes :) The Harvard architecture of the
-  // Atmel chips requires that the strings are first copied to memory.
-  // Better split up in multiple calls with shorter strings.
-  print(out, "? ");
+  print(out, _P("? "));
   println(out, HEADER_TEXT);
-  print(out, "# ");
+  print(out, _P("# "));
   println(out, CODE_URL);
 
   // What it sends.
   print(out,
-        "# Sends:\r\n"
-        "#\tI<num-bytes-hex> <uid-hex-str> RFID in range.\r\n"
-        "#\tK<char>\tPressed keypad char 0..9, '*','#'\r\n");
-
-  // State-modifying commands.
-  print(out,
-        "# Commands:\r\n"
-        "#\t?\tThis help\r\n"
-        "#\tR\tReset RFID reader.\r\n");
-  print(out,
-        "#\tM<n><msg> Write msg on LCD-line n=0,1.\r\n"
-        "#\tW<xx>\tWrite output bits; param 8bit hex.\r\n");
-  print(out,
-        "#\tN<name> Set persistent name of this terminal. Send twice.\r\n");
-
-  // Passive commands.
-  print(out,
-        "#\te<msg>\tEcho back msg (testing)\r\n"
-        "#\ts\tShow stats.\r\n"
-        "#\tn\tGet persistent name.\r\n");
+        _P("# Sends:\r\n"
+           "#\tI<num-bytes-hex> <uid-hex-str> RFID in range.\r\n"
+           "#\tK<char>\tPressed keypad char 0..9, '*','#'\r\n"
+           "# Commands:\r\n"
+           "#\t?\tThis help\r\n"
+           "#\tR\tReset RFID reader.\r\n"
+           "#\tM<n><msg> Write msg on LCD-line n=0,1.\r\n"
+           "#\tW<xx>\tWrite output bits; param 8bit hex.\r\n"
+           "#\tN<name> Set persistent name of this terminal. Send twice.\r\n"
+#if ALLOW_BAUD_CHANGE
+           "#\tB<baud> Set baud rate. Persist if current rate confirmed.\r\n"
+#endif
+           "#\te<msg>\tEcho back msg (testing)\r\n"
+           "#\ts\tShow stats.\r\n"
+           "#\tn\tGet persistent name.\r\n"));
 }
 
 static void SendStats(SerialCom *out, unsigned short cmd_count) {
-  print(out, "s commands-seen=0x");
+  print(out, _P("s commands-seen=0x"));
   printHexShort(out, cmd_count);
-  print(out, "; dropped-rx-bytes=0x");
+  print(out, _P("; dropped-rx-bytes=0x"));
   printHexShort(out, out->dropped_rx());
-  print(out, "\r\n");
+  print(out, _P("\r\n"));
 }
 
 static void SetAuxBits(const char *buffer, SerialCom *out) {
@@ -176,7 +218,7 @@ static void SetAuxBits(const char *buffer, SerialCom *out) {
   PORTC = value;
   out->write('W');
   printHexByte(out, value);
-  println(out, "");
+  println(out);
 }
 
 // We require to send the same name twice in consecutive commands to make
@@ -192,16 +234,36 @@ static void ReceiveName(SerialCom *com,
     // The previous command was name setting as well. See if we got the same.
     if (checksum == name_checksum) {
       StoreNameEEPROM(line + 1);
-      println(com, "Name set.");
+      println(com, _P("Name set."));
     } else {
-      println(com, "Name mismatch!");
+      println(com, _P("Name mismatch!"));
     }
   } else {
     first_name_write_command_count = command_count;
     name_checksum = checksum;
-    println(com, "Name received. Send 2nd time to confirm.");
+    println(com, _P("Name received. Send 2nd time to confirm."));
   }
 }
+
+#if ALLOW_BAUD_CHANGE
+static void SetNewBaudRate(SerialCom *com, const char *line) {
+  const uint16_t bd = parseDec(line + 1);
+  if (!SerialCom::IsValidBaud(bd)) {
+    println(com, _P("E not a valid baudrate between 300..38400"));
+    return;
+  }
+  if (bd == com->baud()) {
+    // We are already running at that speed. Obviously communication works.
+    // Safe to store permanently.
+    StoreBaudEEPROM(bd);
+    println(com, _P("Baud rate stored in EEPROM"));
+  } else {
+    println(com, _P("Baud rate will be switched after this line. Send command "
+                    "a second time to permanently store in EEPROM"));
+    com->SetBaud(bd);
+  }
+}
+#endif
 
 static void SendUid(const MFRC522::Uid &uid, SerialCom *out) {
   if (uid.size > 15) return;  // fishy.
@@ -211,13 +273,14 @@ static void SendUid(const MFRC522::Uid &uid, SerialCom *out) {
   for (int i = 0; i < uid.size; ++i) {
     printHexByte(out, uid.uidByte[i]);
   }
-  println(out, "");
+  println(out);
 }
 
 static void SendKeypadCharIfAvailable(SerialCom *out, char keypad_char) {
   if (!keypad_char) return;
-  char buf[3] = { 'K', keypad_char, 0 };
-  println(out, buf);
+  out->write('K');
+  out->write(keypad_char);
+  println(out);
 }
 
 int main() {
@@ -239,12 +302,16 @@ int main() {
   lcd.print(1, "");
 
   SerialCom comm;
-  print(&comm, "# ");
+#if ALLOW_BAUD_CHANGE
+  comm.SetBaud(GetBaudEEPROM());
+#endif
+
+  print(&comm, _P("# "));
   print(&comm, HEADER_TEXT);
-  println(&comm, "; '?' for help.");
-  print(&comm, "# Name: ");
-  println(&comm, GetNameEEPROM(buffer));
- 
+  println(&comm, _P("; '?' for help."));
+  print(&comm, _P("# Name: "));
+  printlnFromRam(&comm, GetNameEEPROM(buffer));
+
   LineBuffer lineBuffer;
   MFRC522::Uid current_uid;
 
@@ -267,37 +334,41 @@ int main() {
         card_reader.PCD_Reset();
         card_reader.PCD_Init();
         current_uid.size = 0;
-        println(&comm, "Reset RFID reader.");
+        println(&comm, _P("Reset RFID reader."));
         break;
       case 'M':
         if (line_len >= 2 && lineBuffer.line()[1] - '0' < 2) {
           lcd.print(lineBuffer.line()[1] - '0', lineBuffer.line() + 2);
-          println(&comm, "M ok");
+          println(&comm, _P("M ok"));
         } else {
-          println(&comm, "E row number must be 0 or 1");
+          println(&comm, _P("E row number must be 0 or 1"));
         }
         break;
       case 'N':
         ReceiveName(&comm, lineBuffer.line(), commands_seen_stat & 0xff);
         break;
-
+#if ALLOW_BAUD_CHANGE
+      case 'B':
+        SetNewBaudRate(&comm, lineBuffer.line());
+        break;
+#endif
         // Lower case letters don't modify any state.
       case 'e':
-        println(&comm, lineBuffer.line());
+        printlnFromRam(&comm, lineBuffer.line());
         break;
       case 's':
         SendStats(&comm, commands_seen_stat);
         break;
       case 'n':
         comm.write('n');
-        println(&comm, GetNameEEPROM(buffer));
+        printlnFromRam(&comm, GetNameEEPROM(buffer));
         break;
       case '\0': // TODO: the lineBuffer sometimes returns empty lines.
         break;
       default:
-        print(&comm, "E Unknown command 0x");
+        print(&comm, _P("E Unknown command 0x"));
         printHexByte(&comm, lineBuffer.line()[0]);
-        println(&comm, "; '?' for help.");
+        println(&comm, _P("; '?' for help."));
       }
     }
 

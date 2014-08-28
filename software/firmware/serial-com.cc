@@ -54,13 +54,43 @@ ISR(USART_RXC_vect) {
 
 SerialCom::SerialCom() : dropped_reads_(0) {
   global_ser = this;  // our ISR needs access.
+#if ALLOW_BAUD_CHANGE
+  SetBaud(SERIAL_BAUDRATE);
+#else
   const unsigned int divider = (F_CPU  / 17 / SERIAL_BAUDRATE) - 1;
   UBRRH = (unsigned char)(divider >> 8);
   UBRRL = (unsigned char) divider;
+#endif
   UCSRB = (1<<RXCIE) | (1<<RXEN) | (1<<TXEN);  // read and write; interrupt read
   UCSRC = (1<<URSEL) /*write-reg*/ | (1<<UCSZ1) | (1<<UCSZ0); /*8bit*/
   sei();  // Enable interrupts.
 }
+
+#if ALLOW_BAUD_CHANGE
+// For sanity (e.g. garbage in EEPROM), we only allow a certain set of
+// valid baudrates.
+bool SerialCom::IsValidBaud(uint16_t bd) {
+  switch (bd) {
+  case 300:  case 600:  case 1200:  case 2400:
+  case 4800: case 9600: case 19200: case 38400:
+    return true;
+  default:
+    return false;
+  }
+}
+
+void SerialCom::SetBaud(uint16_t bd) {
+  if (!IsValidBaud(bd)) bd = SERIAL_BAUDRATE;
+  // The following is really expensive code-wise (>100 bytes), as we do a
+  // 32bit division on a 8 bit processor. Right now, space is not tight yet. If
+  // that ever becomes a problem, just compiling in a fixed baudrate would be
+  // the answer.
+  const unsigned int divider = (F_CPU  / 17 / bd) - 1;
+  UBRRH = (unsigned char)(divider >> 8);
+  UBRRL = (unsigned char) divider;
+  baud_ = bd;
+}
+#endif
 
 void SerialCom::write(char c) {
   while ( !( UCSRA & (1<<UDRE)) )  // wait for transmit buffer to be ready.
