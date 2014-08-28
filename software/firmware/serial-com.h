@@ -46,7 +46,7 @@ public:
   // Internally maintains an incoming buffer with 2^BUFFER_BITS size.
   SerialCom();
 
-#if ALLOW_BAUD_CHANGE
+#if FEATURE_BAUD_CHANGE
   // Supported baudrates.
   static bool IsValidBaud(uint16_t bd);
 
@@ -73,7 +73,7 @@ public:
 private:
   friend class SerialComISRWriter;
   void StuffByte(char c) volatile;  // Stuff into buffer. Called by ISR.
-#if ALLOW_BAUD_CHANGE
+#if FEATURE_BAUD_CHANGE
   uint16_t baud_;
 #endif
   uint16_t dropped_reads_;

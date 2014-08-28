@@ -54,7 +54,7 @@ ISR(USART_RXC_vect) {
 
 SerialCom::SerialCom() : dropped_reads_(0) {
   global_ser = this;  // our ISR needs access.
-#if ALLOW_BAUD_CHANGE
+#if FEATURE_BAUD_CHANGE
   SetBaud(SERIAL_BAUDRATE);
 #else
   const unsigned int divider = (F_CPU  / 17 / SERIAL_BAUDRATE) - 1;
@@ -66,7 +66,7 @@ SerialCom::SerialCom() : dropped_reads_(0) {
   sei();  // Enable interrupts.
 }
 
-#if ALLOW_BAUD_CHANGE
+#if FEATURE_BAUD_CHANGE
 // For sanity (e.g. garbage in EEPROM), we only allow a certain set of
 // valid baudrates.
 bool SerialCom::IsValidBaud(uint16_t bd) {

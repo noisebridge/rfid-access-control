@@ -5,11 +5,11 @@
 # a slow communication as we have pretty long lines and don't use RS422, so
 # consider to reduce the baudrate for production use to something that works on
 # the line.
-# ALLOW_BAUD_CHANGE allows to change baudrate via command. Good
+# FEATURE_BAUD_CHANGE allows to change baudrate via command. Good
 # for debugging and speed-testing in the field. But uses about 600 bytes space
 # in firmware, and fixed speed might be more useful in the field.
 # Compile-time choice.
-DEFINES=-DF_CPU=8000000UL -DSERIAL_BAUDRATE=9600 -DALLOW_BAUD_CHANGE=1
+DEFINES=-DF_CPU=8000000UL -DSERIAL_BAUDRATE=9600 -DFEATURE_BAUD_CHANGE=1
 
 TARGET_ARCH=-mmcu=atmega8
 CXX=avr-g++

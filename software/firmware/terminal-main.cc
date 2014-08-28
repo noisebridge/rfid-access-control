@@ -70,7 +70,7 @@ static unsigned char parseHex(const char *buffer) {
   return result;
 }
 
-#if ALLOW_BAUD_CHANGE
+#if FEATURE_BAUD_CHANGE
 // Like parseHex(), but decimal numbers.
 static uint16_t parseDec(const char *buffer) {
   uint16_t result = 0;
@@ -86,7 +86,7 @@ static uint16_t parseDec(const char *buffer) {
 }
 #endif
 
-#if ALLOW_BAUD_CHANGE
+#if FEATURE_BAUD_CHANGE
 static uint16_t GetBaudEEPROM() {
   return eeprom_read_word(&ee_data.baud_rate);
 }
@@ -201,7 +201,7 @@ static void SendHelp(SerialCom *out) {
            "#\tW<xx>\tWrite output bits; param 8bit hex.\r\n"
            "#\tR\tReset RFID reader.\r\n"
            "#\tN<name> Set persistent name of this terminal. Send twice.\r\n"
-#if ALLOW_BAUD_CHANGE
+#if FEATURE_BAUD_CHANGE
            "#\tB<baud> Set baud rate. Persists if current rate confirmed.\r\n"
 #endif
            ));
@@ -250,7 +250,7 @@ static void ReceiveName(SerialCom *com,
   }
 }
 
-#if ALLOW_BAUD_CHANGE
+#if FEATURE_BAUD_CHANGE
 static void SetNewBaudRate(SerialCom *com, const char *line) {
   const uint16_t bd = parseDec(line + 1);
   if (!SerialCom::IsValidBaud(bd)) {
@@ -304,7 +304,7 @@ int main() {
   card_reader.PCD_Init();
 
   SerialCom comm;
-#if ALLOW_BAUD_CHANGE
+#if FEATURE_BAUD_CHANGE
   comm.SetBaud(GetBaudEEPROM());
 #endif
 
@@ -351,7 +351,7 @@ int main() {
       case 'N':
         ReceiveName(&comm, lineBuffer.line(), commands_seen_stat & 0xff);
         break;
-#if ALLOW_BAUD_CHANGE
+#if FEATURE_BAUD_CHANGE
       case 'B':
         SetNewBaudRate(&comm, lineBuffer.line());
         break;
