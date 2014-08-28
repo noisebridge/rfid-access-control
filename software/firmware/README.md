@@ -76,6 +76,16 @@ The LCD typically has 14 or 16 connector pins. Connections from LCD to Atmega8
 Can read a standard 3 column x 4 row phone style keypad and output its debounced
 values on the serial line.
 
+The keypards typically come with four 'row' connectors and three 'column'
+connectors, 7 pins total.
+   - **Row 0** to **PD4** (Pin 6 on PDIP Atmega8)
+   - **Row 1** to **PD5** (Pin 11 on PDIP Atmega8)
+   - **Row 2** to **PD6** (Pin 12 on PDIP Atmega8)
+   - **Row 3** to **PD7** (Pin 13 on PDIP Atmega8)
+   - **Col 0** to **PB0** (Pin 14 on PDIP Atmega8)
+   - **Col 1** to **PB6** (Pin 9 on PDIP Atmega8)
+   - **Col 2** to **PB7** (Pin 10 on PDIP Atmega8)
+
 ### Output Pins
 
 Output bits in PC0..PC5 if there is no LCD display. (TBD: and some leftover pins)
