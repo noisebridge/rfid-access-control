@@ -178,12 +178,15 @@ private:
   char *pos_;
 };
 
-static void SendHelp(SerialCom *out) {
-  print(out, _P("? "));
+static void PrintShortHeader(SerialCom *out) {
+  print(out, _P("# "));
   println(out, ProgmemPtr(kHeaderText));
   print(out, _P("# "));
   println(out, ProgmemPtr(kCodeUrl));
+}
 
+static void SendHelp(SerialCom *out) {
+  PrintShortHeader(out);
   print(out,
         _P("# [Sends]\r\n"
            "#\tI<num-bytes-hex> <uid-hex-str> RFID in range.\r\n"
@@ -205,6 +208,7 @@ static void SendHelp(SerialCom *out) {
            "#\tB<baud> Set baud rate. Persists if current rate confirmed.\r\n"
 #endif
            ));
+  println(out, _P("? ok"));
 }
 
 static void SendStats(SerialCom *out, unsigned short cmd_count) {
@@ -308,11 +312,8 @@ int main() {
   comm.SetBaud(GetBaudEEPROM());
 #endif
 
-  print(&comm, _P("# "));
-  print(&comm, ProgmemPtr(kHeaderText));
-  println(&comm, _P("; '?' for help."));
-  print(&comm, _P("# "));
-  println(&comm, ProgmemPtr(kCodeUrl));
+  PrintShortHeader(&comm);
+  println(&comm, _P("# Type '?<RETURN>' for help."));
   print(&comm, _P("# Name: "));
   printlnFromRam(&comm, GetNameEEPROM(buffer));
 
