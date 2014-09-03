@@ -1,9 +1,10 @@
 <!-- -*- mode: markdown; indent-tabs-mode: nil; -*- -->
-Access Control Host Software
-============================
+Earl - Host Software
+====================
 
 Software running on the host computer.
-Running on an Raspberry Pi to access some GPIO pins.
+Running on an Raspberry Pi to access some GPIO pins and multiple serial
+interfaces.
 
 Language
 --------
@@ -16,15 +17,23 @@ version, it is called `earl`.
 Compile
 -------
 (TODO: mostly placeholder. To be filled with correct information)
-To get going, install go
+To get going, install go if you haven't already:
 
      sudo aptitude install golang
 
-Set your environment variable `GOPATH` to this directory and type
+Set your environment variable `GOPATH` to some directory where you would
+like to have your [go workspace][golang-gopath].
 
-     export GOPATH=`pwd`
+Ok, back to this directory:
+
      go get       # Only do this the first time. Get needed libraries.
-     go install   # will copy the resulting binary into $GOLANG/bin
+     go install   # will copy the resulting binary into $GOLANG/bin/earl
+
+Hacking
+-------
+To hack the features for the specific terminals, look in the `earl-handlers.go`,
+should be pretty self-explanatory. The handlers all implement the handler
+interface documented in `earl-handler-interface.go`.
 
 Features
 --------
@@ -72,3 +81,5 @@ Ok, there are no features yet, at this point it is all spec.
      was ok, tells the _inside_ handler to open the strike. This needs to be
      handled in a thread-safe way as each terminal can only have one outstanding
      request at a time to avoid confusion. Initially: not needed.
+
+[golang-gopath]: https://golang.org/doc/code.html#GOPATH
