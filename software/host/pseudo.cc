@@ -1,4 +1,4 @@
-
+// Just Pseudo-code. To be implemented in go.
 class TerminalStub;
 class Handler {
     void Init(TerminalStub *stub) = 0;
