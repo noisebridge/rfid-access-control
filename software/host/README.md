@@ -10,6 +10,9 @@ Language
 Written in Go. Mostly to learn a new language. Also it has the simplicity of
 Python without the ugliness of Python.
 
+The previous version of this software was called `baron`. This being the next
+version, it is called `earl`.
+
 Compile
 -------
 (TODO: mostly placeholder. To be filled with correct information)
