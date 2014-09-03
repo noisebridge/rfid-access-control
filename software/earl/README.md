@@ -22,12 +22,13 @@ To get going, install go if you haven't already:
      sudo aptitude install golang
 
 Set your environment variable `GOPATH` to some directory where you would
-like to have your [go workspace][golang-gopath].
+like to have your [go workspace][golang-gopath]. That is the scratch space
+where go puts build artifacts and dependent libraries.
 
-Ok, back to this directory:
+Ok, back to the `rfid-access-control/software/earl` directory.
 
-     go get       # Only do this the first time. Get needed libraries.
-     go install   # will copy the resulting binary into $GOLANG/bin/earl
+     go get       # Only do this the first time. Get needed serial library.
+     go build     # Creates ./earl in your directory
 
 Hacking
 -------
