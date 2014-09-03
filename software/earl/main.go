@@ -88,6 +88,8 @@ func (t *TerminalStub) WriteLCD(line int, text string) bool {
 func (t *TerminalStub) readLineLoop() {
 	reader := bufio.NewReader(t.serialFile)
 	for {
+		// TODO: select with 500ms timeout. on timeout, send
+		// empty line to event, otherwise do readline.
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "reading input:", err)
