@@ -38,8 +38,9 @@ type TerminalStub struct {
 	eventChannel    chan string  // Strings representing input events.
 }
 
-func (t *TerminalStub) Run(handler Handler) {
-	c := &serial.Config{Name: "/dev/ttyUSB0", Baud: 38400}
+func NewTerminalStub(port string, baudrate int) *TerminalStub {
+	t := new(TerminalStub)
+	c := &serial.Config{Name: port, Baud: baudrate}
 	var err error
 	t.serialFile, err = serial.OpenPort(c)
 	if err != nil {
@@ -47,6 +48,10 @@ func (t *TerminalStub) Run(handler Handler) {
 	}
 	t.eventChannel = make(chan string, 2)
 	t.responseChannel = make(chan string)
+	return t;
+}
+
+func (t *TerminalStub) Run(handler Handler) {
 	go t.readLineLoop()
 	handler.Init(t)
 	for {
@@ -113,9 +118,22 @@ func (t *TerminalStub) writeLine(line string) {
 }
 
 func main() {
-	t := new(TerminalStub)
-	name := t.GetTerminalName()
-	log.Printf("Found terminal '%s'", name)
-	handler := new(DebugHandler)
-	t.Run(handler)
+	if len(os.Args) <= 1 {
+		fmt.Fprintf(os.Stderr,
+			"usage: %s <serial-device>[:baudrate] [<serial-device>[:baudrate]...]\n",
+			os.Args[0])
+		return
+	}
+
+	for i,arg := range os.Args {
+		if i == 0 {
+			continue;
+		}
+		// TODO: separate device name from baudrate.
+		t := NewTerminalStub(arg, 9600)
+		log.Printf("Device '%s' connected to '%s'",
+			arg, t.GetTerminalName());
+		handler := new(DebugHandler)
+		t.Run(handler)
+	}
 }
