@@ -1,3 +1,4 @@
+<!-- -*- mode: markdown; indent-tabs-mode: nil; -*- -->
 Access Control Host Software
 ============================
 
@@ -53,13 +54,14 @@ Ok, there are no features yet, at this point it is all spec.
        - Upstairs door. Reads RFID. If match, upstairs gate is opened via other
          relay contact.
        - In-space terminal (probably inside next to the door). Has keypad,
-         RFID reader and LCD display. Provides simple way to add new users:
-          1 show existing RFID card of 'deciding member'
-	  2 ask to add user
-	  3 present new RFID card.
-	  4 new RFID card is added to the file.
-	 User-interaction with keypad and LCD display.
-      - Elevator door. Later.
+         RFID reader and LCD display. Provides simple way to add new users,
+         something like:
+          1. show existing RFID card of 'deciding Noisebridge member'
+          2. ask to add user
+          3. present new RFID card.
+          4. new RFID card is added to the file.
+        User-interaction with keypad and LCD display.
+	   - Elevator door. Later.
    - Future: We might equip a terminal with an H-bridge to open the electric
      strike, thus relieving one of the relay contacts.
      That would be connected to the inside terminal at the door upstairs. The
