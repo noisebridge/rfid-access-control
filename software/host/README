@@ -1,2 +1,37 @@
 Software running on the host computer. Currently expected to be Raspberry Pi.
 
+Rough Spec
+
+   - Should read old byron file with PIN numbers.
+   - Have another file with RFID numbers. Also this contains flags saying which
+     user can add other users.
+   - Both files should be re-loaded whenver they change externally (i.e. edit)
+   - Multiple terminals can be connected to various ttys whose paths come
+     on the commandline. Internally, the program queries the name of the
+     terminal to associate file-descriptor with physical terminal (thus,
+     mangeling the serial lines is not a problem).
+   - There are 2 relay contacts connected to the Raspberry Pi that can be used
+     to open gates. This happens via GPIO pins.
+   - There are 4 terminals to be handled by this software (probably later more)
+     Each of them does a little bit different things, they should be implemented
+     in a simple way (so: someone only needs to implement a handler), with the
+     complicated stuff (serial line and such) handled in the background.
+       - Downstairs gate. Reads PIN number. If match, gate is opened via one
+         relay contact.
+       - Upstairs door. Reads RFID. If match, upstairs gate is opened via other
+         relay contact.
+       - In-space terminal (probably inside next to the door). Has keypad,
+         RFID reader and LCD display. Provides simple way to add new users:
+	 (1) show existing RFID card of 'deciding member'
+	 (2) ask to add user
+	 (3) present new RFID card.
+	 (4) new RFID card is added to the file.
+	 User-interaction with keypad and LCD display.
+       - Elevator door. Later.
+   - Future: We might equip a terminal with an H-bridge to open the electric
+     strike, thus relieving one of the relay contacts.
+     That would be connected to the inside terminal at the door upstairs. The
+     outside terminal receives an RFID request, and when it decides that this
+     was ok, tells the _inside_ handler to open the strike. This needs to be
+     handled in a thread-safe way as each terminal can only have one outstanding
+     request at a time to avoid confusion. Initially: not needed.
