@@ -1,14 +1,17 @@
 // -*- mode: scad; c-basic-offset: 4; indent-tabs-mode: nil; -*-
 // (c) 2014 h.zeller@acm.org. GNU General Public License 2.0 or higher.
+// (TODO(Henner): now that we know how it should look like: simplify)
 // --
 $fn=32;
 case_fn=96;       // Resolution of the case. Also funky with lo-res 8
 border_roundness=6;
 
+case_height=17.5;    // More precisely: the inner height. Outer is + top_thick.
+
 // Various cable outlets. Negative number to switch off that hole.
 cable_to_back_r  = 5;   // radius for cable out the backplane or < 0 for not
-cable_to_left_top_r  = 3.5; // radius for cable out of the top, or < 0 for not.
-cable_to_right_top_r = 3.5; // radius for cable out of the top, or < 0 for not.
+cable_to_left_top_r  = -3.5; // radius for cable out of the top, or < 0 for not.
+cable_to_right_top_r = -3.5; // radius for cable out of the top, or < 0 for not.
 
 epsilon=0.05;
 
@@ -16,10 +19,12 @@ epsilon=0.05;
 rfid_w=40 + 2;
 rfid_h=60 + 2;
 // from center of board
-rfid_hole_r=2.9/2;
+rfid_hole_r=2.5/2;
 rfid_hole_pos = [ [-17,-14], [17,-14], [-12.5, 23], [12.5, 23] ];
 rfid_mount_upside_down=true;  // Upside down mounting brings coil closer to top
 rfid_board_thick=1.6;
+rfid_board_rest_height=5;  // Height of the lowest board in the sandwich.
+rfid_board_register_height=rfid_board_rest_height + 2; // case_height;
 
 top_thick  = 1.2;  // Thickness of the top shell.
 base_thick = 1;    // Thickness of the base-plate, mounted to the wall.
@@ -28,11 +33,9 @@ logo_imprint=0.3;  // depth of the logo imprint.
 
 oval_ratio=rfid_w/rfid_h;
 
-case_height=12;    // More precisely: the inner height. Outer is + top_thick.
-
 // inner volume of the cleat-boxed part.
-cleat_volume_width  = rfid_w + 2;
-cleat_volume_height = rfid_h + 8;
+cleat_volume_width  = rfid_w + 1;
+cleat_volume_height = rfid_h + 11;  // TODO: calculate that from angle & height
 
 top_radius=0.72*rfid_h;  // the longer part.
 base_radius=top_radius + 5;
@@ -41,7 +44,7 @@ logo_size=0.75*top_radius;
 
 cleat_angle=25;
 cleat_wall_thick = 1.2; // The thickness of the inner walls of the cleat.
-screw_block_offset=base_radius - 6;  // Distance from y-center where the
+screw_block_offset=base_radius - 5;  // Distance from y-center where the
                                      // diagonal mount-screw cut is.
 
 // X/Y locations for the wall mount screws. Some manual fiddling involved.
@@ -76,8 +79,8 @@ module pcb_board(board_thick=rfid_board_thick) {
 
 module pcb_podests() {
     translate(rfid_center_offset) for (h = rfid_hole_pos) {
-	translate([h[0], h[1], 0]) cylinder(r=rfid_hole_r,h=case_height);
-	translate([h[0], h[1], 0]) cylinder(r1=2.2*rfid_hole_r,r2=1.5*rfid_hole_r,h=rfid_mount_height);
+	translate([h[0], h[1], 0]) cylinder(r=rfid_hole_r,h=rfid_board_register_height);
+	translate([h[0], h[1], 0]) cylinder(r1=2.2*rfid_hole_r,r2=1.5*rfid_hole_r,h=rfid_board_rest_height);
     }
 }
 
@@ -286,7 +289,7 @@ module top_assembly() {
 	    // otherwise we have overhang.
 	    screw_block(left=0,h=case_height);
 	    clearance_cleat_volume();
-	    positioned_mount_screw(r=1);  // Predrill: self-cutting screw for now
+	    positioned_mount_screw(r=2.4/2);  // Predrill.
 	    // Fudging away some sharp corner. manual fiddling.
 	    translate([-10,-screw_block_offset-3,0]) cube([20,5,case_height]);
 	}
