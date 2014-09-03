@@ -99,6 +99,10 @@ static void StoreBaudEEPROM(uint16_t bd) {
 static const char *GetNameEEPROM(char *buffer) {
   eeprom_read_block(buffer, &ee_data.name, sizeof(ee_data.name));
   buffer[sizeof(ee_data.name) - 1] = '\0';  // Ensure termination.
+  // If the eeprom just contains the default state (all 0xFF, which is not
+  // a useful ASCII character to begin with), just return an empty string.
+  if (buffer[0] == 0xff)
+    buffer[0] = '\0';
   return buffer;
 }
 
