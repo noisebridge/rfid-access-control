@@ -1,13 +1,12 @@
 package main
 
 import (
-	"github.com/tarm/goserial"
-//	"github.com/hzeller/rfid-access-control/software/earl"
-	"os"
-	"log"
 	"bufio"
 	"fmt"
+	"github.com/tarm/goserial"
 	"io"
+	"log"
+	"os"
 )
 
 type Handler interface {
@@ -18,7 +17,7 @@ type Handler interface {
 }
 
 type TerminalStub struct {
-	serialFile io.ReadWriteCloser
+	serialFile    io.ReadWriteCloser
 	inputLineChan chan string
 }
 
@@ -46,7 +45,7 @@ func (t *TerminalStub) Run(handler Handler) {
 		default:
 			fmt.Println("Unexpected input: ", line)
 		}
-	}	
+	}
 }
 
 func (t *TerminalStub) ReadLineLoop() {
@@ -62,7 +61,7 @@ func (t *TerminalStub) ReadLineLoop() {
 
 func (t *TerminalStub) WriteLine(line string) {
 	fmt.Println("Sending ", line)
-	_, err := t.serialFile.Write([]byte(line+"\n"))
+	_, err := t.serialFile.Write([]byte(line + "\n"))
 	if err != nil {
 		log.Fatal(err)
 	}
