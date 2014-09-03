@@ -1,22 +1,53 @@
-Software running on the host computer. Currently expected to be Raspberry Pi.
+Access Control Host Software
+============================
 
-Rough Spec
+Software running on the host computer.
+Running on an Raspberry Pi to access some GPIO pins.
 
-   - Should read old Baron ( https://github.com/noisebridge/noisebridge-baron )
-     file with PIN numbers.
+Language
+--------
+Written in Go. Mostly to learn a new language. Also it has the simplicity of
+Python without the ugliness of Python.
+
+Compile
+-------
+(TODO: mostly placeholder. To be filled with correct information)
+To get going, install go
+
+     sudo aptitude install golang
+
+Set your environment variable `GOPATH` to this directory and type
+
+     export GOPATH=`pwd`
+     go get       # Only do this the first time. Get needed libraries.
+     go install   # will copy the resulting binary into $GOLANG/bin
+
+Features
+--------
+Ok, there are no features yet, at this point it is all spec.
+
+   - Talk the serial interface provided by the access terminal and its firmware
+     (see these directories).
+   - Should read gate PIN numbers from a file as read by previous access
+     control system Baron ( https://github.com/noisebridge/noisebridge-baron )
    - Have another file with RFID numbers. Also this contains flags saying which
-     user can add other users.
+     user can add other users. So probably two tab-separated columns.
    - Both files should be re-loaded whenver they change externally (i.e. edit)
    - Multiple terminals can be connected to various ttys whose paths come
      on the commandline. Internally, the program queries the name of the
      terminal to associate file-descriptor with physical terminal (thus,
-     mangeling the serial lines is not a problem).
+     swapping the serial lines is not a problem). There is a handler for each
+     of the named terminals; each of them might do different things.
    - There are 2 relay contacts connected to the Raspberry Pi that can be used
-     to open gates. This happens via GPIO pins.
+     to open gates. This happens via GPIO pins (TODO: access these via go;
+     in the simplest case just via the file `/sys/...` interface as we don't
+     need speed).
    - There are 4 terminals to be handled by this software (probably later more)
      Each of them does a little bit different things, they should be implemented
      in a simple way (so: someone only needs to implement a handler), with the
      complicated stuff (serial line and such) handled in the background.
+     Note, each of these have a human readable name (see firmware help how to
+     set it).
        - Downstairs gate. Reads PIN number. If match, gate is opened via one
          relay contact.
        - Upstairs door. Reads RFID. If match, upstairs gate is opened via other
