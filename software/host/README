@@ -1,3 +1,2 @@
 Software running on the host computer. Currently expected to be Raspberry Pi.
 
-TODO: make LCD display and uart working together. Currently, this means
