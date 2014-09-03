@@ -50,8 +50,6 @@ func (t *TerminalStub) Run(handler Handler) {
 	for {
 		line := <-t.inputLineChan
 		switch {
-		case line[0] == '#':
-			// ignore
 		case line[0] == 'I':
 			handler.HandleRFID(line[1:])
 		case line[0] == 'K':
@@ -64,10 +62,21 @@ func (t *TerminalStub) Run(handler Handler) {
 	}
 }
 
+// Ask the terminal about its name.
+func (t *TerminalStub) GetTerminalName() string {
+	t.writeLine("n");
+	result := <- t.inputLineChan
+	success := (result[0] == 'n')
+	if !success {
+		fmt.Println("name receive problem:", result)
+	}
+	return result[1:];
+}
+
 func (t *TerminalStub) WriteLCD(line int, text string) bool {
 	t.writeLine(fmt.Sprintf("M%d%s", line, text))
 	result := <- t.inputLineChan
-	success := result[0] == 'M'
+	success := (result[0] == 'M')
 	if !success {
 		fmt.Println("LCD write error:", result)
 	}
@@ -81,7 +90,9 @@ func (t *TerminalStub) readLineLoop() {
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "reading input:", err)
 		}
-		t.inputLineChan <- line
+		if line[0] != '#' {      // Ignore any comments right away.
+			t.inputLineChan <- line
+		}
 	}
 }
 
@@ -95,6 +106,8 @@ func (t *TerminalStub) writeLine(line string) {
 
 func main() {
 	t := new(TerminalStub)
+	name := t.GetTerminalName();
+	fmt.Fprintln(os.Stderr, "Found terminal '%s'", name);
 	handler := new(DebugHandler)
 	t.Run(handler)
 }
