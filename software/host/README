@@ -2,7 +2,8 @@ Software running on the host computer. Currently expected to be Raspberry Pi.
 
 Rough Spec
 
-   - Should read old byron file with PIN numbers.
+   - Should read old Baron ( https://github.com/noisebridge/noisebridge-baron )
+     file with PIN numbers.
    - Have another file with RFID numbers. Also this contains flags saying which
      user can add other users.
    - Both files should be re-loaded whenver they change externally (i.e. edit)
