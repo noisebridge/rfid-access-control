@@ -33,8 +33,9 @@ type Handler interface {
 }
 
 type TerminalStub struct {
-	serialFile    io.ReadWriteCloser
-	inputLineChan chan string
+	serialFile      io.ReadWriteCloser
+	responseChannel chan string  // Strings coming as response to requests
+	eventChannel    chan string  // Strings representing input events.
 }
 
 func (t *TerminalStub) Run(handler Handler) {
@@ -44,11 +45,12 @@ func (t *TerminalStub) Run(handler Handler) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	t.inputLineChan = make(chan string)
+	t.eventChannel = make(chan string, 2)
+	t.responseChannel = make(chan string)
 	go t.readLineLoop()
 	handler.Init(t)
 	for {
-		line := <-t.inputLineChan
+		line := <-t.eventChannel
 		switch {
 		case line[0] == 'I':
 			handler.HandleRFID(line[1:])
@@ -65,7 +67,7 @@ func (t *TerminalStub) Run(handler Handler) {
 // Ask the terminal about its name.
 func (t *TerminalStub) GetTerminalName() string {
 	t.writeLine("n");
-	result := <- t.inputLineChan
+	result := <- t.responseChannel
 	success := (result[0] == 'n')
 	if !success {
 		fmt.Println("name receive problem:", result)
@@ -75,7 +77,7 @@ func (t *TerminalStub) GetTerminalName() string {
 
 func (t *TerminalStub) WriteLCD(line int, text string) bool {
 	t.writeLine(fmt.Sprintf("M%d%s", line, text))
-	result := <- t.inputLineChan
+	result := <- t.responseChannel
 	success := (result[0] == 'M')
 	if !success {
 		fmt.Println("LCD write error:", result)
@@ -90,8 +92,12 @@ func (t *TerminalStub) readLineLoop() {
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "reading input:", err)
 		}
-		if line[0] != '#' {      // Ignore any comments right away.
-			t.inputLineChan <- line
+		switch line[0] {
+		case '#': // ignore comment lines.
+		case 'I','K':
+			t.eventChannel <- line
+		default:
+			t.responseChannel <- line;
 		}
 	}
 }
