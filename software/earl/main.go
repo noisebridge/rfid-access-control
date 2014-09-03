@@ -66,13 +66,13 @@ func (t *TerminalStub) Run(handler Handler) {
 
 // Ask the terminal about its name.
 func (t *TerminalStub) GetTerminalName() string {
-	t.writeLine("n");
+	t.writeLine("n")
 	result := <- t.responseChannel
 	success := (result[0] == 'n')
 	if !success {
 		fmt.Println("name receive problem:", result)
 	}
-	return result[1:];
+	return result[1:]
 }
 
 func (t *TerminalStub) WriteLCD(line int, text string) bool {
@@ -82,7 +82,7 @@ func (t *TerminalStub) WriteLCD(line int, text string) bool {
 	if !success {
 		fmt.Println("LCD write error:", result)
 	}
-	return success;
+	return success
 }
 
 func (t *TerminalStub) readLineLoop() {
@@ -99,7 +99,7 @@ func (t *TerminalStub) readLineLoop() {
 		case 'I','K':
 			t.eventChannel <- line
 		default:
-			t.responseChannel <- line;
+			t.responseChannel <- line
 		}
 	}
 }
@@ -114,8 +114,8 @@ func (t *TerminalStub) writeLine(line string) {
 
 func main() {
 	t := new(TerminalStub)
-	name := t.GetTerminalName();
-	fmt.Fprintln(os.Stderr, "Found terminal '%s'", name);
+	name := t.GetTerminalName()
+	log.Printf("Found terminal '%s'", name)
 	handler := new(DebugHandler)
 	t.Run(handler)
 }
