@@ -59,7 +59,7 @@ func (t *TerminalStub) Run(handler Handler) {
 		case len(line) == 0:
 			handler.HandleTick()
 		default:
-			fmt.Println("Unexpected input: ", line)
+			log.Print("Unexpected input: ", line)
 		}
 	}
 }
@@ -70,7 +70,7 @@ func (t *TerminalStub) GetTerminalName() string {
 	result := <- t.responseChannel
 	success := (result[0] == 'n')
 	if !success {
-		fmt.Println("name receive problem:", result)
+		log.Print("name receive problem:", result)
 	}
 	return result[1:]
 }
@@ -80,7 +80,7 @@ func (t *TerminalStub) WriteLCD(line int, text string) bool {
 	result := <- t.responseChannel
 	success := (result[0] == 'M')
 	if !success {
-		fmt.Println("LCD write error:", result)
+		log.Print("LCD write error:", result)
 	}
 	return success
 }
@@ -92,7 +92,7 @@ func (t *TerminalStub) readLineLoop() {
 		// empty line to event, otherwise do readline.
 		line, err := reader.ReadString('\n')
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "reading input:", err)
+			log.Print("reading input:", err)
 		}
 		switch line[0] {
 		case '#': // ignore comment lines.
@@ -105,7 +105,7 @@ func (t *TerminalStub) readLineLoop() {
 }
 
 func (t *TerminalStub) writeLine(line string) {
-	fmt.Println("Sending ", line)
+	log.Print("Sending ", line)
 	_, err := t.serialFile.Write([]byte(line + "\n"))
 	if err != nil {
 		log.Fatal(err)
