@@ -27,15 +27,13 @@ func (h *DebugHandler) HandleKeypress(b byte) {
 
 		h.m[h.lineNo] += string(b)
 	}
-	out := fmt.Sprintf("M%d%s", h.lineNo, h.m[h.lineNo])
-	h.t.WriteLine(out)
+	h.t.WriteLCD(h.lineNo, h.m[h.lineNo]);
 }
 
 func (h *DebugHandler) HandleRFID(rfid string) {
 	fmt.Println("Received RFID: ", rfid)
 	h.m[h.lineNo] += rfid
-	out := fmt.Sprintf("M%d%s", h.lineNo, rfid)
-	h.t.WriteLine(out)
+	h.t.WriteLCD(h.lineNo, rfid);
 }
 
 func (h *DebugHandler) HandleTick() {

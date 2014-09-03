@@ -45,7 +45,7 @@ func (t *TerminalStub) Run(handler Handler) {
 		log.Fatal(err)
 	}
 	t.inputLineChan = make(chan string)
-	go t.ReadLineLoop()
+	go t.readLineLoop()
 	handler.Init(t)
 	for {
 		line := <-t.inputLineChan
@@ -64,7 +64,17 @@ func (t *TerminalStub) Run(handler Handler) {
 	}
 }
 
-func (t *TerminalStub) ReadLineLoop() {
+func (t *TerminalStub) WriteLCD(line int, text string) bool {
+	t.writeLine(fmt.Sprintf("M%d%s", line, text))
+	result := <- t.inputLineChan
+	success := result[0] == 'M'
+	if !success {
+		fmt.Println("LCD write error:", result)
+	}
+	return success;
+}
+
+func (t *TerminalStub) readLineLoop() {
 	reader := bufio.NewReader(t.serialFile)
 	for {
 		line, err := reader.ReadString('\n')
@@ -75,7 +85,7 @@ func (t *TerminalStub) ReadLineLoop() {
 	}
 }
 
-func (t *TerminalStub) WriteLine(line string) {
+func (t *TerminalStub) writeLine(line string) {
 	fmt.Println("Sending ", line)
 	_, err := t.serialFile.Write([]byte(line + "\n"))
 	if err != nil {
