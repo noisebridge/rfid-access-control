@@ -7,6 +7,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 )
 
 // Callback interface to be implemented to receive events generated
@@ -34,8 +36,8 @@ type Handler interface {
 
 type TerminalStub struct {
 	serialFile      io.ReadWriteCloser
-	responseChannel chan string  // Strings coming as response to requests
-	eventChannel    chan string  // Strings representing input events.
+	responseChannel chan string // Strings coming as response to requests
+	eventChannel    chan string // Strings representing input events.
 }
 
 func NewTerminalStub(port string, baudrate int) *TerminalStub {
@@ -48,7 +50,7 @@ func NewTerminalStub(port string, baudrate int) *TerminalStub {
 	}
 	t.eventChannel = make(chan string, 2)
 	t.responseChannel = make(chan string)
-	return t;
+	return t
 }
 
 func (t *TerminalStub) Run(handler Handler) {
@@ -72,7 +74,7 @@ func (t *TerminalStub) Run(handler Handler) {
 // Ask the terminal about its name.
 func (t *TerminalStub) GetTerminalName() string {
 	t.writeLine("n")
-	result := <- t.responseChannel
+	result := <-t.responseChannel
 	success := (result[0] == 'n')
 	if !success {
 		log.Print("name receive problem:", result)
@@ -82,7 +84,7 @@ func (t *TerminalStub) GetTerminalName() string {
 
 func (t *TerminalStub) WriteLCD(line int, text string) bool {
 	t.writeLine(fmt.Sprintf("M%d%s", line, text))
-	result := <- t.responseChannel
+	result := <-t.responseChannel
 	success := (result[0] == 'M')
 	if !success {
 		log.Print("LCD write error:", result)
@@ -101,7 +103,7 @@ func (t *TerminalStub) readLineLoop() {
 		}
 		switch line[0] {
 		case '#': // ignore comment lines.
-		case 'I','K':
+		case 'I', 'K':
 			t.eventChannel <- line
 		default:
 			t.responseChannel <- line
@@ -117,6 +119,19 @@ func (t *TerminalStub) writeLine(line string) {
 	}
 }
 
+func parseArg(arg string) (devicepath string, baudrate int) {
+	split := strings.Split(arg, ":")
+	devicepath = split[0]
+	baudrate = 9600
+	if len(split) > 1 {
+		var err error
+		if baudrate, err = strconv.Atoi(split[1]); err != nil {
+			panic(err)
+		}
+	}
+	return
+}
+
 func main() {
 	if len(os.Args) <= 1 {
 		fmt.Fprintf(os.Stderr,
@@ -125,14 +140,14 @@ func main() {
 		return
 	}
 
-	for i,arg := range os.Args {
+	for i, arg := range os.Args {
 		if i == 0 {
-			continue;
+			continue
 		}
-		// TODO: separate device name from baudrate.
-		t := NewTerminalStub(arg, 9600)
-		log.Printf("Device '%s' connected to '%s'",
-			arg, t.GetTerminalName());
+
+		devicepath, baudrate := parseArg(arg)
+		t := NewTerminalStub(devicepath, baudrate)
+		log.Printf("Device '%s' connected to '%s'", arg, t.GetTerminalName())
 		handler := new(DebugHandler)
 		t.Run(handler)
 	}
