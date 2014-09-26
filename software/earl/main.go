@@ -50,11 +50,11 @@ func NewTerminalStub(port string, baudrate int) *TerminalStub {
 	}
 	t.eventChannel = make(chan string, 2)
 	t.responseChannel = make(chan string)
+	go t.readLineLoop()
 	return t
 }
 
 func (t *TerminalStub) Run(handler Handler) {
-	go t.readLineLoop()
 	handler.Init(t)
 	for {
 		line := <-t.eventChannel
@@ -140,6 +140,12 @@ func main() {
 		return
 	}
 
+	_ = NewAuthenticator("", "/var/access/legacy_keycode.txt")
+	//a := NewAuthenticator("users.csv", "legacy.txt")
+	//log.Println("Code 99a9 has access?", a.AuthUser("99a9"))
+	//log.Println("Code a9f031 has access?", a.AuthUser("a9f031"))
+	//return;
+
 	for i, arg := range os.Args {
 		if i == 0 {
 			continue
@@ -147,6 +153,7 @@ func main() {
 
 		devicepath, baudrate := parseArg(arg)
 		t := NewTerminalStub(devicepath, baudrate)
+		t.GetTerminalName()
 		log.Printf("Device '%s' connected to '%s'", arg, t.GetTerminalName())
 		handler := new(DebugHandler)
 		t.Run(handler)
