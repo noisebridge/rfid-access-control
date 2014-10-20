@@ -45,7 +45,7 @@ func (h *DebugHandler) HandleTick() {
 //-----------------------
 type AccessHandler struct {
 	currentCode string
-	timeout int
+	lastKeypressTime time.Time
 	auth *Authenticator
 	t *TerminalStub
 }
@@ -61,6 +61,13 @@ func (h *AccessHandler) Init(t *TerminalStub) {
 }
 
 func (h *AccessHandler) HandleKeypress(b byte) {
+	kKeypadTimeout := 5 * time.Second;
+	if h.currentCode != "" &&
+		time.Now().Sub(h.lastKeypressTime) > kKeypadTimeout {
+		h.currentCode = ""
+		h.t.BuzzSpeaker()
+	}
+	h.lastKeypressTime = time.Now()
 	switch b {
 	case '#':
 		h.checkPinAccess()
@@ -75,9 +82,6 @@ func (h *AccessHandler) HandleRFID(rfid string) {
 }
 
 func (h *AccessHandler) HandleTick() {
-	if h.timeout > 0 {
-		h.timeout -= 1
-	}
 }
 
 func (h *AccessHandler) switchRelay(switch_on bool) {

@@ -92,6 +92,8 @@ func (t *TerminalStub) WriteLCD(line int, text string) bool {
 	return success
 }
 
+func (t *TerminalStub) BuzzSpeaker() { }
+
 func (t *TerminalStub) readLineLoop() {
 	reader := bufio.NewReader(t.serialFile)
 	for {
