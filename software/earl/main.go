@@ -140,7 +140,7 @@ func main() {
 		return
 	}
 
-	_ = NewAuthenticator("", "/var/access/legacy_keycode.txt")
+	authenticator := NewAuthenticator("", "/var/access/legacy_keycode.txt")
 	//a := NewAuthenticator("users.csv", "legacy.txt")
 	//log.Println("Code 99a9 has access?", a.AuthUser("99a9"))
 	//log.Println("Code a9f031 has access?", a.AuthUser("a9f031"))
@@ -155,7 +155,7 @@ func main() {
 		t := NewTerminalStub(devicepath, baudrate)
 		t.GetTerminalName()
 		log.Printf("Device '%s' connected to '%s'", arg, t.GetTerminalName())
-		handler := new(DebugHandler)
+		handler := NewAccessHandler(authenticator)
 		t.Run(handler)
 	}
 }

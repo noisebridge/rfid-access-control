@@ -56,9 +56,13 @@ func NewAuthenticator(userFilename string, legacyCodeFilename string) *Authentic
 }
 
 func (a *Authenticator) readLegacyFile() {
+	if a.legacyCodeFilename == "" {
+		log.Println("Legacy key file not provided");
+		return
+	}
 	f, err := os.Open(a.legacyCodeFilename)
 	if err != nil {
-		log.Fatal("Could not read key file", err)
+		log.Fatal("Could not read PIN-key file", err)
 	}
 	reader := bufio.NewReader(f)
 
@@ -88,9 +92,13 @@ func (a *Authenticator) readLegacyFile() {
 //
 //It is name, level, code[,code...]
 func (a *Authenticator) readUserFile() {
+	if a.userFilename == "" {
+		log.Println("RFID-user file not provided");
+		return
+	}
 	f, err := os.Open(a.userFilename)
 	if err != nil {
-		log.Fatal("Could not read user file", err)
+		log.Fatal("Could not read RFID user-file", err)
 	}
 
 	reader := csv.NewReader(f)
