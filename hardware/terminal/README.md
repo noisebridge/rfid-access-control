@@ -78,6 +78,15 @@ Line 7 and 8 on +12V.
 
 ![PCB][pcb]
 
+Assembly
+--------
+Watch out in this version of the board, the [LD1117] LDO has to be soldered
+in differently than the board suggests.
+
+Unfortunately, it has a different pintout than other voltage regulators, this
+is why it slipped in. Instead of [`Vin`, `GND`, `Vout`], it is
+[`GND`, `Vout`, `Vin`]. So you need to solder in some lead-twisting :)
+
 [pcb]: https://github.com/hzeller/rfid-access-control/raw/master/img/terminal-pcb.png
 [sp3232-spec]: http://www.exar.com/common/content/document.ashx?id=619
 [rj45-terminal-1]: http://www.allpinouts.org/index.php/Cisco_Console_RJ45_to_DB9_Pin
@@ -85,3 +94,4 @@ Line 7 and 8 on +12V.
 [db9-pinout]: http://www.db9-pinout.com/
 [DTE]: http://en.wikipedia.org/wiki/Data_terminal_equipment
 [DCE]: http://en.wikipedia.org/wiki/Data_circuit-terminating_equipment
+[LD1117]: http://www.st.com/web/en/resource/technical/document/datasheet/CD00000544.pdf
