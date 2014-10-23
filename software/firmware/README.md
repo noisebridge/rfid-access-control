@@ -206,6 +206,14 @@ device via environment variable:
 
 See Makefile for details.
 
+The first time, you might want to initialize the eeprom to sensible values.
+
+    make eeprom-flash
+
+Sets the terminal name to `terminal` and sets the baud-rate to 9600.
+(Both values you can change later via the serial interface, using the `N` and
+`B` command)
+
 Testing line speed
 ------------------
 To test if the line speed is working for the given environment (long cable,
