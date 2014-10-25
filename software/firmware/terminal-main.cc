@@ -33,15 +33,19 @@ const char kHeaderText[] PROGMEM = "Noisebridge access terminal | v0.1 | 8/2014"
 
 // Don't change sequence in here. Add stuff at end. This is the
 // raw layout in our eeprom which shouldn't change :)
+// We store flags in full bytes for convenience reasons.
 struct EepromLayout {
   char name[32];      // Shall be nul terminated. So at most 31 long.
   uint16_t baud_rate; // If garbage, falls back to SERIAL_BAUDRATE
+  uint8_t flag_keyboard_tone;  // Use a keyboard tone.
   // other things here.
 };
+
 // EEPROM layout with some defaults in case we'd want to prepare eeprom flash.
 struct EepromLayout EEMEM ee_data = {
-  /* .name      = */ "terminal",
-  /* .baud_rate = */ SERIAL_BAUDRATE,
+  /* .name      = */          "terminal",
+  /* .baud_rate = */          SERIAL_BAUDRATE,
+  /* .flag_keyboard_tone = */ 1,
 };
 
 static char to_hex(unsigned char c) { return c < 0x0a ? c + '0' : c + 'a' - 10; }
@@ -86,6 +90,12 @@ static uint16_t parseDec(const char *buffer) {
   return result;
 }
 #endif
+
+inline static bool GetFlag(uint8_t* which) { return eeprom_read_byte(which); }
+inline static bool SetFlag(uint8_t* which, bool value) {
+  eeprom_write_byte(which, value);
+  return value;
+}
 
 #if FEATURE_BAUD_CHANGE
 static uint16_t GetBaudEEPROM() {
@@ -207,7 +217,8 @@ static void SendHelp(SerialCom *out) {
            "# Upper case: modify state\r\n"
            "#\tM<n><msg> Write msg on LCD-line n=0,1.\r\n"
            "#\tW<xx>\tWrite output bits; param 8bit hex.\r\n"
-           "#\tT{LH}[<ms>] Low or High tone for given time (default 250ms).\r\n"
+           "#\tT<L|H>[<ms>] Low or High tone for given time (default 250ms).\r\n"
+           "#\tF<K><1|0> Set flag. 'K'=Keypad click.\r\n"
            "#\tR\tReset RFID reader.\r\n"
            "#\tN<name> Set persistent name of this terminal. Send twice.\r\n"
 #if FEATURE_BAUD_CHANGE
@@ -271,6 +282,19 @@ static void OutputTone(SerialCom *com, const char *line, ToneGen *tonegen) {
   println(com, _P("T ok"));
 }
 
+static void SetFlagCommand(SerialCom *com, const char *line) {
+  bool result;
+  switch (line[1]) {
+  case 'K':
+    result = SetFlag(&ee_data.flag_keyboard_tone, line[2] == '1');
+    break;
+  default:
+    println(com, _P("E invalid flag"));
+    return;
+  }
+  println(com, result ? _P("T flag on") : _P("T flag off"));
+}
+
 #if FEATURE_BAUD_CHANGE
 static void SetNewBaudRate(SerialCom *com, const char *line) {
   const uint16_t bd = parseDec(line + 1);
@@ -308,7 +332,9 @@ static void SendKeypadCharIfAvailable(char keypad_char,
   out->write('K');
   out->write(keypad_char);
   println(out);
-  tone->Tone(ToneGen::hz_to_divider(1000), Clock::ms_to_cycles(30));
+  if (GetFlag(&ee_data.flag_keyboard_tone)) {
+    tone->Tone(ToneGen::hz_to_divider(1000), Clock::ms_to_cycles(30));
+  }
 }
 
 int main() {
@@ -379,6 +405,9 @@ int main() {
 #endif
       case 'T':
         OutputTone(&comm, lineBuffer.line(), &tone_generator);
+        break;
+      case 'F':
+        SetFlagCommand(&comm, lineBuffer.line());
         break;
         // Lower case letters don't modify any state.
       case 'e':
