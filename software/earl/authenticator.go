@@ -12,15 +12,24 @@ import (
 )
 
 
-var local *time.Location 
+var local *time.Location
 
 type Level string
 
 const (
+	LEVEL_LEGACY = "legacy"
 	LEVEL_USER = "user"
 	LEVEL_MEMBER = "member"
 )
 
+type Target string
+
+const (
+	TARGET_DOWNSTAIRS = "gate"
+	TARGET_UPSTAIRS = "door"
+	// Someday we'll have the network closet locked down
+	//TARGET_NETWORK = "closet"
+)
 
 type User struct {
 	Name string
@@ -80,9 +89,12 @@ func (a *Authenticator) readLegacyFile() {
 		if matches == nil {
 			continue
 		}
+
 		code := matches[1]
 		log.Printf("Loaded legacy code %q\n", code)
-		a.legacyCodes[code] = true
+
+		u := User{Name: code, UserLevel: LEVEL_LEGACY, Codes: matches[1:]}
+		a.validUsers[code] = &u
 	}
 
 }
@@ -124,23 +136,27 @@ func (a *Authenticator) readUserFile() {
 	}
 }
 
-// Check if RFID access is granted. Initially a boolean, but
-// might be later a flag-set for different access levels
-func (a *Authenticator) LegacyKeycodeAccessGranted(id string) bool {
-	_, ok := a.legacyCodes[id]
-	return ok
-}
-
-func (a *Authenticator) AuthUser(code string) bool {
+// Check if access for a given code is granted to a given Target
+func (a *Authenticator) AuthUser(code string, target Target) bool {
 	u, ok := a.validUsers[code]
 	if !ok {
 		return false
 	}
 
-	return a.LevelHasAccess(u.UserLevel)
+	return a.LevelHasAccess(u.UserLevel, target)
 }
 
-func (a *Authenticator) LevelHasAccess(level Level) bool{
+// Certain levels only have access during the daytime
+// This implements that logic, which is 10am - 10pm
+func (a *Authenticator) isDaytime() bool {
+	now := time.Now()
+	now = now.In(local)
+	hour, _, _ := now.Clock()
+	return hour >= 10 && hour < 22
+
+}
+
+func (a *Authenticator) LevelHasAccess(level Level, target Target) bool{
 	now := time.Now()
 
 	now = now.In(local)
@@ -148,8 +164,9 @@ func (a *Authenticator) LevelHasAccess(level Level) bool{
 	if level == LEVEL_MEMBER {
 		return true
 	} else if level == LEVEL_USER {
-		hour, _, _ := now.Clock()
-		return hour >= 10 && hour < 22
+		return a.isDaytime()
+	} else if level == LEVEL_LEGACY {
+		return target == TARGET_DOWNSTAIRS && a.isDaytime()
 	}
 
 	return false

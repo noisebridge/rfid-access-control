@@ -103,7 +103,7 @@ func (h *AccessHandler) switchRelay(switch_on bool) {
 
 func (h *AccessHandler) checkPinAccess() {
 	log.Print("Got pin code")
-	if h.auth.LegacyKeycodeAccessGranted(h.currentCode) {
+	if h.auth.AuthUser(h.currentCode, TARGET_DOWNSTAIRS) {
 		log.Print("Open gate.")
 		h.switchRelay(true);
 		time.Sleep(2 * time.Second)
