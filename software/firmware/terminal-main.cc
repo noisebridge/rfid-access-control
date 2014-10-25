@@ -207,6 +207,7 @@ static void SendHelp(SerialCom *out) {
            "# Upper case: modify state\r\n"
            "#\tM<n><msg> Write msg on LCD-line n=0,1.\r\n"
            "#\tW<xx>\tWrite output bits; param 8bit hex.\r\n"
+           "#\tT{LH}[<ms>] Low or High tone for given time (default 250ms).\r\n"
            "#\tR\tReset RFID reader.\r\n"
            "#\tN<name> Set persistent name of this terminal. Send twice.\r\n"
 #if FEATURE_BAUD_CHANGE
@@ -259,6 +260,17 @@ static void ReceiveName(SerialCom *com,
   }
 }
 
+static void OutputTone(SerialCom *com, const char *line, ToneGen *tonegen) {
+  uint16_t duration = parseDec(line + 2);
+  if (duration == 0) duration = 250;
+  if (line[1] == 'H' || line[1] == 'h') {
+    tonegen->Tone(ToneGen::hz_to_divider(1200), Clock::ms_to_cycles(duration));
+  } else {
+    tonegen->Tone(ToneGen::hz_to_divider(300), Clock::ms_to_cycles(duration));
+  }
+  println(com, _P("T ok"));
+}
+
 #if FEATURE_BAUD_CHANGE
 static void SetNewBaudRate(SerialCom *com, const char *line) {
   const uint16_t bd = parseDec(line + 1);
@@ -296,7 +308,7 @@ static void SendKeypadCharIfAvailable(char keypad_char,
   out->write('K');
   out->write(keypad_char);
   println(out);
-  tone->Tone(ToneGen::hz_to_divider(1000), Clock::ms_to_cycles(10));
+  tone->Tone(ToneGen::hz_to_divider(1000), Clock::ms_to_cycles(30));
 }
 
 int main() {
@@ -365,6 +377,9 @@ int main() {
         SetNewBaudRate(&comm, lineBuffer.line());
         break;
 #endif
+      case 'T':
+        OutputTone(&comm, lineBuffer.line(), &tone_generator);
+        break;
         // Lower case letters don't modify any state.
       case 'e':
         printlnFromRam(&comm, lineBuffer.line());

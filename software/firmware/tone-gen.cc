@@ -26,13 +26,14 @@ ISR(TIMER2_COMP_vect) {
     TONE_GEN_OUT_PORT ^= TONE_GEN_OUT_BIT;
   } else {
     TIMSK &= ~(1<<OCIE2); // disable interrupt.
+    TONE_GEN_OUT_PORT &= ~TONE_GEN_OUT_BIT;
   }
 }
 
 void ToneGen::Tone(uint8_t divider, Clock::cycle_t duration_cycles) {
-  start_time_ = Clock::now();
-  wait_time_ = duration_cycles;
   OCR2 = divider;
+  wait_time_ = duration_cycles;
+  start_time_ = Clock::now();
   TIMSK |= (1<<OCIE2);   // switch on interrupt
 }
 
