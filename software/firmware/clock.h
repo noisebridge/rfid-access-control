@@ -8,7 +8,8 @@
 #include <avr/io.h>
 #include <stdint.h>
 
-/* A 'clock' interface. To do comparisons, it is cheapest to compare with
+/* A 'clock' interface using the 16-Bit counter1.
+ * To do comparisons, it is cheapest to compare with
  * a compile-time constant evaluated number of cycles instead of converting
  * cycles to seconds every time.
  * So do idioms like:

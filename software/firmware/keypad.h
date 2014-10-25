@@ -13,12 +13,13 @@
 // col 1:PB0 2:PB7 3:PB6        (all port B)
 class KeyPad {
   enum {
-    ROW_PORTD_SHIFT = 4,  // We read from port-D to top 4 bits
+    // We read from Port-D to top 4 bits
+    ROW_PORTD_SHIFT = 4,
+
+    // Columns will be outputs on Port-B
     COL_1 = (1<<0),
     COL_2 = (1<<6),
     COL_3 = (1<<7),
-
-    // columns will be outputs.
     PORTB_OUT_MASK = COL_1 | COL_2 | COL_3,
   };
 

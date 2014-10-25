@@ -14,6 +14,7 @@
 #include "lcd.h"
 #include "mfrc522/mfrc522.h"
 #include "serial-com.h"
+#include "tone-gen.h"
 
 #define AUX_PORT PORTC
 #define AUX_BITS 0x3F
@@ -289,11 +290,13 @@ static void SendUid(const MFRC522::Uid &uid, SerialCom *out) {
   println(out);
 }
 
-static void SendKeypadCharIfAvailable(SerialCom *out, char keypad_char) {
+static void SendKeypadCharIfAvailable(char keypad_char,
+                                      SerialCom *out, ToneGen *tone) {
   if (!keypad_char) return;
   out->write('K');
   out->write(keypad_char);
   println(out);
+  tone->Tone(ToneGen::hz_to_divider(1000), Clock::ms_to_cycles(10));
 }
 
 int main() {
@@ -305,6 +308,7 @@ int main() {
 
   Clock::init();
 
+  ToneGen tone_generator;
   KeyPad keypad;
   LcdDisplay lcd(24);
 
@@ -386,7 +390,7 @@ int main() {
     if (comm.read_available())
       continue;
 
-    SendKeypadCharIfAvailable(&comm, keypad.ReadKeypad());
+    SendKeypadCharIfAvailable(keypad.ReadKeypad(), &comm, &tone_generator);
 
     // ... or some new card found.
     if (!card_reader.PICC_IsNewCardPresent())
