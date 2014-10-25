@@ -2,15 +2,14 @@ package main
 
 import (
 	"bufio"
-	"io"
-	"os"
-	"time"
-	"log"
-	"regexp"
 	"encoding/csv"
+	"io"
+	"log"
+	"os"
+	"regexp"
+	"time"
 	//"errors"
 )
-
 
 var local *time.Location
 
@@ -18,7 +17,7 @@ type Level string
 
 const (
 	LEVEL_LEGACY = "legacy"
-	LEVEL_USER = "user"
+	LEVEL_USER   = "user"
 	LEVEL_MEMBER = "member"
 )
 
@@ -26,23 +25,23 @@ type Target string
 
 const (
 	TARGET_DOWNSTAIRS = "gate"
-	TARGET_UPSTAIRS = "door"
+	TARGET_UPSTAIRS   = "door"
 	// Someday we'll have the network closet locked down
 	//TARGET_NETWORK = "closet"
 )
 
 type User struct {
-	Name string
+	Name      string
 	UserLevel Level
-	Codes []string
+	Codes     []string
 }
 
 type Authenticator struct {
-	userFilename string
+	userFilename       string
 	legacyCodeFilename string
-	lastChange   time.Time // last file timestamp we know; reload if file is newer
-	validUsers   map[string]*User
-	legacyCodes	 map[string]bool
+	lastChange         time.Time // last file timestamp we know; reload if file is newer
+	validUsers         map[string]*User
+	legacyCodes        map[string]bool
 }
 
 func NewAuthenticator(userFilename string, legacyCodeFilename string) *Authenticator {
@@ -56,7 +55,6 @@ func NewAuthenticator(userFilename string, legacyCodeFilename string) *Authentic
 	a.userFilename = userFilename
 	a.legacyCodeFilename = legacyCodeFilename
 
-
 	a.validUsers = make(map[string]*User)
 	a.legacyCodes = make(map[string]bool)
 	a.readLegacyFile()
@@ -66,7 +64,7 @@ func NewAuthenticator(userFilename string, legacyCodeFilename string) *Authentic
 
 func (a *Authenticator) readLegacyFile() {
 	if a.legacyCodeFilename == "" {
-		log.Println("Legacy key file not provided");
+		log.Println("Legacy key file not provided")
 		return
 	}
 	f, err := os.Open(a.legacyCodeFilename)
@@ -105,7 +103,7 @@ func (a *Authenticator) readLegacyFile() {
 //It is name, level, code[,code...]
 func (a *Authenticator) readUserFile() {
 	if a.userFilename == "" {
-		log.Println("RFID-user file not provided");
+		log.Println("RFID-user file not provided")
 		return
 	}
 	f, err := os.Open(a.userFilename)
@@ -156,7 +154,7 @@ func (a *Authenticator) isDaytime() bool {
 
 }
 
-func (a *Authenticator) LevelHasAccess(level Level, target Target) bool{
+func (a *Authenticator) LevelHasAccess(level Level, target Target) bool {
 	now := time.Now()
 
 	now = now.In(local)

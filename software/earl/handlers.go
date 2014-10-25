@@ -2,8 +2,8 @@ package main
 
 import (
 	"log"
-	"time"
 	"os"
+	"time"
 )
 
 type DebugHandler struct {
@@ -44,10 +44,10 @@ func (h *DebugHandler) HandleTick() {
 
 //-----------------------
 type AccessHandler struct {
-	currentCode string
+	currentCode      string
 	lastKeypressTime time.Time
-	auth *Authenticator
-	t *TerminalStub
+	auth             *Authenticator
+	t                *TerminalStub
 }
 
 func NewAccessHandler(a *Authenticator) *AccessHandler {
@@ -61,18 +61,19 @@ func (h *AccessHandler) Init(t *TerminalStub) {
 }
 
 func (h *AccessHandler) HandleKeypress(b byte) {
-	kKeypadTimeout := 5 * time.Second;
+	kKeypadTimeout := 5 * time.Second
 	if h.currentCode != "" &&
 		time.Now().Sub(h.lastKeypressTime) > kKeypadTimeout {
+		//indicate timeout
 		h.currentCode = ""
-		h.t.BuzzSpeaker()
+		h.t.BuzzSpeaker("L", 500)
 	}
 	h.lastKeypressTime = time.Now()
 	switch b {
 	case '#':
 		h.checkPinAccess()
 	case '*':
-		h.currentCode = ""   // reset
+		h.currentCode = "" // reset
 	default:
 		h.currentCode += string(b)
 	}
@@ -94,7 +95,7 @@ func (h *AccessHandler) switchRelay(switch_on bool) {
 		return
 	}
 	if switch_on {
-		f.Write([]byte("0\n"))  // negative logic.
+		f.Write([]byte("0\n")) // negative logic.
 	} else {
 		f.Write([]byte("1\n"))
 	}
@@ -105,11 +106,12 @@ func (h *AccessHandler) checkPinAccess() {
 	log.Print("Got pin code")
 	if h.auth.AuthUser(h.currentCode, TARGET_DOWNSTAIRS) {
 		log.Print("Open gate.")
-		h.switchRelay(true);
+		h.switchRelay(true)
+		h.t.BuzzSpeaker("H", 500)
 		time.Sleep(2 * time.Second)
-		h.switchRelay(false);
+		h.switchRelay(false)
 	} else {
-		log.Print("Invalid code.");
+		log.Print("Invalid code.")
 	}
 	h.currentCode = ""
 }

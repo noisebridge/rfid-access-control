@@ -92,7 +92,10 @@ func (t *TerminalStub) WriteLCD(line int, text string) bool {
 	return success
 }
 
-func (t *TerminalStub) BuzzSpeaker() { }
+//Tell the buzzer to buzz. If toneCode should be 'H' or 'L'
+func (t *TerminalStub) BuzzSpeaker(toneCode string, length int) {
+	t.writeLine(fmt.Sprintf("T%s%d", toneCode, length))
+}
 
 func (t *TerminalStub) readLineLoop() {
 	reader := bufio.NewReader(t.serialFile)
