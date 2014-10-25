@@ -9,7 +9,8 @@
 # for debugging and speed-testing in the field. But uses about 600 bytes space
 # in firmware, and fixed speed might be more useful in the field.
 # Compile-time choice.
-DEFINES=-DF_CPU=8000000UL -DSERIAL_BAUDRATE=9600 -DFEATURE_BAUD_CHANGE=1
+# Feature LCD switches on LCD support. Otherwise LED output.
+DEFINES=-DF_CPU=8000000UL -DSERIAL_BAUDRATE=9600 -DFEATURE_BAUD_CHANGE=1 -DFEATURE_LCD=0
 
 TARGET_ARCH=-mmcu=atmega8
 CXX=avr-g++

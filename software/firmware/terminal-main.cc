@@ -29,7 +29,12 @@ struct ProgmemPtr {
 
 // TODO: move this repository to noisebridge github.
 const char kCodeUrl[] PROGMEM = "https://github.com/hzeller/rfid-access-control";
-const char kHeaderText[] PROGMEM = "Noisebridge access terminal | v0.1 | 8/2014";
+const char kHeaderText[] PROGMEM = "Noisebridge access terminal | v0.2 | 8/2014";
+
+// TODO: make configurable. This represents the layout downstairs.
+enum { RED_LED   = 0x20,   // LCD-EN
+       GREEN_LED = 0x10,   // LCD-RS
+       BLUE_LED  = 0x02 };  // LCD-D1
 
 // Don't change sequence in here. Add stuff at end. This is the
 // raw layout in our eeprom which shouldn't change :)
@@ -215,11 +220,16 @@ static void SendHelp(SerialCom *out) {
            "#\te<msg>\tEcho back msg (testing)\r\n"
            "#\r\n"
            "# Upper case: modify state\r\n"
+#if FEATURE_LCD
+           // We either support the LCD or the LED on that port
            "#\tM<n><msg> Write msg on LCD-line n=0,1.\r\n"
-           "#\tW<xx>\tWrite output bits; param 8bit hex.\r\n"
+#else
+           "#\tL[<R|G|B>] Set (combination of) LED Red/Green/Blue.\r\n"
+#endif
            "#\tT<L|H>[<ms>] Low or High tone for given time (default 250ms).\r\n"
            "#\tF<K><1|0> Set flag. 'K'=Keypad click.\r\n"
            "#\tR\tReset RFID reader.\r\n"
+           "#\tW<xx>\tRaw write output bits; param 8bit hex.\r\n"
            "#\tN<name> Set persistent name of this terminal. Send twice.\r\n"
 #if FEATURE_BAUD_CHANGE
            "#\tB<baud> Set baud rate. Persists if current rate confirmed.\r\n"
@@ -282,6 +292,23 @@ static void OutputTone(SerialCom *com, const char *line, ToneGen *tonegen) {
   println(com, _P("T ok"));
 }
 
+#if not FEATURE_LCD
+static void ResetLED() {
+  PORTC |= RED_LED|GREEN_LED|BLUE_LED;
+}
+static void SetLED(SerialCom *com, const char *line) {
+  ResetLED();
+  for (const char *color = line+1; *color ; color++) {
+    switch (*color) {
+    case 'R': case 'r': PORTC &= ~RED_LED; break;
+    case 'G': case 'g': PORTC &= ~GREEN_LED; break;
+    case 'B': case 'b': PORTC &= ~BLUE_LED; break;
+    }
+  }
+  println(com, _P("L ok"));
+}
+#endif
+
 static void SetFlagCommand(SerialCom *com, const char *line) {
   bool result;
   switch (line[1]) {
@@ -340,6 +367,10 @@ static void SendKeypadCharIfAvailable(char keypad_char,
 int main() {
   DDRC = AUX_BITS;
 
+#if not FEATURE_LCD
+  ResetLED();
+#endif
+
   _delay_ms(100);  // Wait for voltage to settle before we reset the 522
 
   char buffer[32];  // general purpose. Allocated once for no stack-surprises.
@@ -348,7 +379,10 @@ int main() {
 
   ToneGen tone_generator;
   KeyPad keypad;
+
+#if FEATURE_LCD
   LcdDisplay lcd(24);
+#endif
 
   MFRC522 card_reader;
   card_reader.PCD_Init();
@@ -387,6 +421,7 @@ int main() {
         current_uid.size = 0;
         println(&comm, _P("Reset RFID reader."));
         break;
+#if FEATURE_LCD
       case 'M':
         if (line_len >= 2 && lineBuffer.line()[1] - '0' < 2) {
           lcd.print(lineBuffer.line()[1] - '0', lineBuffer.line() + 2);
@@ -395,6 +430,11 @@ int main() {
           println(&comm, _P("E row number must be 0 or 1"));
         }
         break;
+#else
+      case 'L':
+        SetLED(&comm, lineBuffer.line());
+        break;
+#endif
       case 'N':
         ReceiveName(&comm, lineBuffer.line(), commands_seen_stat & 0xff);
         break;
