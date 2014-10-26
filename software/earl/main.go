@@ -13,6 +13,27 @@ import (
 	"flag"
 )
 
+// Interacting with the terminal. The terminal does send as well asynchronous
+// information, reflected in the 'Handler' interface below.
+type Terminal interface {
+	// Get the name of the terminal.
+	GetTerminalName() string;
+
+	// Show the LED color. String contains a string with a combination of
+	// characters 'R', 'G', 'B'. So ShowColor("RG") would show yellow for
+	// instance. Empty string: LEDs off.
+	ShowColor(colors string);
+
+	// Buzz the speaker. Tone code can be 'H' or 'L' for high or low
+	// frequency (TODO: that should probably be some enum);
+	// "duration_ms" does this for the given duration.
+	BuzzSpeaker(toneCode string, duration_ms int);
+
+	// Write to the LCD. The "row" is the row to write to (starting with
+	// 0). The "text" is the line to be written.
+	WriteLCD(row int, text string) bool
+}
+
 // Callback interface to be implemented to receive events generated
 // by terminals.
 // Each method call should return quickly; if you need to do something
@@ -21,7 +42,7 @@ type Handler interface {
 	// Initialize. This is called once in the beginning and gets the
 	// TerminalStub connected to the terminal. This allows to trigger
 	// actions, such as writing to the LCD display.
-	Init(t *TerminalStub)
+	Init(t Terminal)
 
 	// HandleKeypress receives each character typed on the keypad.
 	// These are ASCII encoded bytes in the range '0'..'9' and '*' and '#'.

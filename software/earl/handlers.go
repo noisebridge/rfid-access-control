@@ -11,10 +11,10 @@ import (
 type DebugHandler struct {
 	m      [2]string
 	lineNo int
-	t      *TerminalStub
+	t      Terminal
 }
 
-func (h *DebugHandler) Init(t *TerminalStub) {
+func (h *DebugHandler) Init(t Terminal) {
 	h.t = t
 }
 
@@ -49,7 +49,7 @@ type AccessHandler struct {
 	currentCode      string
 	lastKeypressTime time.Time
 	auth             *Authenticator
-	t                *TerminalStub
+	t                Terminal
 	currentRFID      string
 }
 
@@ -59,7 +59,7 @@ func NewAccessHandler(a *Authenticator) *AccessHandler {
 	return this
 }
 
-func (h *AccessHandler) Init(t *TerminalStub) {
+func (h *AccessHandler) Init(t Terminal) {
 	h.t = t
 	h.initGPIO(7)
 	h.initGPIO(8)
