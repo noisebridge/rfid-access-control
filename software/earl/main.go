@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"github.com/tarm/goserial"
 	"io"
@@ -10,24 +11,23 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"flag"
 )
 
 // Interacting with the terminal. The terminal does send as well asynchronous
 // information, reflected in the 'Handler' interface below.
 type Terminal interface {
 	// Get the name of the terminal.
-	GetTerminalName() string;
+	GetTerminalName() string
 
 	// Show the LED color. String contains a string with a combination of
 	// characters 'R', 'G', 'B'. So ShowColor("RG") would show yellow for
 	// instance. Empty string: LEDs off.
-	ShowColor(colors string);
+	ShowColor(colors string)
 
 	// Buzz the speaker. Tone code can be 'H' or 'L' for high or low
 	// frequency (TODO: that should probably be some enum);
 	// "duration_ms" does this for the given duration.
-	BuzzSpeaker(toneCode string, duration_ms int);
+	BuzzSpeaker(toneCode string, duration_ms int)
 
 	// Write to the LCD. The "row" is the row to write to (starting with
 	// 0). The "text" is the line to be written.
@@ -93,7 +93,7 @@ func (t *TerminalStub) Run(handler Handler) {
 			default:
 				log.Print("Unexpected input: ", line)
 			}
-		case <-time.After(time.Second):
+		case <-time.After(500 * time.Millisecond):
 			handler.HandleTick()
 		}
 	}
@@ -179,7 +179,6 @@ func main() {
 	logFilePtr := flag.String("logfile", "", "The log file, default = stdout")
 	flag.Parse()
 
-
 	if len(flag.Args()) < 1 {
 		fmt.Fprintf(os.Stderr,
 			"usage: %s <serial-device>[:baudrate] [<serial-device>[:baudrate]...]\n",
@@ -188,7 +187,7 @@ func main() {
 	}
 
 	if *logFilePtr != "" {
-		logfile, err := os.OpenFile(*logFilePtr, os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+		logfile, err := os.OpenFile(*logFilePtr, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
 			log.Fatal("Error opening log file", err)
 		}
