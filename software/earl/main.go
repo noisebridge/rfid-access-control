@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Callback interface to be implemented to receive events generated
@@ -38,6 +39,7 @@ type TerminalStub struct {
 	serialFile      io.ReadWriteCloser
 	responseChannel chan string // Strings coming as response to requests
 	eventChannel    chan string // Strings representing input events.
+	name            string      // The name
 }
 
 func NewTerminalStub(port string, baudrate int) *TerminalStub {
@@ -48,8 +50,8 @@ func NewTerminalStub(port string, baudrate int) *TerminalStub {
 	if err != nil {
 		log.Fatal(err)
 	}
-	t.eventChannel = make(chan string, 2)
-	t.responseChannel = make(chan string)
+	t.eventChannel = make(chan string, 10)
+	t.responseChannel = make(chan string, 10)
 	go t.readLineLoop()
 	return t
 }
@@ -57,29 +59,37 @@ func NewTerminalStub(port string, baudrate int) *TerminalStub {
 func (t *TerminalStub) Run(handler Handler) {
 	handler.Init(t)
 	for {
-		line := <-t.eventChannel
-		switch {
-		case line[0] == 'I':
-			handler.HandleRFID(line[1:])
-		case line[0] == 'K':
-			handler.HandleKeypress(line[1])
-		case len(line) == 0:
+		select {
+		case line := <-t.eventChannel:
+			switch {
+			case line[0] == 'I':
+				handler.HandleRFID(line[1:])
+			case line[0] == 'K':
+				handler.HandleKeypress(line[1])
+			//case len(line) == 0:
+			//	handler.HandleTick()
+			default:
+				log.Print("Unexpected input: ", line)
+			}
+		case <-time.After(time.Second):
 			handler.HandleTick()
-		default:
-			log.Print("Unexpected input: ", line)
 		}
 	}
 }
 
 // Ask the terminal about its name.
-func (t *TerminalStub) GetTerminalName() string {
+func (t *TerminalStub) LoadTerminalName() {
 	t.writeLine("n")
 	result := <-t.responseChannel
 	success := (result[0] == 'n')
 	if !success {
 		log.Print("name receive problem:", result)
 	}
-	return result[1:]
+	t.name = strings.TrimSpace(result[1:])
+}
+
+func (t *TerminalStub) GetTerminalName() string {
+	return t.name
 }
 
 func (t *TerminalStub) WriteLCD(line int, text string) bool {
@@ -95,6 +105,12 @@ func (t *TerminalStub) WriteLCD(line int, text string) bool {
 //Tell the buzzer to buzz. If toneCode should be 'H' or 'L'
 func (t *TerminalStub) BuzzSpeaker(toneCode string, length int) {
 	t.writeLine(fmt.Sprintf("T%s%d", toneCode, length))
+	_ = <-t.responseChannel
+}
+
+func (t *TerminalStub) ShowColor(colors string) {
+	t.writeLine(fmt.Sprintf("L%s", colors))
+	_ = <-t.responseChannel
 }
 
 func (t *TerminalStub) readLineLoop() {
@@ -145,7 +161,7 @@ func main() {
 		return
 	}
 
-	authenticator := NewAuthenticator("", "/var/access/legacy_keycode.txt")
+	authenticator := NewAuthenticator("/var/access/users.csv", "/var/access/legacy_keycode.txt")
 	//a := NewAuthenticator("users.csv", "legacy.txt")
 	//log.Println("Code 99a9 has access?", a.AuthUser("99a9"))
 	//log.Println("Code a9f031 has access?", a.AuthUser("a9f031"))
@@ -158,7 +174,8 @@ func main() {
 
 		devicepath, baudrate := parseArg(arg)
 		t := NewTerminalStub(devicepath, baudrate)
-		t.GetTerminalName()
+		t.LoadTerminalName() // Need to spam this a few times to reset the device
+		t.LoadTerminalName()
 		log.Printf("Device '%s' connected to '%s'", arg, t.GetTerminalName())
 		handler := NewAccessHandler(authenticator)
 		t.Run(handler)

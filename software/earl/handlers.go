@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -48,6 +50,7 @@ type AccessHandler struct {
 	lastKeypressTime time.Time
 	auth             *Authenticator
 	t                *TerminalStub
+	currentRFID      string
 }
 
 func NewAccessHandler(a *Authenticator) *AccessHandler {
@@ -58,20 +61,44 @@ func NewAccessHandler(a *Authenticator) *AccessHandler {
 
 func (h *AccessHandler) Init(t *TerminalStub) {
 	h.t = t
+	h.initGPIO(7)
+	h.initGPIO(8)
+
+}
+
+func (h *AccessHandler) initGPIO(pin int) {
+	//Initialize the GPIO stuffs
+
+	//Create pin if it doesn't exist
+	f, err := os.OpenFile("/sys/class/gpio/export", os.O_WRONLY, 0444)
+	if err != nil {
+		log.Print("Creating Pin failed - continuing...", pin, err)
+	} else {
+		f.Write([]byte(fmt.Sprintf("%d\n", pin)))
+		f.Close()
+	}
+
+	// Put GPIO in Out mode
+	f, err = os.OpenFile(fmt.Sprintf("/sys/class/gpio/gpio%d/direction", pin), os.O_WRONLY, 0444)
+	if err != nil {
+		log.Print("Error! Could not configure GPIO", err)
+	}
+	f.Write([]byte("out\n"))
+	f.Close()
+
+	h.switchRelay(false, pin)
+
 }
 
 func (h *AccessHandler) HandleKeypress(b byte) {
-	kKeypadTimeout := 5 * time.Second
-	if h.currentCode != "" &&
-		time.Now().Sub(h.lastKeypressTime) > kKeypadTimeout {
-		//indicate timeout
-		h.currentCode = ""
-		h.t.BuzzSpeaker("L", 500)
-	}
+
 	h.lastKeypressTime = time.Now()
 	switch b {
 	case '#':
-		h.checkPinAccess()
+		if h.currentCode != "" {
+			h.checkAccess(h.currentCode)
+			h.currentCode = ""
+		}
 	case '*':
 		h.currentCode = "" // reset
 	default:
@@ -80,18 +107,49 @@ func (h *AccessHandler) HandleKeypress(b byte) {
 }
 
 func (h *AccessHandler) HandleRFID(rfid string) {
+	//Split the RFID
+	rfid = strings.TrimSpace(strings.Split(rfid, " ")[1])
+	//Crude debounce
+	if h.currentRFID == rfid {
+		log.Println("debounce")
+		return
+	}
+	h.currentRFID = rfid
+	h.checkAccess(rfid)
+}
+
+func (h *AccessHandler) Open(t Target) {
+	if t == TARGET_DOWNSTAIRS {
+		h.switchRelay(true, 7)
+		time.Sleep(2 * time.Second)
+		h.switchRelay(false, 7)
+	}
 }
 
 func (h *AccessHandler) HandleTick() {
+	h.currentRFID = ""
+
+	kKeypadTimeout := 30 * time.Second
+	if time.Now().Sub(h.lastKeypressTime) > kKeypadTimeout && h.currentCode != "" {
+		//indicate timeout
+		h.currentCode = ""
+		h.t.BuzzSpeaker("L", 500)
+	}
 }
 
-func (h *AccessHandler) switchRelay(switch_on bool) {
+func (h *AccessHandler) switchRelay(switch_on bool, pin int) {
 	// TODO(hzeller)
 	// Hacky for now, this needs to be handled somewhere else. We always
 	// use pin 7 for now.
-	f, err := os.OpenFile("/sys/class/gpio/gpio7/value", os.O_WRONLY, 0444)
+
+	if pin != 7 && pin != 8 {
+		log.Fatal("You suck - pin 7 or 8")
+	}
+
+	gpioFile := fmt.Sprintf("/sys/class/gpio/gpio%d/value", pin)
+	f, err := os.OpenFile(gpioFile, os.O_WRONLY, 0444)
 	if err != nil {
-		log.Print("Error while reading user file", err)
+		log.Print("Error! Could not activate relay", err)
 		return
 	}
 	if switch_on {
@@ -102,16 +160,19 @@ func (h *AccessHandler) switchRelay(switch_on bool) {
 	f.Close()
 }
 
-func (h *AccessHandler) checkPinAccess() {
-	log.Print("Got pin code")
-	if h.auth.AuthUser(h.currentCode, TARGET_DOWNSTAIRS) {
+func (h *AccessHandler) checkAccess(code string) {
+	target := Target(h.t.GetTerminalName())
+	if h.auth.AuthUser(code, target) {
 		log.Print("Open gate.")
-		h.switchRelay(true)
+		h.t.ShowColor("G")
 		h.t.BuzzSpeaker("H", 500)
-		time.Sleep(2 * time.Second)
-		h.switchRelay(false)
+		h.Open(target)
+		h.t.ShowColor("")
 	} else {
-		log.Print("Invalid code.")
+		log.Print("Invalid code ", code)
+		h.t.ShowColor("R")
+		h.t.BuzzSpeaker("L", 200)
+		time.Sleep(500)
+		h.t.ShowColor("")
 	}
-	h.currentCode = ""
 }

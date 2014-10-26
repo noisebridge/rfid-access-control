@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 	//"errors"
 )
@@ -41,7 +42,6 @@ type Authenticator struct {
 	legacyCodeFilename string
 	lastChange         time.Time // last file timestamp we know; reload if file is newer
 	validUsers         map[string]*User
-	legacyCodes        map[string]bool
 }
 
 func NewAuthenticator(userFilename string, legacyCodeFilename string) *Authenticator {
@@ -56,7 +56,6 @@ func NewAuthenticator(userFilename string, legacyCodeFilename string) *Authentic
 	a.legacyCodeFilename = legacyCodeFilename
 
 	a.validUsers = make(map[string]*User)
-	a.legacyCodes = make(map[string]bool)
 	a.readLegacyFile()
 	a.readUserFile()
 	return a
@@ -125,10 +124,15 @@ func (a *Authenticator) readUserFile() {
 		if len(line) < 3 {
 			log.Println("Skipping short line", line)
 		}
+		//comment
+		if strings.TrimSpace(line[0])[0] == '#' {
+			continue
+		}
 		u := User{Name: line[0], UserLevel: Level(line[1]), Codes: line[2:]}
 		log.Println("Got a new user", u)
 
 		for _, code := range u.Codes {
+			log.Println(code)
 			a.validUsers[code] = &u
 		}
 	}
@@ -138,6 +142,7 @@ func (a *Authenticator) readUserFile() {
 func (a *Authenticator) AuthUser(code string, target Target) bool {
 	u, ok := a.validUsers[code]
 	if !ok {
+		log.Println("code bad", code)
 		return false
 	}
 
