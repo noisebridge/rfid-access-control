@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"flag"
 )
 
 // Callback interface to be implemented to receive events generated
@@ -154,11 +155,24 @@ func parseArg(arg string) (devicepath string, baudrate int) {
 }
 
 func main() {
-	if len(os.Args) <= 1 {
+	logFilePtr := flag.String("logfile", "", "The log file, default = stdout")
+	flag.Parse()
+
+
+	if len(flag.Args()) < 1 {
 		fmt.Fprintf(os.Stderr,
 			"usage: %s <serial-device>[:baudrate] [<serial-device>[:baudrate]...]\n",
 			os.Args[0])
 		return
+	}
+
+	if *logFilePtr != "" {
+		logfile, err := os.OpenFile(*logFilePtr, os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+		if err != nil {
+			log.Fatal("Error opening log file", err)
+		}
+		defer logfile.Close()
+		log.SetOutput(logfile)
 	}
 
 	authenticator := NewAuthenticator("/var/access/users.csv", "/var/access/legacy_keycode.txt")
@@ -167,10 +181,7 @@ func main() {
 	//log.Println("Code a9f031 has access?", a.AuthUser("a9f031"))
 	//return;
 
-	for i, arg := range os.Args {
-		if i == 0 {
-			continue
-		}
+	for _, arg := range flag.Args() {
 
 		devicepath, baudrate := parseArg(arg)
 		t := NewTerminalStub(devicepath, baudrate)
