@@ -281,13 +281,13 @@ static void ReceiveName(SerialCom *com,
   }
 }
 
-static void OutputTone(SerialCom *com, const char *line, ToneGen *tonegen) {
+static void OutputTone(SerialCom *com, const char *line) {
   uint16_t duration = parseDec(line + 2);
   if (duration == 0) duration = 250;
   if (line[1] == 'H' || line[1] == 'h') {
-    tonegen->Tone(ToneGen::hz_to_divider(1200), Clock::ms_to_cycles(duration));
+    ToneGen::Tone(ToneGen::hz_to_divider(1200), Clock::ms_to_cycles(duration));
   } else {
-    tonegen->Tone(ToneGen::hz_to_divider(300), Clock::ms_to_cycles(duration));
+    ToneGen::Tone(ToneGen::hz_to_divider(300), Clock::ms_to_cycles(duration));
   }
   println(com, _P("T ok"));
 }
@@ -353,14 +353,13 @@ static void SendUid(const MFRC522::Uid &uid, SerialCom *out) {
   println(out);
 }
 
-static void SendKeypadCharIfAvailable(char keypad_char,
-                                      SerialCom *out, ToneGen *tone) {
+static void SendKeypadCharIfAvailable(char keypad_char, SerialCom *out) {
   if (!keypad_char) return;
   out->write('K');
   out->write(keypad_char);
   println(out);
   if (GetFlag(&ee_data.flag_keyboard_tone)) {
-    tone->Tone(ToneGen::hz_to_divider(1000), Clock::ms_to_cycles(30));
+    ToneGen::Tone(ToneGen::hz_to_divider(1000), Clock::ms_to_cycles(30));
   }
 }
 
@@ -377,7 +376,7 @@ int main() {
 
   Clock::init();
 
-  ToneGen tone_generator;
+  ToneGen::Init();
   KeyPad keypad;
 
 #if FEATURE_LCD
@@ -444,7 +443,7 @@ int main() {
         break;
 #endif
       case 'T':
-        OutputTone(&comm, lineBuffer.line(), &tone_generator);
+        OutputTone(&comm, lineBuffer.line());
         break;
       case 'F':
         SetFlagCommand(&comm, lineBuffer.line());
@@ -474,7 +473,7 @@ int main() {
     if (comm.read_available())
       continue;
 
-    SendKeypadCharIfAvailable(keypad.ReadKeypad(), &comm, &tone_generator);
+    SendKeypadCharIfAvailable(keypad.ReadKeypad(), &comm);
 
     // ... or some new card found.
     if (!card_reader.PICC_IsNewCardPresent())

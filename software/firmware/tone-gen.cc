@@ -10,7 +10,7 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
-ToneGen::ToneGen() {
+void ToneGen::Init() {
     TONE_GEN_OUT_DATADIR |= TONE_GEN_OUT_BIT;
     TCCR2= (1<<CS22) | (1<<CS21) | (1<<CS20)   // clk/1024
       | (1<<WGM21);                // OCR2 compare.
@@ -20,7 +20,7 @@ static volatile Clock::cycle_t wait_time_;
 static volatile Clock::cycle_t start_time_;
 
 // The pins for output compare are already in other good use (SPI), so we need
-// to manually toggle the output of a separate pin.
+// to manually toggle the output of another chosen pin.
 ISR(TIMER2_COMP_vect) {
   if (Clock::now() - start_time_ < wait_time_) {
     TONE_GEN_OUT_PORT ^= TONE_GEN_OUT_BIT;
@@ -31,9 +31,7 @@ ISR(TIMER2_COMP_vect) {
 }
 
 void ToneGen::Tone(uint8_t divider, Clock::cycle_t duration_cycles) {
-  OCR2 = divider;
   wait_time_ = duration_cycles;
   start_time_ = Clock::now();
-  TIMSK |= (1<<OCIE2);   // switch on interrupt
+  ToneOn(divider);
 }
-
