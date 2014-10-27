@@ -198,7 +198,6 @@ func main() {
 	authenticator := NewAuthenticator("/var/access/users.csv", "/var/access/legacy_keycode.txt")
 
 	for _, arg := range flag.Args() {
-
 		devicepath, baudrate := parseArg(arg)
 		t := NewTerminalStub(devicepath, baudrate)
 		t.LoadTerminalName() // Need to spam this a few times to reset the device
@@ -214,6 +213,7 @@ func main() {
 		default:
 			log.Printf("No Handler for '%s'", t.GetTerminalName())
 		}
+
 		if handler != nil {
 			t.Run(handler)
 		}
