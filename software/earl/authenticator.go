@@ -22,8 +22,6 @@ const (
 	LEVEL_MEMBER = "member"
 )
 
-type Target string
-
 const (
 	TARGET_DOWNSTAIRS = "gate"
 	TARGET_UPSTAIRS   = "door"

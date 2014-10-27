@@ -57,6 +57,12 @@ type Handler interface {
 	HandleTick()
 }
 
+// Actions as result of the authentication decisions.
+type Target string // TODO: find better name
+type DoorActions interface {
+	OpenDoor(which Target)
+}
+
 type TerminalStub struct {
 	serialFile      io.ReadWriteCloser
 	responseChannel chan string // Strings coming as response to requests
@@ -138,8 +144,6 @@ func (t *TerminalStub) ShowColor(colors string) {
 func (t *TerminalStub) readLineLoop() {
 	reader := bufio.NewReader(t.serialFile)
 	for {
-		// TODO: select with 500ms timeout. on timeout, send
-		// empty line to event, otherwise do readline.
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			log.Print("reading input:", err)
@@ -196,6 +200,7 @@ func main() {
 	}
 
 	authenticator := NewAuthenticator("/var/access/users.csv", "/var/access/legacy_keycode.txt")
+	doorActions := new(GPIOActions)
 
 	for _, arg := range flag.Args() {
 		devicepath, baudrate := parseArg(arg)
@@ -203,13 +208,15 @@ func main() {
 		t.LoadTerminalName() // Need to spam this a few times to reset the device
 		t.LoadTerminalName()
 		log.Printf("Device '%s' connected to '%s'", arg, t.GetTerminalName())
-		// Each terminal requires a different Handler to deal with.
+		// Each terminal might have a different Handler to deal with.
 		// They are dispatched by name, so that it doesn't matter which
 		// serial interface they are connected to.
 		var handler Handler
 		switch t.GetTerminalName() {
 		case "gate":
-			handler = NewAccessHandler(authenticator)
+		case "upstairs":
+			handler = NewAccessHandler(authenticator, doorActions)
+
 		default:
 			log.Printf("No Handler for '%s'", t.GetTerminalName())
 		}
