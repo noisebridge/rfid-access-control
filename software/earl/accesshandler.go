@@ -11,12 +11,12 @@ import (
 type AccessHandler struct {
 	currentCode      string
 	lastKeypressTime time.Time
-	auth             *Authenticator
+	auth             Authenticator
 	t                Terminal
 	currentRFID      string
 }
 
-func NewAccessHandler(a *Authenticator) *AccessHandler {
+func NewAccessHandler(a Authenticator) *AccessHandler {
 	this := new(AccessHandler)
 	this.auth = a
 	return this
@@ -26,7 +26,6 @@ func (h *AccessHandler) Init(t Terminal) {
 	h.t = t
 	h.initGPIO(7)
 	h.initGPIO(8)
-
 }
 
 func (h *AccessHandler) initGPIO(pin int) {
@@ -82,7 +81,7 @@ func (h *AccessHandler) HandleRFID(rfid string) {
 }
 
 func (h *AccessHandler) Open(t Target) {
-	if t == TARGET_DOWNSTAIRS {
+	if t == TargetDownstairs {
 		h.switchRelay(true, 7)
 		time.Sleep(2 * time.Second)
 		h.switchRelay(false, 7)

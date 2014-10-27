@@ -195,7 +195,7 @@ func main() {
 		log.SetOutput(logfile)
 	}
 
-	authenticator := NewAuthenticator("/var/access/users.csv", "/var/access/legacy_keycode.txt")
+	authenticator := NewFileBasedAuthenticator("/var/access/users.csv", "/var/access/legacy_keycode.txt")
 
 	for _, arg := range flag.Args() {
 		devicepath, baudrate := parseArg(arg)
