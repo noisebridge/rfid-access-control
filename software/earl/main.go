@@ -26,8 +26,8 @@ type Terminal interface {
 
 	// Buzz the speaker. Tone code can be 'H' or 'L' for high or low
 	// frequency (TODO: that should probably be some enum);
-	// "duration_ms" does this for the given duration.
-	BuzzSpeaker(toneCode string, duration_ms int)
+	// "duration" does this for the given duration.
+	BuzzSpeaker(toneCode string, duration time.Duration)
 
 	// Write to the LCD. The "row" is the row to write to (starting with
 	// 0). The "text" is the line to be written.
@@ -125,8 +125,8 @@ func (t *TerminalStub) WriteLCD(line int, text string) bool {
 }
 
 //Tell the buzzer to buzz. If toneCode should be 'H' or 'L'
-func (t *TerminalStub) BuzzSpeaker(toneCode string, length int) {
-	t.writeLine(fmt.Sprintf("T%s%d", toneCode, length))
+func (t *TerminalStub) BuzzSpeaker(toneCode string, duration time.Duration) {
+	t.writeLine(fmt.Sprintf("T%s%d", toneCode, int64(duration/time.Millisecond)))
 	_ = <-t.responseChannel
 }
 
