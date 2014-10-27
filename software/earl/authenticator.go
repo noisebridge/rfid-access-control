@@ -28,7 +28,7 @@ const (
 	TargetDownstairs = "gate"
 	TargetUpstairs   = "door"
 	// Someday we'll have the network closet locked down
-	//TARGET_NETWORK = "closet"
+	//TargetNetwork = "closet"
 )
 
 type User struct {
