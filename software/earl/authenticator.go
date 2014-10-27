@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"strings"
 	"time"
-	//"errors"
 )
 
 var local *time.Location
@@ -17,7 +16,7 @@ var local *time.Location
 type Level string
 
 const (
-	LevelLegacy = Level("legacy")
+	LevelLegacy = Level("legacy") // Legacy gate
 	LevelUser   = Level("user")
 	LevelMember = Level("member")
 )
@@ -88,7 +87,6 @@ func (a *FileBasedAuthenticator) readLegacyFile() {
 		u := User{Name: code, UserLevel: LevelLegacy, Codes: matches[1:]}
 		a.validUsers[code] = &u
 	}
-
 }
 
 //
@@ -141,7 +139,7 @@ func (a *FileBasedAuthenticator) AuthUser(code string, target Target) bool {
 		return false
 	}
 
-	return a.LevelHasAccess(u.UserLevel, target)
+	return a.levelHasAccess(u.UserLevel, target)
 }
 
 // Certain levels only have access during the daytime
@@ -151,20 +149,16 @@ func (a *FileBasedAuthenticator) isDaytime() bool {
 	now = now.In(local)
 	hour, _, _ := now.Clock()
 	return hour >= 10 && hour < 22
-
 }
 
-func (a *FileBasedAuthenticator) LevelHasAccess(level Level, target Target) bool {
-	now := time.Now()
-
-	now = now.In(local)
-	// Members have access
-	if level == LevelMember {
-		return true
-	} else if level == LevelUser {
+func (a *FileBasedAuthenticator) levelHasAccess(level Level, target Target) bool {
+	switch level {
+	case LevelMember:
+		return true // Members always have access.
+	case LevelUser:
 		return a.isDaytime()
-	} else if level == LevelLegacy {
-		return target == TargetDownstairs && a.isDaytime()
+	case LevelLegacy:
+		return a.isDaytime() && target == TargetDownstairs
 	}
 
 	return false
