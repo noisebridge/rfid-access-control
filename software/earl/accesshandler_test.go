@@ -120,3 +120,7 @@ func TestAccessCode(t *testing.T) {
 	term.expectBuzz(Buzz{"H", 500})
 	doorActions.expectOpened(Target("mock"))
 }
+
+// test ideas:
+//  - wrong code: buzz low and red light
+//  - too short code: don't buzz

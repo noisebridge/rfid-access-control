@@ -7,27 +7,31 @@ import (
 )
 
 type AccessHandler struct {
-	currentCode      string
-	lastKeypressTime time.Time
-	auth             Authenticator
-	t                Terminal
-	doorActions      DoorActions
-	currentRFID      string
-	lastCurrentRFID  time.Time
-	clock            Clock
+	// Backend services
+	auth        Authenticator
+	doorActions DoorActions
+	clock       Clock
+
+	t Terminal // Our terminal we can do operations on
+
+	// Current state
+	currentCode      string    // PIN typed so far on keypad
+	lastKeypressTime time.Time // Last touch of key to reset
+	currentRFID      string    // Current RFID we received
+	lastCurrentRFID  time.Time // Time we have seen the current RFID
 }
 
 const (
-	kRFIDRepeatDebounce = 2 * time.Second  // RFID is sent while close. Pace down.
+	kRFIDRepeatDebounce = 2 * time.Second  // RFID is repeated. Pace down.
 	kKeypadTimeout      = 30 * time.Second // Timeout keypad user gone.
+	kMinimumCodeLen     = 4                // Mostly for PINs; RFID are > 8
 )
 
 func NewAccessHandler(a Authenticator, actions DoorActions) *AccessHandler {
-	this := &AccessHandler{
+	return &AccessHandler{
 		auth:        a,
 		doorActions: actions,
 		clock:       RealClock{}}
-	return this
 }
 
 func (h *AccessHandler) Init(t Terminal) {
@@ -78,6 +82,11 @@ func (h *AccessHandler) HandleTick() {
 }
 
 func (h *AccessHandler) checkAccess(code string) {
+	// Don't bother with too short codes. In particular, don't buzz
+	// or flash lights to not to seem overly interactive.
+	if len(code) < kMinimumCodeLen {
+		return
+	}
 	target := Target(h.t.GetTerminalName())
 	if h.auth.AuthUser(code, target) {
 		log.Print("Open gate.")
