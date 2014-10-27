@@ -15,12 +15,12 @@ func (g *GPIOActions) Init() {
 	g.initGPIO(8)
 }
 
-func (h *GPIOActions) OpenDoor(which Target) {
+func (g *GPIOActions) OpenDoor(which Target) {
 	switch which {
 	case TargetDownstairs:
-		h.switchRelay(true, 7)
+		g.switchRelay(true, 7)
 		time.Sleep(2 * time.Second)
-		h.switchRelay(false, 7)
+		g.switchRelay(false, 7)
 
 	default:
 		log.Printf("Dude, don't know how to open '%s'", which)

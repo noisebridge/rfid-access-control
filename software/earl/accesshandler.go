@@ -13,7 +13,13 @@ type AccessHandler struct {
 	t                Terminal
 	doorActions      DoorActions
 	currentRFID      string
+	lastCurrentRFID  time.Time
 }
+
+const (
+	kRFIDRepeatDebounce = 2 * time.Second  // RFID is sent while close. Pace down.
+	kKeypadTimeout      = 30 * time.Second // Timeout keypad user gone.
+)
 
 func NewAccessHandler(a Authenticator, actions DoorActions) *AccessHandler {
 	this := new(AccessHandler)
@@ -42,21 +48,25 @@ func (h *AccessHandler) HandleKeypress(b byte) {
 }
 
 func (h *AccessHandler) HandleRFID(rfid string) {
-	//Split the RFID
+	// The ID comes as "<length> <code>". Get the code.
 	rfid = strings.TrimSpace(strings.Split(rfid, " ")[1])
-	//Crude debounce
+
 	if h.currentRFID == rfid {
 		log.Println("debounce")
 		return
+	} else {
+		h.currentRFID = rfid
+		h.lastCurrentRFID = time.Now()
 	}
-	h.currentRFID = rfid
 	h.checkAccess(rfid)
 }
 
 func (h *AccessHandler) HandleTick() {
-	h.currentRFID = ""
+	if time.Now().Sub(h.lastCurrentRFID) > kRFIDRepeatDebounce {
+		h.currentRFID = ""
+	}
 
-	kKeypadTimeout := 30 * time.Second
+	// Keypad got a partial code, but never finished with '#'
 	if time.Now().Sub(h.lastKeypressTime) > kKeypadTimeout &&
 		h.currentCode != "" {
 		// indicate timeout
