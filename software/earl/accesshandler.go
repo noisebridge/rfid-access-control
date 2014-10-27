@@ -13,12 +13,14 @@ type AccessHandler struct {
 	t                Terminal
 	doorActions      DoorActions
 	currentRFID      string
+	clock            Clock
 }
 
 func NewAccessHandler(a Authenticator, actions DoorActions) *AccessHandler {
-	this := new(AccessHandler)
-	this.auth = a
-	this.doorActions = actions
+	this := &AccessHandler{
+		auth:        a,
+		doorActions: actions,
+		clock:       RealClock{}}
 	return this
 }
 
@@ -27,7 +29,7 @@ func (h *AccessHandler) Init(t Terminal) {
 }
 
 func (h *AccessHandler) HandleKeypress(b byte) {
-	h.lastKeypressTime = time.Now()
+	h.lastKeypressTime = h.clock.Now()
 	switch b {
 	case '#':
 		if h.currentCode != "" {
@@ -57,7 +59,7 @@ func (h *AccessHandler) HandleTick() {
 	h.currentRFID = ""
 
 	kKeypadTimeout := 30 * time.Second
-	if time.Now().Sub(h.lastKeypressTime) > kKeypadTimeout &&
+	if h.clock.Now().Sub(h.lastKeypressTime) > kKeypadTimeout &&
 		h.currentCode != "" {
 		// indicate timeout
 		h.currentCode = ""
