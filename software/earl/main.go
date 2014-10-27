@@ -196,10 +196,6 @@ func main() {
 	}
 
 	authenticator := NewAuthenticator("/var/access/users.csv", "/var/access/legacy_keycode.txt")
-	//a := NewAuthenticator("users.csv", "legacy.txt")
-	//log.Println("Code 99a9 has access?", a.AuthUser("99a9"))
-	//log.Println("Code a9f031 has access?", a.AuthUser("a9f031"))
-	//return;
 
 	for _, arg := range flag.Args() {
 
@@ -208,7 +204,18 @@ func main() {
 		t.LoadTerminalName() // Need to spam this a few times to reset the device
 		t.LoadTerminalName()
 		log.Printf("Device '%s' connected to '%s'", arg, t.GetTerminalName())
-		handler := NewAccessHandler(authenticator)
-		t.Run(handler)
+		// Each terminal requires a different Handler to deal with.
+		// They are dispatched by name, so that it doesn't matter which
+		// serial interface they are connected to.
+		var handler Handler
+		switch t.GetTerminalName() {
+		case "gate":
+			handler = NewAccessHandler(authenticator)
+		default:
+			log.Printf("No Handler for '%s'", t.GetTerminalName())
+		}
+		if handler != nil {
+			t.Run(handler)
+		}
 	}
 }
