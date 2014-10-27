@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// An implementation of the DoorActions interface
 type GPIOActions struct {
 }
 

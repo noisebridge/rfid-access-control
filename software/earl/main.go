@@ -77,7 +77,7 @@ type TerminalStub struct {
 	serialFile      io.ReadWriteCloser
 	responseChannel chan string // Strings coming as response to requests
 	eventChannel    chan string // Strings representing input events.
-	name            string      // The name
+	name            string      // The name of the terminal e.g. 'upstairs'
 }
 
 func NewTerminalStub(port string, baudrate int) *TerminalStub {
@@ -116,7 +116,7 @@ func (t *TerminalStub) Run(handler Handler) {
 }
 
 // Ask the terminal about its name.
-func (t *TerminalStub) LoadTerminalName() {
+func (t *TerminalStub) loadTerminalName() {
 	t.writeLine("n")
 	result := <-t.responseChannel
 	success := (result[0] == 'n')
@@ -214,8 +214,8 @@ func main() {
 	for _, arg := range flag.Args() {
 		devicepath, baudrate := parseArg(arg)
 		t := NewTerminalStub(devicepath, baudrate)
-		t.LoadTerminalName() // Need to spam this a few times to reset the device
-		t.LoadTerminalName()
+		t.loadTerminalName() // Need to spam this a few times to reset the device
+		t.loadTerminalName()
 		log.Printf("Device '%s' connected to '%s'", arg, t.GetTerminalName())
 		// Terminals are dispatched by name. There might be different handlers
 		// for the name e.g. handlers that deal with reading codes and opening
