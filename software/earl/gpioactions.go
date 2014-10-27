@@ -17,10 +17,13 @@ func (g *GPIOActions) Init() {
 
 func (h *GPIOActions) OpenDoor(which Target) {
 	switch which {
-	case TARGET_DOWNSTAIRS:
+	case TargetDownstairs:
 		h.switchRelay(true, 7)
 		time.Sleep(2 * time.Second)
 		h.switchRelay(false, 7)
+
+	default:
+		log.Printf("Dude, don't know how to open '%s'", which)
 	}
 }
 

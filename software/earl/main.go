@@ -13,6 +13,17 @@ import (
 	"time"
 )
 
+// Each access point has their own name. The terminals can identify
+// by that name.
+type Target string // TODO: find better name for this type
+const (
+	TargetDownstairs = Target("gate")
+	TargetUpstairs   = Target("door")
+	TargetElevator   = Target("elevator")
+	// Someday we'll have the network closet locked down
+	//TargetNetwork = "closet"
+)
+
 // Interacting with the terminal. The terminal does send as well asynchronous
 // information, reflected in the 'Handler' interface below.
 type Terminal interface {
@@ -58,7 +69,6 @@ type Handler interface {
 }
 
 // Actions as result of the authentication decisions.
-type Target string // TODO: find better name
 type DoorActions interface {
 	OpenDoor(which Target)
 }
@@ -199,26 +209,26 @@ func main() {
 		log.SetOutput(logfile)
 	}
 
-	authenticator := NewAuthenticator("/var/access/users.csv", "/var/access/legacy_keycode.txt")
+	authenticator := NewFileBasedAuthenticator("/var/access/users.csv", "/var/access/legacy_keycode.txt")
 	doorActions := new(GPIOActions)
-
 	for _, arg := range flag.Args() {
 		devicepath, baudrate := parseArg(arg)
 		t := NewTerminalStub(devicepath, baudrate)
 		t.LoadTerminalName() // Need to spam this a few times to reset the device
 		t.LoadTerminalName()
 		log.Printf("Device '%s' connected to '%s'", arg, t.GetTerminalName())
-		// Each terminal might have a different Handler to deal with.
-		// They are dispatched by name, so that it doesn't matter which
-		// serial interface they are connected to.
+		// Terminals are dispatched by name. There might be different handlers
+		// for the name e.g. handlers that deal with reading codes and opening
+		// doors, but also the UI handler dealing with adding new users.
 		var handler Handler
-		switch t.GetTerminalName() {
-		case "gate":
-		case "upstairs":
+		switch Target(t.GetTerminalName()) {
+		case TargetDownstairs:
+		case TargetUpstairs:
+		case TargetElevator:
 			handler = NewAccessHandler(authenticator, doorActions)
 
 		default:
-			log.Printf("No Handler for '%s'", t.GetTerminalName())
+			log.Printf("Don't know how to deal with terminal '%s'", t.GetTerminalName())
 		}
 
 		if handler != nil {

@@ -17,16 +17,9 @@ var local *time.Location
 type Level string
 
 const (
-	LEVEL_LEGACY = "legacy"
-	LEVEL_USER   = "user"
-	LEVEL_MEMBER = "member"
-)
-
-const (
-	TARGET_DOWNSTAIRS = "gate"
-	TARGET_UPSTAIRS   = "door"
-	// Someday we'll have the network closet locked down
-	//TARGET_NETWORK = "closet"
+	LevelLegacy = Level("legacy")
+	LevelUser   = Level("user")
+	LevelMember = Level("member")
 )
 
 type User struct {
@@ -35,21 +28,25 @@ type User struct {
 	Codes     []string
 }
 
-type Authenticator struct {
+type Authenticator interface {
+	AuthUser(code string, target Target) bool
+}
+
+type FileBasedAuthenticator struct {
 	userFilename       string
 	legacyCodeFilename string
 	lastChange         time.Time // last file timestamp we know; reload if file is newer
 	validUsers         map[string]*User
 }
 
-func NewAuthenticator(userFilename string, legacyCodeFilename string) *Authenticator {
+func NewFileBasedAuthenticator(userFilename string, legacyCodeFilename string) *FileBasedAuthenticator {
 	asdf, err := time.LoadLocation("America/Los_Angeles")
 	local = asdf
 	if err != nil {
 		log.Fatal("Time zone death failure bad", err)
 	}
 
-	a := new(Authenticator)
+	a := new(FileBasedAuthenticator)
 	a.userFilename = userFilename
 	a.legacyCodeFilename = legacyCodeFilename
 
@@ -59,7 +56,7 @@ func NewAuthenticator(userFilename string, legacyCodeFilename string) *Authentic
 	return a
 }
 
-func (a *Authenticator) readLegacyFile() {
+func (a *FileBasedAuthenticator) readLegacyFile() {
 	if a.legacyCodeFilename == "" {
 		log.Println("Legacy key file not provided")
 		return
@@ -88,7 +85,7 @@ func (a *Authenticator) readLegacyFile() {
 		code := matches[1]
 		log.Printf("Loaded legacy code %q\n", code)
 
-		u := User{Name: code, UserLevel: LEVEL_LEGACY, Codes: matches[1:]}
+		u := User{Name: code, UserLevel: LevelLegacy, Codes: matches[1:]}
 		a.validUsers[code] = &u
 	}
 
@@ -98,7 +95,7 @@ func (a *Authenticator) readLegacyFile() {
 //Read the user CSV file
 //
 //It is name, level, code[,code...]
-func (a *Authenticator) readUserFile() {
+func (a *FileBasedAuthenticator) readUserFile() {
 	if a.userFilename == "" {
 		log.Println("RFID-user file not provided")
 		return
@@ -137,7 +134,7 @@ func (a *Authenticator) readUserFile() {
 }
 
 // Check if access for a given code is granted to a given Target
-func (a *Authenticator) AuthUser(code string, target Target) bool {
+func (a *FileBasedAuthenticator) AuthUser(code string, target Target) bool {
 	u, ok := a.validUsers[code]
 	if !ok {
 		log.Println("code bad", code)
@@ -149,7 +146,7 @@ func (a *Authenticator) AuthUser(code string, target Target) bool {
 
 // Certain levels only have access during the daytime
 // This implements that logic, which is 10am - 10pm
-func (a *Authenticator) isDaytime() bool {
+func (a *FileBasedAuthenticator) isDaytime() bool {
 	now := time.Now()
 	now = now.In(local)
 	hour, _, _ := now.Clock()
@@ -157,17 +154,17 @@ func (a *Authenticator) isDaytime() bool {
 
 }
 
-func (a *Authenticator) LevelHasAccess(level Level, target Target) bool {
+func (a *FileBasedAuthenticator) LevelHasAccess(level Level, target Target) bool {
 	now := time.Now()
 
 	now = now.In(local)
 	// Members have access
-	if level == LEVEL_MEMBER {
+	if level == LevelMember {
 		return true
-	} else if level == LEVEL_USER {
+	} else if level == LevelUser {
 		return a.isDaytime()
-	} else if level == LEVEL_LEGACY {
-		return target == TARGET_DOWNSTAIRS && a.isDaytime()
+	} else if level == LevelLegacy {
+		return target == TargetDownstairs && a.isDaytime()
 	}
 
 	return false

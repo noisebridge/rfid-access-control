@@ -9,13 +9,13 @@ import (
 type AccessHandler struct {
 	currentCode      string
 	lastKeypressTime time.Time
-	auth             *Authenticator
+	auth             Authenticator
 	t                Terminal
 	doorActions      DoorActions
 	currentRFID      string
 }
 
-func NewAccessHandler(a *Authenticator, actions DoorActions) *AccessHandler {
+func NewAccessHandler(a Authenticator, actions DoorActions) *AccessHandler {
 	this := new(AccessHandler)
 	this.auth = a
 	this.doorActions = actions
