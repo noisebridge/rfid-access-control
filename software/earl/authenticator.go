@@ -163,7 +163,7 @@ func (a *Authenticator) LevelHasAccess(level Level, target Target) bool {
 	now := time.Now()
 
 	now = now.In(local)
-	//Members have access
+	// Members have access
 	if level == LEVEL_MEMBER {
 		return true
 	} else if level == LEVEL_USER {

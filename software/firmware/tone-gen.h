@@ -33,8 +33,9 @@ inline uint8_t hz_to_divider(uint16_t hz) {
   return (uint8_t) (F_CPU / 1024 / hz);
 }
 
-// Create tone for the given duration in cycles. The "divider" is best
-// determined from hz_to_divider().
+// Create tone for the given duration in cycles. The "divider" divides the
+// internal frequency to get the output. If you want get something related
+// to more understandable Hz, creaate this with hz_to_divider().
 inline void ToneOn(uint8_t divider) {
   OCR2 = divider;
   TIMSK |= (1<<OCIE2);   // switch on interrupt

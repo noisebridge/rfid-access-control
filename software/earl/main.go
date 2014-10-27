@@ -93,7 +93,7 @@ func (t *TerminalStub) Run(handler Handler) {
 			default:
 				log.Print("Unexpected input: ", line)
 			}
-		case <-time.After(time.Second):
+		case <-time.After(500 * time.Millisecond):
 			handler.HandleTick()
 		}
 	}

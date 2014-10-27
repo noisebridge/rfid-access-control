@@ -93,23 +93,24 @@ func (h *AccessHandler) HandleTick() {
 	h.currentRFID = ""
 
 	kKeypadTimeout := 30 * time.Second
-	if time.Now().Sub(h.lastKeypressTime) > kKeypadTimeout && h.currentCode != "" {
-		//indicate timeout
+	if time.Now().Sub(h.lastKeypressTime) > kKeypadTimeout &&
+		h.currentCode != "" {
+		// indicate timeout
 		h.currentCode = ""
 		h.t.BuzzSpeaker("L", 500)
 	}
 }
 
-func (h *AccessHandler) switchRelay(switch_on bool, pin int) {
+func (h *AccessHandler) switchRelay(switch_on bool, gpio_pin int) {
 	// TODO(hzeller)
 	// Hacky for now, this needs to be handled somewhere else. We always
-	// use pin 7 for now.
+	// use gpio_pin 7 for now.
 
-	if pin != 7 && pin != 8 {
-		log.Fatal("You suck - pin 7 or 8")
+	if gpio_pin != 7 && gpio_pin != 8 {
+		log.Fatal("You suck - gpio_pin 7 or 8")
 	}
 
-	gpioFile := fmt.Sprintf("/sys/class/gpio/gpio%d/value", pin)
+	gpioFile := fmt.Sprintf("/sys/class/gpio/gpio%d/value", gpio_pin)
 	f, err := os.OpenFile(gpioFile, os.O_WRONLY, 0444)
 	if err != nil {
 		log.Print("Error! Could not activate relay", err)
