@@ -47,7 +47,7 @@ func (u *UIControlHandler) backToIdle() {
 func (u *UIControlHandler) displayIdleScreen() {
 	// TODO: do something fancy every now and then, some animation..
 	now := time.Now()
-	u.t.WriteLCD(0, "Noisebridge")
+	u.t.WriteLCD(0, "      Noisebridge")
 	u.t.WriteLCD(1, now.Format("2006-01-02 [Mon] 15:04"))
 }
 
@@ -64,7 +64,7 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 	case ADD_WAIT_INPUT:
 		if key == '1' {
 			u.t.WriteLCD(0, "Read new user RFID")
-			u.t.WriteLCD(1, "(*) Cancel")
+			u.t.WriteLCD(1, "[*] Cancel")
 			u.setState(ADD_AWAIT_NEW_RFID, 30*time.Second)
 		}
 	}
@@ -78,20 +78,22 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 	case IDLE:
 		user := u.auth.FindUser(rfid)
 		if user == nil {
-			u.t.WriteLCD(1, "Unknown RFID")
+			u.t.WriteLCD(0, "      Unknown RFID")
+			u.t.WriteLCD(1, "Ask a member to register")
 		} else {
 			switch user.UserLevel {
 			case LevelLegacy:
+				// This should never happen. Display anyway.
 				u.t.WriteLCD(1, "Valid RFID to open Gate")
-				u.setState(DISPLAY_INFO_MESSAGE, 5*time.Second)
+				u.setState(DISPLAY_INFO_MESSAGE, 2*time.Second)
 			case LevelUser:
 				u.t.WriteLCD(1, "Hi there :) Good RFID!")
-				u.setState(DISPLAY_INFO_MESSAGE, 5*time.Second)
+				u.setState(DISPLAY_INFO_MESSAGE, 2*time.Second)
 			case LevelMember:
 				u.authUserCode = rfid
 				u.t.WriteLCD(0, fmt.Sprintf("Howdy %s",
 					user.Name))
-				u.t.WriteLCD(1, "(1) Add User (*) Cancel")
+				u.t.WriteLCD(1, "[1] Add User [*] Cancel")
 				u.setState(ADD_WAIT_INPUT, 5*time.Second)
 			}
 		}
