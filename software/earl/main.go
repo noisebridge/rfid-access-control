@@ -198,6 +198,8 @@ func main() {
 	userFileName := flag.String("users", "/var/access/users.csv", "User Authentication file.")
 	legacyFileName := flag.String("users-legacy", "/var/access/legacy_keycode.txt", "Legacy Gate-PIN file")
 	logFileName := flag.String("logfile", "", "The log file, default = stdout")
+	addNameOnConsole := flag.Bool("console-name", false, "Provide new-user name on console. Only works if tty attached to process")
+
 	flag.Parse()
 
 	if len(flag.Args()) < 1 {
@@ -236,7 +238,7 @@ func main() {
 			handler = NewAccessHandler(authenticator, doorActions)
 
 		case TargetControlUI:
-			handler = NewControlHandler(authenticator)
+			handler = NewControlHandler(authenticator, *addNameOnConsole)
 
 		default:
 			log.Printf("Don't know how to deal with terminal '%s'", t.GetTerminalName())

@@ -1,7 +1,13 @@
 package main
 
+// TODO
+//  - A single member can give a day's pass, 2 members a user
+//  - How to enter names for members ? For initiall mass-adding: on console
 import (
+	"bufio"
 	"fmt"
+	"log"
+	"os"
 	"strings"
 	"time"
 )
@@ -21,15 +27,21 @@ type UIControlHandler struct {
 
 	t Terminal
 
+	// Entering name on the console allows keyboard interaction when
+	// a new user is added to provide the name. This is mostly needed
+	// in our initial phase adding new users
+	enterNameConsole bool // Request name on console ?
+
 	authUserCode string // current active member code
 
 	state        UIState   // state of our state machine
 	stateTimeout time.Time // timeout of current state
 }
 
-func NewControlHandler(authenticator Authenticator) *UIControlHandler {
+func NewControlHandler(authenticator Authenticator, nameOnConsole bool) *UIControlHandler {
 	return &UIControlHandler{
-		auth: authenticator,
+		auth:             authenticator,
+		enterNameConsole: nameOnConsole,
 	}
 }
 
@@ -98,11 +110,27 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 			}
 		}
 	case ADD_AWAIT_NEW_RFID:
-		new_user := User{
-			Name:      "<from-ui>",
+		userName := "<via-lcd>"
+		// TODO: this manual input is likely not needed in the future.
+		// The members should have a name in the file (rest can be
+		// anonymous). So 'upgrading' someone in the future is probably
+		// easier by directly editing the CSV
+		if u.enterNameConsole {
+			u.t.WriteLCD(0, "Enter name on console")
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Printf("Name for %-8s: ", rfid)
+			text, _ := reader.ReadString('\n')
+			text = strings.TrimSpace(text)
+			if len(text) > 0 {
+				userName = text
+				log.Printf("Got name from console '%s'", text)
+			}
+		}
+		newUser := User{
+			Name:      userName,
 			UserLevel: LevelUser,
 			Codes:     []string{rfid}}
-		if u.auth.AddNewUser(u.authUserCode, new_user) {
+		if u.auth.AddNewUser(u.authUserCode, newUser) {
 			u.t.WriteLCD(0, "Success! User added.")
 		} else {
 			// TODO: make AddNewUser() return plaintext-error
