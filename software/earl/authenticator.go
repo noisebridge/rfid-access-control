@@ -237,9 +237,10 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 	writer := csv.NewWriter(f)
 	user.writeCSV(writer)
 	writer.Flush()
-	log.Println("AddNewUser(): success")
 	if writer.Error() != nil {
-		log.Println(writer.Error())
+		log.Println("AddNewUser(): ", writer.Error())
+	} else {
+		log.Println("AddNewUser(): success")
 	}
 	return writer.Error() == nil
 }
