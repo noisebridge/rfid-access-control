@@ -20,6 +20,7 @@ const (
 	TargetDownstairs = Target("gate")
 	TargetUpstairs   = Target("door")
 	TargetElevator   = Target("elevator")
+	TargetControlUI  = Target("control") // UI to add new users.
 	// Someday we'll have the network closet locked down
 	//TargetNetwork = "closet"
 )
@@ -42,7 +43,7 @@ type Terminal interface {
 
 	// Write to the LCD. The "row" is the row to write to (starting with
 	// 0). The "text" is the line to be written.
-	WriteLCD(row int, text string) bool
+	WriteLCD(row int, text string)
 }
 
 // Callback interface to be implemented to receive events generated
@@ -78,6 +79,7 @@ type TerminalStub struct {
 	responseChannel chan string // Strings coming as response to requests
 	eventChannel    chan string // Strings representing input events.
 	name            string      // The name of the terminal e.g. 'upstairs'
+	lastLCDContent  [2]string   // last content sent to lcd
 }
 
 func NewTerminalStub(port string, baudrate int) *TerminalStub {
@@ -104,8 +106,6 @@ func (t *TerminalStub) Run(handler Handler) {
 				handler.HandleRFID(line[1:])
 			case line[0] == 'K':
 				handler.HandleKeypress(line[1])
-			//case len(line) == 0:
-			//	handler.HandleTick()
 			default:
 				log.Print("Unexpected input: ", line)
 			}
@@ -130,14 +130,18 @@ func (t *TerminalStub) GetTerminalName() string {
 	return t.name
 }
 
-func (t *TerminalStub) WriteLCD(line int, text string) bool {
-	t.writeLine(fmt.Sprintf("M%d%s", line, text))
-	result := <-t.responseChannel
-	success := (result[0] == 'M')
-	if !success {
-		log.Print("LCD write error:", result)
+func (t *TerminalStub) WriteLCD(line int, text string) {
+	if line < 0 || line >= len(t.lastLCDContent) {
+		return
 	}
-	return success
+	// Only send line if it is different from what is shown already.
+	newContent := fmt.Sprintf("M%d%s", line, text)
+	if t.lastLCDContent[line] == newContent {
+		return
+	}
+	t.writeLine(newContent)
+	t.lastLCDContent[line] = newContent
+	_ = <-t.responseChannel
 }
 
 //Tell the buzzer to buzz. If toneCode should be 'H' or 'L'
@@ -229,6 +233,9 @@ func main() {
 		case TargetUpstairs:
 		case TargetElevator:
 			handler = NewAccessHandler(authenticator, doorActions)
+
+		case TargetControlUI:
+			handler = NewControlHandler(authenticator)
 
 		default:
 			log.Printf("Don't know how to deal with terminal '%s'", t.GetTerminalName())

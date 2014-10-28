@@ -58,9 +58,8 @@ func (term *MockTerminal) BuzzSpeaker(toneCode string, duration time.Duration) {
 	term.buzzes = append(term.buzzes, Buzz{toneCode, duration})
 }
 
-func (term *MockTerminal) WriteLCD(row int, text string) bool {
+func (term *MockTerminal) WriteLCD(row int, text string) {
 	term.lcd[row] = text
-	return true
 }
 
 func (term *MockTerminal) expectColor(color string) {
