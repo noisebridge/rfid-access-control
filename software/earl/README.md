@@ -69,9 +69,9 @@ Not all features are implemented yet. Features to be added are marked TBD.
          via one relay contact.
        - (_Done_) Upstairs door. Reads RFID. If match, upstairs gate is opened
          via other relay contact.
-       - (_TBD_) In-space terminal (probably inside next to the door). Has
-         keypad, RFID reader and LCD display. Provides simple way to add new
-         users, something like:
+       - (_Done_ (first version)) In-space terminal (probably inside next to
+         the door). Has keypad, RFID reader and LCD display. Provides simple
+         way to add new users, something like:
           1. show existing RFID card of 'deciding Noisebridge member'
           2. ask to add user
           3. present new RFID card.
