@@ -25,6 +25,8 @@ func (a *MockAuthenticator) AuthUser(code string, target Target) (ok bool) {
 	_, ok = a.allow[ACKey{code, target}]
 	return
 }
+func (a *MockAuthenticator) AddNewUser(authentication_user string, user User) bool { return false }
+func (a *MockAuthenticator) FindUser(code string) *User                            { return nil }
 
 type Buzz struct {
 	toneCode string

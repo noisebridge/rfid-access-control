@@ -1,5 +1,8 @@
 package main
 
+// TODO
+// add reloadIfChanged()
+
 import (
 	"bufio"
 	"encoding/csv"
@@ -8,6 +11,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -25,17 +29,34 @@ type User struct {
 	Name      string
 	UserLevel Level
 	Codes     []string
+	// creation time ?
+	// expire time ? (e.g. for one-day visitors with RFID or PIN-codes)
+	// Who was/where the authenticator(s) for this user ?
 }
 
 type Authenticator interface {
+	// Given a code, is the user allowed to access "target" ?
 	AuthUser(code string, target Target) bool
+
+	// Given the authenticator token (checked for memberness),
+	// add the given user.
+	// Updates the file
+	AddNewUser(authentication_code string, user User) bool
+
+	// Find a user for the given string. Returns a copy or 'nil' if the
+	// user doesn't exist.
+	FindUser(code string) *User
 }
 
 type FileBasedAuthenticator struct {
-	userFilename       string
-	legacyCodeFilename string
-	lastChange         time.Time // last file timestamp we know; reload if file is newer
-	validUsers         map[string]*User
+	userFilename string
+	// TODO: reload-if-changed by checking timestamp
+	legacyCodeFilename string // We load this once, but don't expect changes
+
+	// Map of codes to users. Quick way to look-up auth. Never use direclty,
+	// use findUserSynchronized() and addUserSynchronized() for locking.
+	validUsers     map[string]*User
+	validUsersLock sync.Mutex
 }
 
 func NewFileBasedAuthenticator(userFilename string, legacyCodeFilename string) *FileBasedAuthenticator {
@@ -53,6 +74,33 @@ func NewFileBasedAuthenticator(userFilename string, legacyCodeFilename string) *
 	a.readLegacyFile()
 	a.readUserFile()
 	return a
+}
+
+// Find user. Synchronizes map.
+func (a *FileBasedAuthenticator) findUserSynchronized(code string) *User {
+	a.validUsersLock.Lock()
+	defer a.validUsersLock.Unlock()
+	user, _ := a.validUsers[code]
+	return user
+}
+
+// Add user to the internal data structure.
+// Makes sure the data structure is synchronized.
+func (a *FileBasedAuthenticator) addUserSynchronized(user *User) bool {
+	a.validUsersLock.Lock()
+	defer a.validUsersLock.Unlock()
+	all_codes_unique := true
+	for _, code := range user.Codes {
+		existing_user_with_code := a.validUsers[code]
+		if existing_user_with_code == nil {
+			log.Printf("Internally store '%s'", code)
+			a.validUsers[code] = user
+		} else {
+			all_codes_unique = false
+			log.Printf("Ignoring multiple used code '%s'", code)
+		}
+	}
+	return all_codes_unique
 }
 
 func (a *FileBasedAuthenticator) readLegacyFile() {
@@ -85,14 +133,14 @@ func (a *FileBasedAuthenticator) readLegacyFile() {
 		log.Printf("Loaded legacy code %q\n", code)
 
 		u := User{Name: code, UserLevel: LevelLegacy, Codes: matches[1:]}
-		a.validUsers[code] = &u
+		a.addUserSynchronized(&u)
 	}
 }
 
 //
-//Read the user CSV file
+// Read the user CSV file
 //
-//It is name, level, code[,code...]
+// It is name, level, code[,code...]
 func (a *FileBasedAuthenticator) readUserFile() {
 	if a.userFilename == "" {
 		log.Println("RFID-user file not provided")
@@ -121,25 +169,76 @@ func (a *FileBasedAuthenticator) readUserFile() {
 		if strings.TrimSpace(line[0])[0] == '#' {
 			continue
 		}
+		// TODO: have a method on *User that reads/write a CSV - line ?
 		u := User{Name: line[0], UserLevel: Level(line[1]), Codes: line[2:]}
-		log.Println("Got a new user", u)
+		log.Println("Read a new user", u)
 
-		for _, code := range u.Codes {
-			log.Println(code)
-			a.validUsers[code] = &u
-		}
+		a.addUserSynchronized(&u)
 	}
+}
+
+func (a *FileBasedAuthenticator) FindUser(code string) *User {
+	user := a.findUserSynchronized(code)
+	if user == nil {
+		return nil
+	}
+	retval := *user // Copy, so that caller does not mess with state.
+	// TODO: stash away the original pointer in the copy, which we then
+	// use for update operation later. Once we have UpdateUser()
+	return &retval
+}
+
+func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user User) bool {
+	// Only members can add.
+	authMember := a.findUserSynchronized(authentication_code)
+	if authMember == nil {
+		log.Println("Couldn't find member with authentication code")
+		return false
+	}
+	if authMember.UserLevel != LevelMember {
+		log.Println("Non-member AddNewUser attempt")
+		return false
+	}
+	// Are the codes used unique ?
+	if !a.addUserSynchronized(&user) {
+		log.Println("Duplicate codes")
+		return false
+	}
+
+	// Just append the user to the file which is sufficient for AddNewUser()
+	// TODO: When we allow for updates, we need to dump out the whole file
+	// and do atomic rename.
+	var fields []string = make([]string, 2+len(user.Codes))
+	fields[0] = user.Name
+	fields[1] = string(user.UserLevel)
+	for index, code := range user.Codes {
+		fields[index+2] = code
+	}
+
+	f, err := os.OpenFile(a.userFilename, os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	writer := csv.NewWriter(f)
+	writer.Write(fields)
+	writer.Flush()
+	log.Println("AddNewUser(): success")
+	if writer.Error() != nil {
+		log.Println(writer.Error())
+	}
+	return writer.Error() == nil
 }
 
 // Check if access for a given code is granted to a given Target
 func (a *FileBasedAuthenticator) AuthUser(code string, target Target) bool {
-	u, ok := a.validUsers[code]
-	if !ok {
+	user := a.findUserSynchronized(code)
+	if user == nil {
 		log.Println("code bad", code)
 		return false
 	}
 
-	return a.levelHasAccess(u.UserLevel, target)
+	return a.levelHasAccess(user.UserLevel, target)
 }
 
 // Certain levels only have access during the daytime

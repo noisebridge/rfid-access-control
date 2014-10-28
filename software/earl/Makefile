@@ -11,7 +11,7 @@ test:
 clean:
 	rm -f earl
 
-install:
+install: test all
 	cp init.d/earl /etc/init.d/earl
 	cp earl /usr/local/bin/earl
 	update-rc.d earl defaults
