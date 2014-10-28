@@ -29,54 +29,57 @@ Ok, back to the `rfid-access-control/software/earl` directory.
 
      go get       # Only do this the first time. Get needed serial library.
      go build     # Creates ./earl in your directory
+     go test      # Runs test. Always
+
+     make install # install init.d script and run.
 
 Hacking
 -------
-To hack the features for the specific terminals, look in the `earl-handlers.go`,
-should be pretty self-explanatory. The handlers all implement the handler
-interface documented in `earl-handler-interface.go`.
+The interesting stuff interacting with the access terminals is implemented
+in `accesshandler.go`. In `authenticator.go`, there is the ACL file handling.
 
 Features
 --------
-Ok, there are no features yet, at this point it is all spec.
+Not all features are implemented yet. Features to be added are marked TBD.
 
-   - Talk the serial interface provided by the access terminal and its firmware
-     (see these directories).
-   - Should read gate PIN numbers from a file as read by previous access
+   - (_Done_) Talk the serial interface provided by the access terminal and
+     its firmware (see these directories).
+   - (_Done_) Should read gate PIN numbers from a file as read by previous access
      control system Baron ( https://github.com/noisebridge/noisebridge-baron )
-   - Have another file with RFID numbers. Also this contains flags saying which
-     user can add other users. So probably two tab-separated columns.
-   - Both files should be re-loaded whenver they change externally (i.e. edit)
-   - Multiple terminals can be connected to various ttys whose paths come
-     on the commandline. Internally, the program queries the name of the
+   - (_Done_) Have another file with RFID numbers. Also this contains flags
+     saying which user can add other users (Members can)
+   - (_TBD_) Both files should be re-loaded whenver they change externally
+     (i.e. edit)
+   - (_Done_) Multiple terminals can be connected to various ttys whose paths
+     given on the commandline. Internally, the program queries the name of the
      terminal to associate file-descriptor with physical terminal (thus,
      swapping the serial lines is not a problem). There is a handler for each
      of the named terminals; each of them might do different things.
-   - There are 2 relay contacts connected to the Raspberry Pi that can be used
-     to open gates. This happens via GPIO pins (TODO: access these via go;
-     in the simplest case just via the file `/sys/...` interface as we don't
-     need speed).
-   - There are 4 terminals to be handled by this software (probably later more)
+   - (_Done_) There are 2 relay contacts connected to the Raspberry Pi that
+     can be used to open gates. This happens via GPIO pins via the
+     file `/sys/...` interface as we don't need speed.
+   - (Partially _Done_) There are 4 terminals to be handled by this software
+     (probably later more)
      Each of them does a little bit different things, they should be implemented
      in a simple way (so: someone only needs to implement a handler), with the
      complicated stuff (serial line and such) handled in the background.
      Note, each of these have a human readable name (see firmware help how to
      set it).
-       - Downstairs gate. Reads PIN number. If match, gate is opened via one
-         relay contact.
-       - Upstairs door. Reads RFID. If match, upstairs gate is opened via other
-         relay contact.
-       - In-space terminal (probably inside next to the door). Has keypad,
-         RFID reader and LCD display. Provides simple way to add new users,
-         something like:
+       - (_Done_) Downstairs gate. Reads PIN number. If match, gate is opened
+         via one relay contact.
+       - (_Done_) Upstairs door. Reads RFID. If match, upstairs gate is opened
+         via other relay contact.
+       - (_TBD_) In-space terminal (probably inside next to the door). Has
+         keypad, RFID reader and LCD display. Provides simple way to add new
+         users, something like:
           1. show existing RFID card of 'deciding Noisebridge member'
           2. ask to add user
           3. present new RFID card.
           4. new RFID card is added to the file.
         User-interaction with keypad and LCD display.
-	   - Elevator door. Later.
-   - Future: We might equip a terminal with an H-bridge to open the electric
-     strike, thus relieving one of the relay contacts.
+	   - (_TBD_) Elevator door. Later.
+   - (_TBD_) Future: We might equip a terminal with an H-bridge to open the
+     electric strike, thus relieving one of the relay contacts.
      That would be connected to the inside terminal at the door upstairs. The
      outside terminal receives an RFID request, and when it decides that this
      was ok, tells the _inside_ handler to open the strike. This needs to be
