@@ -135,6 +135,7 @@ func (t *TerminalStub) WriteLCD(line int, text string) {
 		return
 	}
 	// Only send line if it is different from what is shown already.
+	// TODO: too long lines: scroll back and forth.
 	newContent := fmt.Sprintf("M%d%s", line, text)
 	if t.lastLCDContent[line] == newContent {
 		return

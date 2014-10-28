@@ -9,10 +9,10 @@ import (
 type UIState int
 
 const (
-	IDLE                 = 0
-	DISPLAY_INFO_MESSAGE = 1
-	ADD_WAIT_INPUT       = 2
-	ADD_AWAIT_NEW_RFID   = 3
+	IDLE                 = 0 // When there is nothing to do; idle screen.
+	DISPLAY_INFO_MESSAGE = 1 // Interrupt idle screen and show info message
+	WAIT_MEMBER_COMMAND  = 2 // Member showed RFID; awaiting instruction
+	ADD_AWAIT_NEW_RFID   = 3 // Member adds new user: wait for new user RFID
 )
 
 type UIControlHandler struct {
@@ -60,13 +60,11 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 		u.backToIdle()
 		return
 	}
-	switch u.state {
-	case ADD_WAIT_INPUT:
-		if key == '1' {
-			u.t.WriteLCD(0, "Read new user RFID")
-			u.t.WriteLCD(1, "[*] Cancel")
-			u.setState(ADD_AWAIT_NEW_RFID, 30*time.Second)
-		}
+	if u.state == WAIT_MEMBER_COMMAND && key == '1' {
+		u.t.WriteLCD(0, "Read new user RFID")
+		u.t.WriteLCD(1, "[*] Cancel")
+		u.setState(ADD_AWAIT_NEW_RFID, 30*time.Second)
+		return
 	}
 }
 
@@ -82,19 +80,21 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 			u.t.WriteLCD(1, "Ask a member to register")
 		} else {
 			switch user.UserLevel {
-			case LevelLegacy:
-				// This should never happen. Display anyway.
-				u.t.WriteLCD(1, "Valid RFID to open Gate")
-				u.setState(DISPLAY_INFO_MESSAGE, 2*time.Second)
-			case LevelUser:
-				u.t.WriteLCD(1, "Hi there :) Good RFID!")
-				u.setState(DISPLAY_INFO_MESSAGE, 2*time.Second)
 			case LevelMember:
 				u.authUserCode = rfid
 				u.t.WriteLCD(0, fmt.Sprintf("Howdy %s",
 					user.Name))
-				u.t.WriteLCD(1, "[1] Add User [*] Cancel")
-				u.setState(ADD_WAIT_INPUT, 5*time.Second)
+				u.t.WriteLCD(1, "[*] Cancel  [1] Add User")
+				u.setState(WAIT_MEMBER_COMMAND, 5*time.Second)
+
+			case LevelUser:
+				u.t.WriteLCD(1, "This RFID opens doors :)")
+				u.setState(DISPLAY_INFO_MESSAGE, 2*time.Second)
+
+			case LevelLegacy:
+				// This should never happen. Display anyway.
+				u.t.WriteLCD(1, "Valid RFID to open Gate")
+				u.setState(DISPLAY_INFO_MESSAGE, 2*time.Second)
 			}
 		}
 	case ADD_AWAIT_NEW_RFID:
@@ -105,11 +105,11 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 		if u.auth.AddNewUser(u.authUserCode, new_user) {
 			u.t.WriteLCD(0, "Success! User added.")
 		} else {
-			// TODO: make AddNewUser return error
+			// TODO: make AddNewUser() return plaintext-error
 			u.t.WriteLCD(0, "D'oh - didn't work.")
 		}
-		u.t.WriteLCD(1, "(1) Add More  (*) Done")
-		u.setState(ADD_WAIT_INPUT, 5*time.Second)
+		u.t.WriteLCD(1, "[*] Done    [1] Add More")
+		u.setState(WAIT_MEMBER_COMMAND, 5*time.Second)
 	}
 }
 
