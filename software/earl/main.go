@@ -190,18 +190,19 @@ func parseArg(arg string) (devicepath string, baudrate int) {
 }
 
 func main() {
-	logFilePtr := flag.String("logfile", "", "The log file, default = stdout")
+	logFileName := flag.String("logfile", "", "The log file, default = stdout")
 	flag.Parse()
 
 	if len(flag.Args()) < 1 {
 		fmt.Fprintf(os.Stderr,
-			"usage: %s <serial-device>[:baudrate] [<serial-device>[:baudrate]...]\n",
+			"usage: %s [options] <serial-device>[:baudrate] [<serial-device>[:baudrate]...]\nOptions\n",
 			os.Args[0])
+		flag.PrintDefaults()
 		return
 	}
 
-	if *logFilePtr != "" {
-		logfile, err := os.OpenFile(*logFilePtr, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if *logFileName != "" {
+		logfile, err := os.OpenFile(*logFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
 			log.Fatal("Error opening log file", err)
 		}
