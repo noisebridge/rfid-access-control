@@ -34,6 +34,37 @@ type User struct {
 	// Who was/where the authenticator(s) for this user ?
 }
 
+// Create a new user read from a CSV reader
+func NewUserFromCSV(reader *csv.Reader) (user *User, result_err error) {
+	line, err := reader.Read()
+	if err != nil {
+		return nil, err
+	}
+	if len(line) < 3 {
+		log.Println("Skipping short line", line)
+		return nil, nil
+	}
+	// comment
+	if strings.TrimSpace(line[0])[0] == '#' {
+		return nil, nil
+	}
+	return &User{
+			Name:      line[0],
+			UserLevel: Level(line[1]),
+			Codes:     line[2:]},
+		nil
+}
+
+func (user *User) writeCSV(writer *csv.Writer) {
+	var fields []string = make([]string, 2+len(user.Codes))
+	fields[0] = user.Name
+	fields[1] = string(user.UserLevel)
+	for index, code := range user.Codes {
+		fields[index+2] = code
+	}
+	writer.Write(fields)
+}
+
 type Authenticator interface {
 	// Given a code, is the user allowed to access "target" ?
 	AuthUser(code string, target Target) bool
@@ -155,25 +186,15 @@ func (a *FileBasedAuthenticator) readUserFile() {
 	reader.FieldsPerRecord = -1 //variable length fields
 
 	for {
-		line, err := reader.Read()
+		user, err := NewUserFromCSV(reader)
 		if err != nil {
-			if err != io.EOF {
-				log.Fatal("Error while reading user file", err)
-			}
 			break
 		}
-		if len(line) < 3 {
-			log.Println("Skipping short line", line)
+		if user == nil {
+			continue // e.g. due to comment or short line
 		}
-		//comment
-		if strings.TrimSpace(line[0])[0] == '#' {
-			continue
-		}
-		// TODO: have a method on *User that reads/write a CSV - line ?
-		u := User{Name: line[0], UserLevel: Level(line[1]), Codes: line[2:]}
-		log.Println("Read a new user", u)
-
-		a.addUserSynchronized(&u)
+		log.Println("Read user", user)
+		a.addUserSynchronized(user)
 	}
 }
 
@@ -208,20 +229,13 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 	// Just append the user to the file which is sufficient for AddNewUser()
 	// TODO: When we allow for updates, we need to dump out the whole file
 	// and do atomic rename.
-	var fields []string = make([]string, 2+len(user.Codes))
-	fields[0] = user.Name
-	fields[1] = string(user.UserLevel)
-	for index, code := range user.Codes {
-		fields[index+2] = code
-	}
-
 	f, err := os.OpenFile(a.userFilename, os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return false
 	}
 	defer f.Close()
 	writer := csv.NewWriter(f)
-	writer.Write(fields)
+	user.writeCSV(writer)
 	writer.Flush()
 	log.Println("AddNewUser(): success")
 	if writer.Error() != nil {

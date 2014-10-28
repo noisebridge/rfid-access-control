@@ -23,6 +23,8 @@ func TestAddUser(t *testing.T) {
 
 	// Seed with one member
 	authFile.WriteString("root,member,root123\n")
+	authFile.WriteString("# Comment\n")
+	authFile.WriteString("# This is a comment,with,multi,comma\n")
 	authFile.Close()
 	defer syscall.Unlink(authFile.Name())
 
