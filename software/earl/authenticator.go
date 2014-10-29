@@ -262,12 +262,8 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 	writer := csv.NewWriter(f)
 	user.WriteCSV(writer)
 	writer.Flush()
-	if writer.Error() != nil {
-		log.Println("AddNewUser(): ", writer.Error())
-	} else {
-		log.Println("AddNewUser(): success")
-	}
-	return writer.Error() == nil
+	log.Println("AddNewUser()")
+	return true
 }
 
 // Check if access for a given code is granted to a given Target
