@@ -221,6 +221,8 @@ func main() {
 
 	authenticator := NewFileBasedAuthenticator(*userFileName, *legacyFileName)
 	doorActions := new(GPIOActions)
+	doorActions.Init()
+
 	for _, arg := range flag.Args() {
 		devicepath, baudrate := parseArg(arg)
 		t := NewTerminalStub(devicepath, baudrate)
