@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"syscall"
 	"testing"
+	"time"
 )
 
 func ExpectTrue(t *testing.T, condition bool, message string) {
@@ -67,10 +68,19 @@ func TestAddUser(t *testing.T) {
 	ExpectTrue(t, auth.AddNewUser("root123", u),
 		"Adding another user with unique code.")
 
+	u.Name = "ExpiredUser"
+	u.Codes[0] = "expired123"
+	u.ValidTo = time.Now().Add(-1 * time.Hour)
+	ExpectTrue(t, auth.AddNewUser("root123", u), "Adding user")
+
+	// TODO: can't test AuthUser() yet as we need a simulated clock
+	// to do daytime/nightime/expiredness checking.
+
 	// Ok, now let's see if an new authenticator can make sense of the
 	// file we appended to.
 	auth = NewFileBasedAuthenticator(authFile.Name(), "")
 	ExpectTrue(t, auth.FindUser("root123") != nil, "Finding root123")
 	ExpectTrue(t, auth.FindUser("doe123") != nil, "Finding doe123")
 	ExpectTrue(t, auth.FindUser("other123") != nil, "Finding other123")
+	ExpectTrue(t, auth.FindUser("expired123") != nil, "Finding expired123")
 }
