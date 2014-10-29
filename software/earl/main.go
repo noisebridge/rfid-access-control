@@ -233,19 +233,20 @@ func main() {
 		var handler Handler
 		switch Target(t.GetTerminalName()) {
 		case TargetDownstairs:
+			fallthrough
 		case TargetUpstairs:
+			fallthrough
 		case TargetElevator:
 			handler = NewAccessHandler(authenticator, doorActions)
 
 		case TargetControlUI:
 			handler = NewControlHandler(authenticator, *addNameOnConsole)
-
-		default:
-			log.Printf("Don't know how to deal with terminal '%s'", t.GetTerminalName())
 		}
 
 		if handler != nil {
 			t.Run(handler)
+		} else {
+			log.Printf("Don't know how to deal with terminal '%s'", t.GetTerminalName())
 		}
 	}
 }
