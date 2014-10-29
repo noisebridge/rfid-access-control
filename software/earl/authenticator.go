@@ -27,6 +27,7 @@ const (
 	LevelMember = Level("member")
 )
 
+// Note: all Codes are stores as hashAuthCode()
 type User struct {
 	// Name of user.
 	// - Can be empty for time-limited anonymous codes
@@ -41,8 +42,6 @@ type User struct {
 	ValidFrom   time.Time // E.g. for temporary classes pin
 	ValidTo     time.Time // for anonymous tokens, day visitors or temp PIN
 	Codes       []string  // List of PIN/RFID codes associated with user
-	// Codes: one obfuscation step and only store hashes ?
-	//   (to not accidentally pick up ID-info when browsing the file)
 }
 
 // User CSV
