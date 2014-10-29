@@ -28,8 +28,8 @@ func TestAddUser(t *testing.T) {
 	authFile.WriteString("# This is a comment,with,multi,comma,foo,bar,x\n")
 	rootUser := User{
 		Name:      "root",
-		UserLevel: "member",
-		Codes:     []string{"root123"}}
+		UserLevel: "member"}
+	rootUser.SetAuthCode("root123")
 	writer := csv.NewWriter(authFile)
 	rootUser.WriteCSV(writer)
 	writer.Flush()
@@ -43,8 +43,9 @@ func TestAddUser(t *testing.T) {
 
 	u := User{
 		Name:      "Jon Doe",
-		UserLevel: LevelUser,
-		Codes:     []string{"doe123"}}
+		UserLevel: LevelUser}
+	ExpectFalse(t, u.SetAuthCode("short"), "Adding too short code")
+	ExpectTrue(t, u.SetAuthCode("doe123"), "Adding long enough auth code")
 	// Can't add with bogus member
 	ExpectFalse(t, auth.AddNewUser("non-existent", u),
 		"Adding new user with non-existent code.")
@@ -64,12 +65,12 @@ func TestAddUser(t *testing.T) {
 		"Adding user with code already in use.")
 
 	u.Name = "Another,user;[]funny\"characters '" // Stress-test CSV :)
-	u.Codes[0] = "other123"
+	u.SetAuthCode("other123")
 	ExpectTrue(t, auth.AddNewUser("root123", u),
 		"Adding another user with unique code.")
 
 	u.Name = "ExpiredUser"
-	u.Codes[0] = "expired123"
+	u.SetAuthCode("expired123")
 	u.ValidTo = time.Now().Add(-1 * time.Hour)
 	ExpectTrue(t, auth.AddNewUser("root123", u), "Adding user")
 
