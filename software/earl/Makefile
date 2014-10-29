@@ -2,7 +2,9 @@
 # features of 'make'
 ##
 
-all:
+all : earl test
+
+earl:
 	go build
 
 test:
@@ -12,6 +14,6 @@ clean:
 	rm -f earl
 
 install:
-	cp init.d/earl /etc/init.d/earl
+	install init.d/earl /etc/init.d/earl
 	install earl /usr/local/bin/earl
 	update-rc.d earl defaults
