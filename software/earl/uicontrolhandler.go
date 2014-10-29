@@ -94,8 +94,7 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 			switch user.UserLevel {
 			case LevelMember:
 				u.authUserCode = rfid
-				u.t.WriteLCD(0, fmt.Sprintf("Howdy %s",
-					user.Name))
+				u.t.WriteLCD(0, fmt.Sprintf("Howdy %s", user.Name))
 				u.t.WriteLCD(1, "[*] Cancel  [1] Add User")
 				u.setState(StateWaitMemberCommand, 5*time.Second)
 

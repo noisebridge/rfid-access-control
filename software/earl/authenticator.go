@@ -26,12 +26,12 @@ const (
 )
 
 type User struct {
-	Name      string
-	UserLevel Level
-	Codes     []string
-	// creation time ?
-	// expire time ? (e.g. for one-day visitors with RFID or PIN-codes)
-	// Who was/where the authenticator(s) for this user ?
+	Name      string    // Name of user; can be empty for anonymous. Members should have a name they go by.
+	Sponsors  string    // A semicolon-separated list of sponsor codes
+	UserLevel Level     // Level of access
+	ValidFrom time.Time // E.g. for temporary classes pin
+	ValidTo   time.Time // E.g. for day visitors or classes PIN
+	Codes     []string  // List of PIN/RFID codes associated with user
 }
 
 // Create a new user read from a CSV reader
@@ -40,7 +40,7 @@ func NewUserFromCSV(reader *csv.Reader) (user *User, result_err error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(line) < 3 {
+	if len(line) < 6 {
 		log.Println("Skipping short line", line)
 		return nil, nil
 	}
@@ -48,21 +48,38 @@ func NewUserFromCSV(reader *csv.Reader) (user *User, result_err error) {
 	if strings.TrimSpace(line[0])[0] == '#' {
 		return nil, nil
 	}
+	ValidFrom, _ := time.Parse("2006-01-02 15:04", line[3])
+	ValidTo, _ := time.Parse("2006-01-02 15:04", line[4])
 	return &User{
 			Name:      line[0],
-			UserLevel: Level(line[1]),
-			Codes:     line[2:]},
+			Sponsors:  line[1],
+			UserLevel: Level(line[2]),
+			ValidFrom: ValidFrom, // field 3
+			ValidTo:   ValidTo,   // field 4
+			Codes:     line[5:]},
 		nil
 }
 
-func (user *User) writeCSV(writer *csv.Writer) {
-	var fields []string = make([]string, 2+len(user.Codes))
+func (user *User) WriteCSV(writer *csv.Writer) {
+	var fields []string = make([]string, 5+len(user.Codes))
 	fields[0] = user.Name
-	fields[1] = string(user.UserLevel)
+	fields[1] = user.Sponsors
+	fields[2] = string(user.UserLevel)
+	if !user.ValidFrom.IsZero() {
+		fields[3] = user.ValidFrom.Format("2006-01-02 15:04")
+	}
+	if !user.ValidTo.IsZero() {
+		fields[4] = user.ValidTo.Format("2006-01-02 15:04")
+	}
 	for index, code := range user.Codes {
-		fields[index+2] = code
+		fields[index+5] = code
 	}
 	writer.Write(fields)
+}
+
+func (user *User) InValidityPeriod() bool {
+	return (user.ValidFrom.IsZero() || user.ValidFrom.Before(time.Now())) &&
+		(user.ValidTo.IsZero() || user.ValidTo.After(time.Now()))
 }
 
 type Authenticator interface {
@@ -209,6 +226,7 @@ func (a *FileBasedAuthenticator) FindUser(code string) *User {
 	return &retval
 }
 
+// TODO: return readable error instead of false.
 func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user User) bool {
 	// Only members can add.
 	authMember := a.findUserSynchronized(authentication_code)
@@ -220,6 +238,12 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 		log.Println("Non-member AddNewUser attempt")
 		return false
 	}
+	if !authMember.InValidityPeriod() {
+		return false
+	}
+	// Right now, one sponsor, in the future we might require
+	// a list depending on short/long-term expiry.
+	user.Sponsors = authentication_code
 	// Are the codes used unique ?
 	if !a.addUserSynchronized(&user) {
 		log.Println("Duplicate codes")
@@ -235,7 +259,7 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 	}
 	defer f.Close()
 	writer := csv.NewWriter(f)
-	user.writeCSV(writer)
+	user.WriteCSV(writer)
 	writer.Flush()
 	if writer.Error() != nil {
 		log.Println("AddNewUser(): ", writer.Error())
@@ -252,7 +276,10 @@ func (a *FileBasedAuthenticator) AuthUser(code string, target Target) bool {
 		log.Println("code bad", code)
 		return false
 	}
-
+	if !user.InValidityPeriod() {
+		log.Println("Code not valid yet/epxired")
+		return false
+	}
 	return a.levelHasAccess(user.UserLevel, target)
 }
 
