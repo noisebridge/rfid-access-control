@@ -17,6 +17,7 @@ func (g *GPIOActions) Init() {
 }
 
 func (g *GPIOActions) OpenDoor(which Target) {
+	log.Printf("Open door '%s'", which)
 	switch which {
 	case TargetDownstairs:
 		g.switchRelay(true, 7)
