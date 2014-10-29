@@ -286,7 +286,7 @@ func (a *FileBasedAuthenticator) isDaytime() bool {
 	now := time.Now()
 	now = now.In(local)
 	hour, _, _ := now.Clock()
-	return hour >= 10 && hour < 22
+	return hour >= 10 && hour <= 22
 }
 
 func (a *FileBasedAuthenticator) levelHasAccess(level Level, target Target) bool {

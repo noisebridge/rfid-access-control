@@ -13,5 +13,5 @@ clean:
 
 install:
 	cp init.d/earl /etc/init.d/earl
-	cp earl /usr/local/bin/earl
+	install earl /usr/local/bin/earl
 	update-rc.d earl defaults
