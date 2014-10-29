@@ -232,11 +232,7 @@ func main() {
 		// doors, but also the UI handler dealing with adding new users.
 		var handler Handler
 		switch Target(t.GetTerminalName()) {
-		case TargetDownstairs:
-			fallthrough
-		case TargetUpstairs:
-			fallthrough
-		case TargetElevator:
+		case TargetDownstairs, TargetUpstairs, TargetElevator:
 			handler = NewAccessHandler(authenticator, doorActions)
 
 		case TargetControlUI:
