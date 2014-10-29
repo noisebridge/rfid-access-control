@@ -48,6 +48,7 @@ func NewUserFromCSV(reader *csv.Reader) (user *User, result_err error) {
 	if strings.TrimSpace(line[0])[0] == '#' {
 		return nil, nil
 	}
+	// TODO: not sure if this does proper locale matching
 	ValidFrom, _ := time.Parse("2006-01-02 15:04", line[3])
 	ValidTo, _ := time.Parse("2006-01-02 15:04", line[4])
 	return &User{
