@@ -27,8 +27,8 @@ const (
 
 type User struct {
 	Name      string    // Name of user; can be empty for anonymous. Members should have a name they go by.
-	Sponsors  string    // A semicolon-separated list of sponsor codes
 	UserLevel Level     // Level of access
+	Sponsors  string    // A semicolon-separated list of sponsor codes
 	ValidFrom time.Time // E.g. for temporary classes pin
 	ValidTo   time.Time // E.g. for day visitors or classes PIN
 	Codes     []string  // List of PIN/RFID codes associated with user
@@ -53,8 +53,8 @@ func NewUserFromCSV(reader *csv.Reader) (user *User, result_err error) {
 	ValidTo, _ := time.Parse("2006-01-02 15:04", line[4])
 	return &User{
 			Name:      line[0],
-			Sponsors:  line[1],
-			UserLevel: Level(line[2]),
+			UserLevel: Level(line[1]),
+			Sponsors:  line[2],
 			ValidFrom: ValidFrom, // field 3
 			ValidTo:   ValidTo,   // field 4
 			Codes:     line[5:]},
@@ -64,8 +64,8 @@ func NewUserFromCSV(reader *csv.Reader) (user *User, result_err error) {
 func (user *User) WriteCSV(writer *csv.Writer) {
 	var fields []string = make([]string, 5+len(user.Codes))
 	fields[0] = user.Name
-	fields[1] = user.Sponsors
-	fields[2] = string(user.UserLevel)
+	fields[1] = string(user.UserLevel)
+	fields[2] = user.Sponsors
 	if !user.ValidFrom.IsZero() {
 		fields[3] = user.ValidFrom.Format("2006-01-02 15:04")
 	}
