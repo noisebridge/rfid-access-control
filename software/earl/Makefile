@@ -4,7 +4,7 @@
 
 all : earl test
 
-earl:
+earl: *.go
 	go build
 
 test:
