@@ -38,10 +38,10 @@ type User struct {
 	Name        string    // Name to go by
 	ContactInfo string    // Way to contact user (if set, should be unique)
 	UserLevel   Level     // Level of access
-	Sponsors    []string  // A list of sponsor codes when adding/updating
+	Sponsors    []string  // A list of (hashed) sponsor codes adding/updating
 	ValidFrom   time.Time // E.g. for temporary classes pin
 	ValidTo     time.Time // for anonymous tokens, day visitors or temp PIN
-	Codes       []string  // List of PIN/RFID codes associated with user
+	Codes       []string  // List of (hashed) codes associated with user
 }
 
 // User CSV
@@ -186,12 +186,14 @@ func (a *FileBasedAuthenticator) findUserSynchronized(plain_code string) *User {
 func (a *FileBasedAuthenticator) addUserSynchronized(user *User) bool {
 	a.validUsersLock.Lock()
 	defer a.validUsersLock.Unlock()
+	// First verify that there is no code in there that is already set..
 	for _, code := range user.Codes {
 		if a.validUsers[code] != nil {
 			log.Printf("Ignoring multiple used code '%s'", code)
 			return false // Existing user with that code
 		}
 	}
+	// Then ok to add.
 	for _, code := range user.Codes {
 		a.validUsers[code] = user
 	}
