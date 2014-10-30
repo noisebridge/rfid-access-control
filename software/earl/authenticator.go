@@ -54,7 +54,6 @@ func NewUserFromCSV(reader *csv.Reader) (user *User, result_err error) {
 		return nil, err
 	}
 	if len(line) != 7 {
-		log.Println("Skipping short line", line)
 		// TODO: add legacy transformation.
 		return nil, nil
 	}
@@ -109,12 +108,18 @@ func hashAuthCode(plain string) string {
 	return hex.EncodeToString(hashgen.Sum(nil))
 }
 
+// Verify that code is long enough (and probably other syntactical things, such
+// as not all the same digits and such)
+func hasMinimalCodeRequirements(code string) bool {
+	// 32Bit Mifare are 8 characters hex, this is to impose a minimum
+	// 'strength' of a pin.
+	return len(code) >= 6
+}
+
 // Set the auth code to some value (should probably be add-auth-code)
 // Returns true if code is long enough to meet criteria.
 func (user *User) SetAuthCode(code string) bool {
-	// 32Bit Mifare are 8 characters hex, this is to impose a minimum
-	// 'strength' of a pin.
-	if len(code) < 6 {
+	if !hasMinimalCodeRequirements(code) {
 		return false
 	}
 	user.Codes = []string{hashAuthCode(code)}
@@ -170,6 +175,11 @@ func NewFileBasedAuthenticator(userFilename string, legacyCodeFilename string) *
 
 // Find user. Synchronizes map.
 func (a *FileBasedAuthenticator) findUserSynchronized(plain_code string) *User {
+	// This is the central place to find the user. Even if some bad code
+	// slipped into our user-base, we're rejecting it now.
+	if !hasMinimalCodeRequirements(plain_code) {
+		return nil
+	}
 	a.validUsersLock.Lock()
 	defer a.validUsersLock.Unlock()
 	user, _ := a.validUsers[hashAuthCode(plain_code)]
@@ -185,7 +195,6 @@ func (a *FileBasedAuthenticator) addUserSynchronized(user *User) bool {
 	for _, code := range user.Codes {
 		existing_user_with_code := a.validUsers[code]
 		if existing_user_with_code == nil {
-			log.Printf("Internally store '%s'", code)
 			a.validUsers[code] = user
 		} else {
 			all_codes_unique = false
@@ -222,9 +231,15 @@ func (a *FileBasedAuthenticator) readLegacyFile() {
 		}
 
 		code := matches[1]
-		log.Printf("Loaded legacy code %q\n", code)
+		if !hasMinimalCodeRequirements(code) {
+			log.Printf("%s: Minimal criteria not met: '%s'", a.legacyCodeFilename, code)
+			continue
+		}
 
-		u := User{Name: code, UserLevel: LevelLegacy, Codes: matches[1:]}
+		u := User{
+			Name:      code,
+			UserLevel: LevelLegacy,
+			Codes:     []string{hashAuthCode(code)}}
 		a.addUserSynchronized(&u)
 	}
 }
@@ -254,7 +269,6 @@ func (a *FileBasedAuthenticator) readUserFile() {
 		if user == nil {
 			continue // e.g. due to comment or short line
 		}
-		log.Println("Read user", user)
 		a.addUserSynchronized(user)
 	}
 }
@@ -283,6 +297,7 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 		return false
 	}
 	if !authMember.InValidityPeriod() {
+		log.Println("Member not in valid time-frame")
 		return false
 	}
 
@@ -294,7 +309,7 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 	user.Sponsors = []string{hashAuthCode(authentication_code)}
 	// Are the codes used unique ?
 	if !a.addUserSynchronized(&user) {
-		log.Println("Duplicate codes")
+		log.Printf("Duplicate codes while adding '%s'", user.Name)
 		return false
 	}
 
@@ -309,7 +324,6 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 	writer := csv.NewWriter(f)
 	user.WriteCSV(writer)
 	writer.Flush()
-	log.Println("AddNewUser()")
 	return true
 }
 
@@ -317,7 +331,7 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 func (a *FileBasedAuthenticator) AuthUser(code string, target Target) bool {
 	user := a.findUserSynchronized(code)
 	if user == nil {
-		log.Println("code bad", code)
+		log.Println("Auth requested; couldn't find user for code")
 		return false
 	}
 	if !user.InValidityPeriod() {
@@ -341,7 +355,11 @@ func (a *FileBasedAuthenticator) levelHasAccess(level Level, target Target) bool
 	case LevelMember:
 		return true // Members always have access.
 	case LevelUser:
-		return a.isDaytime()
+		ok := a.isDaytime()
+		if !ok {
+			log.Println("Regular user outside daytime")
+		}
+		return ok
 	case LevelLegacy:
 		return a.isDaytime() && target == TargetDownstairs
 	}

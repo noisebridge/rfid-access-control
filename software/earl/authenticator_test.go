@@ -85,3 +85,23 @@ func TestAddUser(t *testing.T) {
 	ExpectTrue(t, auth.FindUser("other123") != nil, "Finding other123")
 	ExpectTrue(t, auth.FindUser("expired123") != nil, "Finding expired123")
 }
+
+func TestAuthLegacy(t *testing.T) {
+	authFile, _ := ioutil.TempFile("", "test-legacy")
+
+	// Seed with one member
+	authFile.WriteString("# Comment\n")
+	authFile.WriteString("# This is a comment,with,multi,comma,foo,bar,x\n")
+	authFile.WriteString("1234567  # some good pin\n")
+	authFile.WriteString("1234     # too short pin\n")
+	authFile.Close()
+	defer syscall.Unlink(authFile.Name())
+
+	auth := NewFileBasedAuthenticator("/dev/null", authFile.Name())
+
+	found := auth.FindUser("1234")
+	ExpectTrue(t, found == nil, "Too short, cannot be found")
+
+	found = auth.FindUser("1234567")
+	ExpectTrue(t, found != nil, "Too short, cannot be found")
+}

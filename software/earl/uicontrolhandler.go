@@ -128,8 +128,8 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 		}
 		newUser := User{
 			Name:      userName,
-			UserLevel: LevelUser,
-			Codes:     []string{rfid}}
+			UserLevel: LevelUser}
+		newUser.SetAuthCode(rfid)
 		if u.auth.AddNewUser(u.authUserCode, newUser) {
 			u.t.WriteLCD(0, "Success! User added.")
 		} else {
