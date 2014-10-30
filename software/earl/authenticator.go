@@ -175,11 +175,6 @@ func NewFileBasedAuthenticator(userFilename string, legacyCodeFilename string) *
 
 // Find user. Synchronizes map.
 func (a *FileBasedAuthenticator) findUserSynchronized(plain_code string) *User {
-	// This is the central place to find the user. Even if some bad code
-	// slipped into our user-base, we're rejecting it now.
-	if !hasMinimalCodeRequirements(plain_code) {
-		return nil
-	}
 	a.validUsersLock.Lock()
 	defer a.validUsersLock.Unlock()
 	user, _ := a.validUsers[hashAuthCode(plain_code)]
@@ -238,8 +233,8 @@ func (a *FileBasedAuthenticator) readLegacyFile() {
 
 		u := User{
 			Name:      code,
-			UserLevel: LevelLegacy,
-			Codes:     []string{hashAuthCode(code)}}
+			UserLevel: LevelLegacy}
+		u.SetAuthCode(code)
 		a.addUserSynchronized(&u)
 	}
 }
@@ -329,6 +324,10 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 
 // Check if access for a given code is granted to a given Target
 func (a *FileBasedAuthenticator) AuthUser(code string, target Target) bool {
+	if !hasMinimalCodeRequirements(code) {
+		log.Println("Auth failed: too short code.")
+		return false
+	}
 	user := a.findUserSynchronized(code)
 	if user == nil {
 		log.Println("Auth requested; couldn't find user for code")
