@@ -186,17 +186,16 @@ func (a *FileBasedAuthenticator) findUserSynchronized(plain_code string) *User {
 func (a *FileBasedAuthenticator) addUserSynchronized(user *User) bool {
 	a.validUsersLock.Lock()
 	defer a.validUsersLock.Unlock()
-	all_codes_unique := true
 	for _, code := range user.Codes {
-		existing_user_with_code := a.validUsers[code]
-		if existing_user_with_code == nil {
-			a.validUsers[code] = user
-		} else {
-			all_codes_unique = false
+		if a.validUsers[code] != nil {
 			log.Printf("Ignoring multiple used code '%s'", code)
+			return false // Existing user with that code
 		}
 	}
-	return all_codes_unique
+	for _, code := range user.Codes {
+		a.validUsers[code] = user
+	}
+	return true
 }
 
 func (a *FileBasedAuthenticator) readLegacyFile() {
