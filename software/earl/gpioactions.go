@@ -53,10 +53,6 @@ func (g *GPIOActions) initGPIO(pin int) {
 }
 
 func (g *GPIOActions) switchRelay(switch_on bool, gpio_pin int) {
-	// TODO(hzeller)
-	// Hacky for now, this needs to be handled somewhere else. We always
-	// use gpio_pin 7 for now.
-
 	if gpio_pin != 7 && gpio_pin != 8 {
 		log.Fatal("You suck - gpio_pin 7 or 8")
 	}

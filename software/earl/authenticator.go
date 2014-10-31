@@ -2,8 +2,7 @@ package main
 
 // TODO
 // add reloadIfChanged()
-// return all auth errors not only as boolean but with string description, so
-//  that it is easy to
+
 import (
 	"bufio"
 	"crypto/md5"
@@ -18,12 +17,12 @@ import (
 
 type Authenticator interface {
 	// Given a code, is the user allowed to access "target" ?
-	AuthUser(code string, target Target) (bool, string)
+	AuthUser(code string, target Target) (ok bool, msg string)
 
 	// Given the authenticator token (checked for memberness),
 	// add the given user.
 	// Updates the file
-	AddNewUser(authentication_code string, user User) (bool, string)
+	AddNewUser(authentication_code string, user User) (ok bool, msg string)
 
 	// Find a user for the given string. Returns a copy or 'nil' if the
 	// user doesn't exist.

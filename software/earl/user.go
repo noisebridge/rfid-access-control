@@ -121,7 +121,7 @@ func (user *User) ExpiryDate(now time.Time) time.Time {
 			result = anonLimit
 		}
 	}
-	return user.ValidTo
+	return result
 }
 
 // Set the auth code to some value (should probably be add-auth-code)
