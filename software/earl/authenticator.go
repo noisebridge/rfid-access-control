@@ -51,7 +51,6 @@ func NewFileBasedAuthenticator(userFilename string, legacyCodeFilename string) *
 		clock:              RealClock{},
 	}
 
-	a.validUsers = make(map[string]*User)
 	a.readLegacyFile()
 	a.readUserFile()
 	return a
