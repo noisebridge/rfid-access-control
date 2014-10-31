@@ -10,13 +10,13 @@ import (
 
 func ExpectTrue(t *testing.T, condition bool, message string) {
 	if !condition {
-		t.Errorf("Expected to fail, but didn't: %s", message)
+		t.Errorf("Expected to succeed, but didn't: %s", message)
 	}
 }
 
 func ExpectFalse(t *testing.T, condition bool, message string) {
 	if condition {
-		t.Errorf("Expected to succeed, but didn't: %s", message)
+		t.Errorf("Expected to fail, but didn't: %s", message)
 	}
 }
 
@@ -27,8 +27,9 @@ func TestAddUser(t *testing.T) {
 	authFile.WriteString("# Comment\n")
 	authFile.WriteString("# This is a comment,with,multi,comma,foo,bar,x\n")
 	rootUser := User{
-		Name:      "root",
-		UserLevel: "member"}
+		Name:        "root",
+		ContactInfo: "root@nb",
+		UserLevel:   "member"}
 	rootUser.SetAuthCode("root123")
 	writer := csv.NewWriter(authFile)
 	rootUser.WriteCSV(writer)

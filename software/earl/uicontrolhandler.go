@@ -99,7 +99,18 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 				u.setState(StateWaitMemberCommand, 5*time.Second)
 
 			case LevelUser:
-				u.t.WriteLCD(1, "This RFID opens doors :)")
+				if user.HasContactInfo() {
+					u.t.WriteLCD(0, "Hi "+user.Name)
+				} else {
+					exp := user.ExpiryDate()
+					u.t.WriteLCD(0, fmt.Sprintf("Up to %s",
+						exp.Format("Up to 2006-01-02 15:04")))
+				}
+				if user.InValidityPeriod() {
+					u.t.WriteLCD(1, "This RFID opens doors :)")
+				} else {
+					u.t.WriteLCD(1, "Ask member to renew")
+				}
 				u.setState(StateDisplayInfoMessage, 2*time.Second)
 
 			case LevelLegacy:
