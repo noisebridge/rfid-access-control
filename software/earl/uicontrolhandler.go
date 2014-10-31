@@ -102,11 +102,11 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 				if user.HasContactInfo() {
 					u.t.WriteLCD(0, "Hi "+user.Name)
 				} else {
-					exp := user.ExpiryDate()
+					exp := user.ExpiryDate(time.Now())
 					u.t.WriteLCD(0, fmt.Sprintf("Up to %s",
 						exp.Format("Up to 2006-01-02 15:04")))
 				}
-				if user.InValidityPeriod() {
+				if user.InValidityPeriod(time.Now()) {
 					u.t.WriteLCD(1, "This RFID opens doors :)")
 				} else {
 					u.t.WriteLCD(1, "Ask member to renew")

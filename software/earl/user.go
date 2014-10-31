@@ -100,21 +100,21 @@ func (user *User) HasContactInfo() bool {
 		user.ContactInfo != ""
 }
 
-func (user *User) InValidityPeriod() bool {
-	expires := user.ExpiryDate()
-	return (user.ValidFrom.IsZero() || user.ValidFrom.Before(time.Now())) &&
-		(expires.IsZero() || expires.After(time.Now()))
+func (user *User) InValidityPeriod(now time.Time) bool {
+	expires := user.ExpiryDate(now)
+	return (user.ValidFrom.IsZero() || user.ValidFrom.Before(now)) &&
+		(expires.IsZero() || expires.After(now))
 }
 
 // Return when code expires. If the returned date IsZero(), there is no limit.
 // Even if there is no explicit user.ValidTo
 // limited when there is no contact info 30 days after creation
-func (user *User) ExpiryDate() time.Time {
+func (user *User) ExpiryDate(now time.Time) time.Time {
 	result := user.ValidTo
 	if !user.HasContactInfo() {
 		if user.ValidFrom.IsZero() {
 			log.Println("No start-date for temp code.")
-			return time.Now().Add(-24 * time.Hour) // in the past
+			return now.Add(-24 * time.Hour) // in the past
 		}
 		anonLimit := user.ValidFrom.Add(ValidityPeriodAnonymousCards)
 		if result.IsZero() || anonLimit.Before(result) {

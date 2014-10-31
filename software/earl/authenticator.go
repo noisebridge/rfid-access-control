@@ -2,7 +2,8 @@ package main
 
 // TODO
 // add reloadIfChanged()
-
+// return all auth errors not only as boolean but with string description, so
+//  that it is easy to
 import (
 	"bufio"
 	"crypto/md5"
@@ -13,7 +14,6 @@ import (
 	"os"
 	"regexp"
 	"sync"
-	"time"
 )
 
 type Authenticator interface {
@@ -39,12 +39,17 @@ type FileBasedAuthenticator struct {
 	// use findUserSynchronized() and addUserSynchronized() for locking.
 	validUsers     map[string]*User
 	validUsersLock sync.Mutex
+
+	clock Clock // Our source of time. Useful for simulated clock in tests
 }
 
 func NewFileBasedAuthenticator(userFilename string, legacyCodeFilename string) *FileBasedAuthenticator {
-	a := new(FileBasedAuthenticator)
-	a.userFilename = userFilename
-	a.legacyCodeFilename = legacyCodeFilename
+	a := &FileBasedAuthenticator{
+		userFilename:       userFilename,
+		legacyCodeFilename: legacyCodeFilename,
+		validUsers:         make(map[string]*User),
+		clock:              RealClock{},
+	}
 
 	a.validUsers = make(map[string]*User)
 	a.readLegacyFile()
@@ -196,7 +201,7 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 		log.Println("Non-member AddNewUser attempt")
 		return false
 	}
-	if !authMember.InValidityPeriod() {
+	if !authMember.InValidityPeriod(a.clock.Now()) {
 		log.Println("Member not in valid time-frame")
 		return false
 	}
@@ -209,7 +214,7 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 	user.Sponsors = []string{hashAuthCode(authentication_code)}
 	// If no valid from date is given, then this is creation time.
 	if user.ValidFrom.IsZero() {
-		user.ValidFrom = time.Now()
+		user.ValidFrom = a.clock.Now()
 	}
 	// Are the codes used unique ?
 	if !a.addUserSynchronized(&user) {
@@ -242,7 +247,7 @@ func (a *FileBasedAuthenticator) AuthUser(code string, target Target) bool {
 		log.Println("Auth requested; couldn't find user for code")
 		return false
 	}
-	if !user.InValidityPeriod() {
+	if !user.InValidityPeriod(a.clock.Now()) {
 		log.Println("Code not valid yet/epxired")
 		return false
 	}
@@ -252,7 +257,7 @@ func (a *FileBasedAuthenticator) AuthUser(code string, target Target) bool {
 // Certain levels only have access during the daytime
 // This implements that logic, which is 11:00 - 21:59
 func (a *FileBasedAuthenticator) isDaytime() bool {
-	hour := time.Now().Hour()
+	hour := a.clock.Now().Hour()
 	return hour >= 11 && hour < 22
 }
 
