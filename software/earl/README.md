@@ -25,18 +25,30 @@ Set your environment variable `GOPATH` to some directory where you would
 like to have your [go workspace][golang-gopath]. That is the scratch space
 where go puts build artifacts and dependent libraries.
 
+     export GOPATH=~/go-root    # Good idea to put that in your ~/.bashrc
+     mkdir $GOPATH
+
+(Also, on the Raspberry Pi, you want to set the environment variable `GOARM=5`,
+otherwise binaries don't run.)
+
 Ok, back to the `rfid-access-control/software/earl` directory.
 
      go get       # Only do this the first time. Get needed serial library.
-     go build     # Creates ./earl in your directory
-     go test      # Runs test. Always
+     
+     make         # Builds binary, runs tests
+     
+     # Installing. Like everything running as root, you first want to see what
+     # the following command is doing. So let's do a dry-run
+     make -n install
 
-     make install # install init.d script and run.
+     # Alright, ready for the real thing
+     sudo make install # install binary and init.d script
 
 Hacking
 -------
 The interesting stuff interacting with the access terminals is implemented
 in `accesshandler.go`. In `authenticator.go`, there is the ACL file handling.
+The LCD frontend stuff is implemented in `uicontrolhandler.go`.
 
 Features
 --------
@@ -50,7 +62,7 @@ Not all features are implemented yet. Features to be added are marked TBD.
      saying which user can add other users (Members can)
    - (_TBD_) Both files should be re-loaded whenver they change externally
      (i.e. edit)
-   - (_Done_) Multiple terminals can be connected to various ttys whose paths
+   - (_Done_) Multiple terminals can be connected to various ttys whose paths are
      given on the commandline. Internally, the program queries the name of the
      terminal to associate file-descriptor with physical terminal (thus,
      swapping the serial lines is not a problem). There is a handler for each
@@ -72,7 +84,7 @@ Not all features are implemented yet. Features to be added are marked TBD.
        - (_Done_ (first version)) In-space terminal (probably inside next to
          the door). Has keypad, RFID reader and LCD display. Provides simple
          way to add new users, something like:
-          1. show existing RFID card of 'deciding Noisebridge member'
+          1. show existing RFID card of Noisebridge member.
           2. ask to add user
           3. present new RFID card.
           4. new RFID card is added to the file.

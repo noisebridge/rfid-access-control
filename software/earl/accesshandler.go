@@ -22,8 +22,8 @@ type AccessHandler struct {
 }
 
 const (
-	kRFIDRepeatDebounce = 2 * time.Second  // RFID is repeated. Pace down.
-	kKeypadTimeout      = 30 * time.Second // Timeout keypad user gone.
+	kRFIDRepeatDebounce = 5 * time.Second  // RFID is repeated. Pace down.
+	kKeypadTimeout      = 30 * time.Second // Timeout: user stopped typing
 )
 
 func NewAccessHandler(a Authenticator, actions DoorActions) *AccessHandler {
