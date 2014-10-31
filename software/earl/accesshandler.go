@@ -24,7 +24,6 @@ type AccessHandler struct {
 const (
 	kRFIDRepeatDebounce = 2 * time.Second  // RFID is repeated. Pace down.
 	kKeypadTimeout      = 30 * time.Second // Timeout keypad user gone.
-	kMinimumCodeLen     = 4                // Mostly for PINs; RFID are > 8
 )
 
 func NewAccessHandler(a Authenticator, actions DoorActions) *AccessHandler {
@@ -84,18 +83,17 @@ func (h *AccessHandler) HandleTick() {
 func (h *AccessHandler) checkAccess(code string) {
 	// Don't bother with too short codes. In particular, don't buzz
 	// or flash lights to not to seem overly interactive.
-	if len(code) < kMinimumCodeLen {
+	if !hasMinimalCodeRequirements(code) {
 		return
 	}
 	target := Target(h.t.GetTerminalName())
 	if h.auth.AuthUser(code, target) {
-		log.Print("Open gate.")
 		h.t.ShowColor("G")
 		h.t.BuzzSpeaker("H", 500)
 		h.doorActions.OpenDoor(target)
 		h.t.ShowColor("")
 	} else {
-		log.Print("Invalid code ", code)
+		log.Print("Invalid code")
 		h.t.ShowColor("R")
 		h.t.BuzzSpeaker("L", 200)
 		time.Sleep(500)

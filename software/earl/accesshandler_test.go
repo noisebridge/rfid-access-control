@@ -111,12 +111,12 @@ func PressKeys(h *AccessHandler, keys string) {
 func TestAccessCode(t *testing.T) {
 	term := NewMockTerminal(t)
 	auth := NewMockAuthenticator()
-	auth.allow[ACKey{"1234", Target("mock")}] = true
+	auth.allow[ACKey{"123456", Target("mock")}] = true
 	doorActions := NewMockDoorActions(t)
 	handler := NewAccessHandler(auth, doorActions)
 	handler.Init(term)
 	handler.clock = MockClock{}
-	PressKeys(handler, "1234#")
+	PressKeys(handler, "123456#")
 	//	term.expectColor("G")
 	term.expectBuzz(Buzz{"H", 500})
 	doorActions.expectOpened(Target("mock"))

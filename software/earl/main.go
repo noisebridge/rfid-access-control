@@ -174,7 +174,7 @@ func (t *TerminalStub) readLineLoop() {
 }
 
 func (t *TerminalStub) writeLine(line string) {
-	log.Print("Sending ", line)
+	//log.Print("Sending ", line)
 	_, err := t.serialFile.Write([]byte(line + "\n"))
 	if err != nil {
 		log.Fatal(err)
