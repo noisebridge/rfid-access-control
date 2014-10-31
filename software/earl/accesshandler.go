@@ -57,7 +57,7 @@ func (h *AccessHandler) HandleRFID(rfid string) {
 	rfid = strings.TrimSpace(strings.Split(rfid, " ")[1])
 
 	if h.currentRFID == rfid {
-		log.Println("debounce")
+		//log.Println("debounce")
 		return
 	} else {
 		h.currentRFID = rfid
@@ -87,13 +87,13 @@ func (h *AccessHandler) checkAccess(code string) {
 		return
 	}
 	target := Target(h.t.GetTerminalName())
-	if h.auth.AuthUser(code, target) {
+	if access_ok, msg := h.auth.AuthUser(code, target); access_ok {
 		h.t.ShowColor("G")
 		h.t.BuzzSpeaker("H", 500)
 		h.doorActions.OpenDoor(target)
 		h.t.ShowColor("")
 	} else {
-		log.Print("Invalid code")
+		log.Print("Invalid code: " + msg)
 		h.t.ShowColor("R")
 		h.t.BuzzSpeaker("L", 200)
 		time.Sleep(500)

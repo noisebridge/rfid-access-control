@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/csv"
 	"io/ioutil"
+	"log"
 	"syscall"
 	"testing"
 	"time"
@@ -18,6 +19,13 @@ func ExpectFalse(t *testing.T, condition bool, message string) {
 	if condition {
 		t.Errorf("Expected to fail, but didn't: %s", message)
 	}
+}
+
+func eatmsg(ok bool, msg string) bool {
+	if msg != "" {
+		log.Printf("TEST: ignore msg '%s'", msg)
+	}
+	return ok
 }
 
 func TestAddUser(t *testing.T) {
@@ -48,11 +56,11 @@ func TestAddUser(t *testing.T) {
 	ExpectFalse(t, u.SetAuthCode("short"), "Adding too short code")
 	ExpectTrue(t, u.SetAuthCode("doe123"), "Adding long enough auth code")
 	// Can't add with bogus member
-	ExpectFalse(t, auth.AddNewUser("non-existent", u),
+	ExpectFalse(t, eatmsg(auth.AddNewUser("non-existent", u)),
 		"Adding new user with non-existent code.")
 
 	// Proper member adding user.
-	ExpectTrue(t, auth.AddNewUser("root123", u),
+	ExpectTrue(t, eatmsg(auth.AddNewUser("root123", u)),
 		"Add user with valid member account")
 
 	// Now, freshly added, we should be able to find the user.
@@ -62,18 +70,18 @@ func TestAddUser(t *testing.T) {
 	}
 
 	// Let's attempt to set a user with the same code
-	ExpectFalse(t, auth.AddNewUser("root123", u),
+	ExpectFalse(t, eatmsg(auth.AddNewUser("root123", u)),
 		"Adding user with code already in use.")
 
 	u.Name = "Another,user;[]funny\"characters '" // Stress-test CSV :)
 	u.SetAuthCode("other123")
-	ExpectTrue(t, auth.AddNewUser("root123", u),
+	ExpectTrue(t, eatmsg(auth.AddNewUser("root123", u)),
 		"Adding another user with unique code.")
 
 	u.Name = "ExpiredUser"
 	u.SetAuthCode("expired123")
 	u.ValidTo = time.Now().Add(-1 * time.Hour)
-	ExpectTrue(t, auth.AddNewUser("root123", u), "Adding user")
+	ExpectTrue(t, eatmsg(auth.AddNewUser("root123", u)), "Adding user")
 
 	// TODO: can't test AuthUser() yet as we need a simulated clock
 	// to do daytime/nightime/expiredness checking.

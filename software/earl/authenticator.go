@@ -18,12 +18,12 @@ import (
 
 type Authenticator interface {
 	// Given a code, is the user allowed to access "target" ?
-	AuthUser(code string, target Target) bool
+	AuthUser(code string, target Target) (bool, string)
 
 	// Given the authenticator token (checked for memberness),
 	// add the given user.
 	// Updates the file
-	AddNewUser(authentication_code string, user User) bool
+	AddNewUser(authentication_code string, user User) (bool, string)
 
 	// Find a user for the given string. Returns a copy or 'nil' if the
 	// user doesn't exist.
@@ -60,7 +60,7 @@ func NewFileBasedAuthenticator(userFilename string, legacyCodeFilename string) *
 // of actual IDs just to be able to verify.
 //
 // Note, this hash can _not_ protect against brute-force attacks; if you
-// have the file, some CPU cycles and can emulate tokens, you are in
+// have access to the file, some CPU cycles and can emulate tokens, you are in
 // (pin-codes are relatively short, and some older Mifare cards only have
 // 32Bit IDs, so no protection against cheaply generated rainbow tables).
 // But then again, you are more than welcome in a Hackerspace in that case :)
@@ -189,20 +189,17 @@ func (a *FileBasedAuthenticator) FindUser(plain_code string) *User {
 }
 
 // TODO: return readable error instead of false.
-func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user User) bool {
+func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user User) (bool, string) {
 	// Only members can add.
 	authMember := a.findUserSynchronized(authentication_code)
 	if authMember == nil {
-		log.Println("Couldn't find member with authentication code")
-		return false
+		return false, "Couldn't find member with authentication code"
 	}
 	if authMember.UserLevel != LevelMember {
-		log.Println("Non-member AddNewUser attempt")
-		return false
+		return false, "Non-member AddNewUser attempt"
 	}
 	if !authMember.InValidityPeriod(a.clock.Now()) {
-		log.Println("Member not in valid time-frame")
-		return false
+		return false, "Auth-Member not in valid time-frame"
 	}
 
 	// TODO: Verify that there is some identifying information for the
@@ -217,8 +214,7 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 	}
 	// Are the codes used unique ?
 	if !a.addUserSynchronized(&user) {
-		log.Printf("Duplicate codes while adding '%s'", user.Name)
-		return false
+		return false, "Duplicate codes while adding user"
 	}
 
 	// Just append the user to the file which is sufficient for AddNewUser()
@@ -226,29 +222,26 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 	// and do atomic rename.
 	f, err := os.OpenFile(a.userFilename, os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		return false
+		return false, err.Error()
 	}
 	defer f.Close()
 	writer := csv.NewWriter(f)
 	user.WriteCSV(writer)
 	writer.Flush()
-	return true
+	return true, ""
 }
 
 // Check if access for a given code is granted to a given Target
-func (a *FileBasedAuthenticator) AuthUser(code string, target Target) bool {
+func (a *FileBasedAuthenticator) AuthUser(code string, target Target) (bool, string) {
 	if !hasMinimalCodeRequirements(code) {
-		log.Println("Auth failed: too short code.")
-		return false
+		return false, "Auth failed: too short code."
 	}
 	user := a.findUserSynchronized(code)
 	if user == nil {
-		log.Println("Auth requested; couldn't find user for code")
-		return false
+		return false, "No user for code"
 	}
 	if !user.InValidityPeriod(a.clock.Now()) {
-		log.Println("Code not valid yet/epxired")
-		return false
+		return false, "Code not valid yet/expired"
 	}
 	return a.levelHasAccess(user.UserLevel, target)
 }
@@ -260,19 +253,24 @@ func (a *FileBasedAuthenticator) isDaytime() bool {
 	return hour >= 11 && hour < 22
 }
 
-func (a *FileBasedAuthenticator) levelHasAccess(level Level, target Target) bool {
+func (a *FileBasedAuthenticator) levelHasAccess(level Level, target Target) (bool, string) {
 	switch level {
 	case LevelMember:
-		return true // Members always have access.
-	case LevelUser:
-		ok := a.isDaytime()
-		if !ok {
-			log.Println("Regular user outside daytime")
-		}
-		return ok
-	case LevelLegacy:
-		return a.isDaytime() && target == TargetDownstairs
-	}
+		return true, "" // Members always have access.
 
-	return false
+	case LevelUser:
+		isday := a.isDaytime()
+		if !isday {
+			return false, "Regular user outside daytime"
+		}
+		return isday, ""
+
+	case LevelLegacy:
+		isday := a.isDaytime()
+		if !isday {
+			return false, "Gate user outside daytime"
+		}
+		return target == TargetDownstairs, ""
+	}
+	return false, ""
 }

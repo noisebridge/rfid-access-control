@@ -141,11 +141,10 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 			Name:      userName,
 			UserLevel: LevelUser}
 		newUser.SetAuthCode(rfid)
-		if u.auth.AddNewUser(u.authUserCode, newUser) {
+		if ok, msg := u.auth.AddNewUser(u.authUserCode, newUser); ok {
 			u.t.WriteLCD(0, "Success! User added.")
 		} else {
-			// TODO: make AddNewUser() return plaintext-error
-			u.t.WriteLCD(0, "D'oh - didn't work.")
+			u.t.WriteLCD(0, msg)
 		}
 		u.t.WriteLCD(1, "[*] Done    [1] Add More")
 		u.setState(StateWaitMemberCommand, 5*time.Second)
