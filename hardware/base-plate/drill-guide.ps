@@ -1,0 +1,77 @@
+%!PS-Adobe-3.0
+%%BoundingBox: 0 0 600 600
+
+% TODO: put that actually in the laser-cut SVG once we know where it should :)
+
+% Takes currentpoint and draws a cross
+/guide {
+    -3 -3 rmoveto
+    6 6 rlineto
+    -6 0 rmoveto
+    6 -6 rlineto
+    -3 3 rmoveto
+} def
+
+% <dx> <dy> <x0> <y0>
+/rect {
+  moveto
+  1 index 0 rlineto
+  0 exch rlineto
+  neg 0 rlineto
+  closepath
+  stroke
+} def
+
+72.0 25.4 div dup scale                  % Switch to mm
+0.2 setlinewidth             % we want hairlines
+
+/terminal {
+  70 30 0 0 rect
+  3 3 moveto guide
+  67 3 moveto guide
+  3 21 moveto guide
+  67 21 moveto guide
+  stroke
+} def
+
+/relay {
+    38.6 50.6
+    38.6 2 div neg
+    50.6 2 div neg rect
+    33.5 2 div     44.7 2 div     moveto guide
+    33.5 2 div neg 44.7 2 div     moveto guide
+    33.5 1 sub 2 div     44.7 2 div neg moveto guide
+    33.5 1 sub 2 div neg 44.7 2 div neg moveto guide
+    stroke
+} def
+
+/raspi {
+    85 56 0 0 rect
+    25.5 18 moveto guide
+    85 5 sub 56 12.5 sub moveto guide
+    stroke
+} def
+
+30 30 translate
+
+% reference line
+0 0 moveto guide
+100 0 lineto
+guide
+
+gsave
+10 10 translate terminal
+72 0 translate terminal
+grestore
+
+gsave
+30 80 translate relay
+42 0 translate relay
+grestore
+
+gsave
+0 110 translate
+raspi
+grestore
+
+showpage
