@@ -220,6 +220,8 @@ func main() {
 		log.SetOutput(logfile)
 	}
 
+	log.Println("Starting...")
+
 	authenticator := NewFileBasedAuthenticator(*userFileName, *legacyFileName)
 	doorActions := new(GPIOActions)
 	doorActions.Init()
