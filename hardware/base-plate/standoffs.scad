@@ -2,10 +2,11 @@
 
 epsilon=0.1;
 standoff_height=3;
+rpi_standoff_height=3.7;
 $fn=24;
 
-module drill(d=3.5) {
-    translate([0,0,-2*standoff_height]) cylinder(r=d/2,h=4*standoff_height);
+module drill(d=3.5,h=standoff_height) {
+    translate([0,0,-2*h]) cylinder(r=d/2,h=4*h);
 }
 
 module relay(h=standoff_height) {
@@ -37,7 +38,7 @@ module terminal(h=standoff_height) {
 
 module round_standoff(h=standoff_height, d=8) {
     difference() {
-	cylinder(r=d/2, h=3);
+	cylinder(r=d/2, h=h);
 	drill();
     }
 }
@@ -48,13 +49,31 @@ module full_terminal() {
     translate([5, 0]) terminal();
 }
 
-module standoff_collection() {
+module standoff_collection(h=standoff_height) {
     // Some generic standoffs
-    translate([25, 0]) round_standoff();
-    translate([25, 20]) round_standoff();
-    translate([25, -20]) round_standoff();
+    translate([25, 0]) round_standoff(h=h);
+    translate([25, 20]) round_standoff(h=h);
+    translate([25, -20]) round_standoff(h=h);
 }
 
-relay();
-full_terminal();
-standoff_collection();   // useful to mount RPi
+// http://www.raspberrypi.org/wp-content/uploads/2012/12/Raspberry-Pi-Mounting-Hole-Template.png
+module raspi(h=rpi_standoff_height) {
+    difference() {
+	cube([56,6,h]);
+	translate([20, 1, -epsilon]) cube([56-20, 6, h+2*epsilon]);
+    }
+    translate([56-12.5, 5, 0]) round_standoff(h=h);
+    translate([56-16, 0, 0]) cube([10, 3, h]);
+    translate([56-3, 0, 0]) cube([3, 6, h]);
+
+    // We need another standoff
+    translate([5, 12, 0]) round_standoff(h=h);
+}
+
+module print_all() {
+    relay();
+    full_terminal();
+    translate([-30, -35, 0]) raspi();
+}
+
+print_all();
