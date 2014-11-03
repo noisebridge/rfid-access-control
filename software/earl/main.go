@@ -18,7 +18,7 @@ import (
 type Target string // TODO: find better name for this type
 const (
 	TargetDownstairs = Target("gate")
-	TargetUpstairs   = Target("door")
+	TargetUpstairs   = Target("upstairs")
 	TargetElevator   = Target("elevator")
 	TargetControlUI  = Target("control") // UI to add new users.
 	// Someday we'll have the network closet locked down
@@ -88,7 +88,8 @@ func NewTerminalStub(port string, baudrate int) *TerminalStub {
 	var err error
 	t.serialFile, err = serial.OpenPort(c)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err.Error())
+		return nil
 	}
 	t.eventChannel = make(chan string, 10)
 	t.responseChannel = make(chan string, 10)
@@ -226,6 +227,10 @@ func main() {
 	for _, arg := range flag.Args() {
 		devicepath, baudrate := parseArg(arg)
 		t := NewTerminalStub(devicepath, baudrate)
+		if t == nil {
+			// TODO: we should have a proper re-connect way
+			continue
+		}
 		t.loadTerminalName() // Need to spam this a few times to reset the device
 		t.loadTerminalName()
 		log.Printf("Device '%s' connected to '%s'", arg, t.GetTerminalName())

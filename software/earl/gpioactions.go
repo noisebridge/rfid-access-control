@@ -24,6 +24,11 @@ func (g *GPIOActions) OpenDoor(which Target) {
 		time.Sleep(2 * time.Second)
 		g.switchRelay(false, 7)
 
+	case TargetUpstairs:
+		g.switchRelay(true, 8)
+		time.Sleep(2 * time.Second)
+		g.switchRelay(false, 8)
+
 	default:
 		log.Printf("Dude, don't know how to open '%s'", which)
 	}
