@@ -17,15 +17,22 @@ func (g *GPIOActions) Init() {
 }
 
 func (g *GPIOActions) OpenDoor(which Target) {
-	log.Printf("Open door '%s'", which)
+	gpio_pin := -1
 	switch which {
 	case TargetDownstairs:
-		g.switchRelay(true, 7)
-		time.Sleep(2 * time.Second)
-		g.switchRelay(false, 7)
+		gpio_pin = 7
+
+	case TargetUpstairs:
+		gpio_pin = 8
 
 	default:
 		log.Printf("Dude, don't know how to open '%s'", which)
+	}
+	if gpio_pin > 0 {
+		log.Printf("Open door '%s'; gpio=%d", which, gpio_pin)
+		g.switchRelay(true, gpio_pin)
+		time.Sleep(2 * time.Second)
+		g.switchRelay(false, gpio_pin)
 	}
 }
 
