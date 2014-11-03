@@ -107,6 +107,7 @@ func (a *FileBasedAuthenticator) addUserSynchronized(user *User) bool {
 	return true
 }
 
+// TODO: remove this one. Should everything converted new code file.
 func (a *FileBasedAuthenticator) readLegacyFile() {
 	if a.legacyCodeFilename == "" {
 		log.Println("Legacy key file not provided")
@@ -120,6 +121,7 @@ func (a *FileBasedAuthenticator) readLegacyFile() {
 
 	scanregex := regexp.MustCompile("^([0-9]+)")
 
+	count := 0
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
@@ -141,10 +143,13 @@ func (a *FileBasedAuthenticator) readLegacyFile() {
 
 		u := User{
 			Name:      code,
-			UserLevel: LevelLegacy}
+			UserLevel: LevelLegacy,
+			ValidFrom: a.clock.Now()} // Will expire 30 days after file read.
 		u.SetAuthCode(code)
 		a.addUserSynchronized(&u)
+		count++
 	}
+	log.Printf("Read %d legacy codes from %s", count, a.legacyCodeFilename)
 }
 
 //
@@ -164,6 +169,7 @@ func (a *FileBasedAuthenticator) readUserFile() {
 	reader := csv.NewReader(f)
 	reader.FieldsPerRecord = -1 //variable length fields
 
+	count := 0
 	for {
 		user, err := NewUserFromCSV(reader)
 		if err != nil {
@@ -173,7 +179,9 @@ func (a *FileBasedAuthenticator) readUserFile() {
 			continue // e.g. due to comment or short line
 		}
 		a.addUserSynchronized(user)
+		count++
 	}
+	log.Printf("Read %d RFID codes from %s", count, a.userFilename)
 }
 
 func (a *FileBasedAuthenticator) FindUser(plain_code string) *User {
