@@ -230,7 +230,8 @@ func main() {
 		devicepath, baudrate := parseArg(arg)
 		t := NewTerminalStub(devicepath, baudrate)
 		if t == nil {
-			// TODO: we should have a proper re-connect way
+			// TODO: handle reconnect.
+			log.Printf("Couldn't connect: %s", arg)
 			continue
 		}
 		t.loadTerminalName() // Need to spam this a few times to reset the device
