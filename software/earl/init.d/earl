@@ -38,7 +38,7 @@ case $1 in
 			--startas $DAEMON \
 			-- -logfile=$LOGFILE \
 				/dev/ttyAMA0:9600 \
-				/dev/ttyUSB0:9600 \
+				/dev/ttyUSB0:9600
 		status=$?
 		log_end_msg $status
 		;;
