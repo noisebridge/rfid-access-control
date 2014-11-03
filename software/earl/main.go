@@ -50,7 +50,7 @@ type Terminal interface {
 // by terminals.
 // Each method call should return quickly; if you need to do something
 // dependent on time, implement HandleTick()
-type Handler interface {
+type TerminalEventHandler interface {
 	// Initialize. This is called once in the beginning and gets the
 	// TerminalStub connected to the terminal. This allows to trigger
 	// actions, such as writing to the LCD display.
@@ -97,7 +97,7 @@ func NewTerminalStub(port string, baudrate int) *TerminalStub {
 	return t
 }
 
-func (t *TerminalStub) Run(handler Handler) {
+func (t *TerminalStub) Run(handler TerminalEventHandler) {
 	handler.Init(t)
 	for {
 		select {
@@ -240,7 +240,7 @@ func main() {
 		// Terminals are dispatched by name. There might be different handlers
 		// for the name e.g. handlers that deal with reading codes and opening
 		// doors, but also the UI handler dealing with adding new users.
-		var handler Handler
+		var handler TerminalEventHandler
 		switch Target(t.GetTerminalName()) {
 		case TargetDownstairs, TargetUpstairs, TargetElevator:
 			handler = NewAccessHandler(authenticator, doorActions)
