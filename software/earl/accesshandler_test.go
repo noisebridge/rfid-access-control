@@ -23,7 +23,11 @@ func NewMockAuthenticator() *MockAuthenticator {
 
 func (a *MockAuthenticator) AuthUser(code string, target Target) (bool, string) {
 	_, ok := a.allow[ACKey{code, target}]
-	return ok, ""
+	if ok {
+		return true, ""
+	} else {
+		return false, "MockAuthenticator says: user doesn't exist"
+	}
 }
 func (a *MockAuthenticator) AddNewUser(authentication_user string, user User) (bool, string) {
 	return false, ""
@@ -53,7 +57,7 @@ func (term *MockTerminal) GetTerminalName() string {
 }
 
 func (term *MockTerminal) ShowColor(colors string) {
-	term.colors = colors
+	term.colors = term.colors + colors
 }
 
 func (term *MockTerminal) BuzzSpeaker(toneCode string, duration time.Duration) {
@@ -65,8 +69,8 @@ func (term *MockTerminal) WriteLCD(row int, text string) {
 }
 
 func (term *MockTerminal) expectColor(color string) {
-	if strings.Index(term.colors, color) == -1 {
-		term.t.Errorf("Expecting color %v, but seeing colors %v", color, term.colors)
+	if !strings.Contains(term.colors, color) {
+		term.t.Errorf("Expecting color '%v', but seeing colors '%v'", color, term.colors)
 	}
 }
 
@@ -97,10 +101,15 @@ func (doorActions *MockDoorActions) OpenDoor(target Target) {
 	doorActions.opened[target] = true
 }
 
-func (doorActions *MockDoorActions) expectOpened(target Target) {
+func (doorActions *MockDoorActions) openedAnyDoor() bool {
+	return len(doorActions.opened) != 0
+}
+
+func (doorActions *MockDoorActions) expectOpenState(expected bool, target Target) {
+	// Both the existence an value in doorActions are to be like expected
 	opened, has := doorActions.opened[target]
-	if !(has && opened) {
-		doorActions.t.Errorf("Expected %v to be open", target)
+	if !(has == expected && opened == expected) {
+		doorActions.t.Errorf("Expected %v to be open=%v", target, expected)
 	}
 }
 
@@ -110,7 +119,7 @@ func PressKeys(h *AccessHandler, keys string) {
 	}
 }
 
-func TestAccessCode(t *testing.T) {
+func TestValidAccessCode(t *testing.T) {
 	term := NewMockTerminal(t)
 	auth := NewMockAuthenticator()
 	auth.allow[ACKey{"123456", Target("mock")}] = true
@@ -119,9 +128,26 @@ func TestAccessCode(t *testing.T) {
 	handler.Init(term)
 	handler.clock = MockClock{}
 	PressKeys(handler, "123456#")
-	//	term.expectColor("G")
+	term.expectColor("G")
 	term.expectBuzz(Buzz{"H", 500})
-	doorActions.expectOpened(Target("mock"))
+	doorActions.expectOpenState(true, Target("mock"))
+}
+
+func TestInvalidAccessCode(t *testing.T) {
+	term := NewMockTerminal(t)
+	auth := NewMockAuthenticator()
+	auth.allow[ACKey{"123456", Target("mock")}] = true
+	doorActions := NewMockDoorActions(t)
+	handler := NewAccessHandler(auth, doorActions)
+	handler.Init(term)
+	handler.clock = MockClock{}
+	PressKeys(handler, "654321#")
+	term.expectColor("R")
+	term.expectBuzz(Buzz{"L", 200})
+	doorActions.expectOpenState(false, Target("mock"))
+	if doorActions.openedAnyDoor() {
+		t.Errorf("There are doors opened, but shouldn't")
+	}
 }
 
 // test ideas:

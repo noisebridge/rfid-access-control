@@ -99,7 +99,9 @@ func (h *AccessHandler) checkAccess(code string) {
 		h.doorActions.OpenDoor(target)
 		h.t.ShowColor("")
 	} else {
-		log.Print("Invalid code: " + msg)
+		// We don't want to reveal typos and stuff. So be very sparse
+		// logging:
+		log.Printf("Invalid code: %s len=%d", msg, len(code))
 		h.t.ShowColor("R")
 		h.t.BuzzSpeaker("L", 200)
 		time.Sleep(500)
