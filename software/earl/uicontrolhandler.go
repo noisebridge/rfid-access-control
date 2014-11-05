@@ -11,10 +11,7 @@ package main
 //  - A single member can give a day's pass, 2 members a user
 //  - How to enter names for members ? For initiall mass-adding: on console
 import (
-	"bufio"
 	"fmt"
-	"log"
-	"os"
 	"strings"
 	"time"
 )
@@ -34,21 +31,17 @@ type UIControlHandler struct {
 
 	t Terminal
 
-	// Entering name on the console allows keyboard interaction when
-	// a new user is added to provide the name. This is mostly needed
-	// in our initial phase adding new users
-	enterNameConsole bool // Request name on console ?
-
 	authUserCode string // current active member code
 
 	state        UIState   // state of our state machine
 	stateTimeout time.Time // timeout of current state
+
+	userCounter int
 }
 
-func NewControlHandler(authenticator Authenticator, nameOnConsole bool) *UIControlHandler {
+func NewControlHandler(authenticator Authenticator) *UIControlHandler {
 	return &UIControlHandler{
-		auth:             authenticator,
-		enterNameConsole: nameOnConsole,
+		auth: authenticator,
 	}
 }
 
@@ -128,28 +121,19 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 		}
 
 	case StateAddAwaitNewRFID:
-		userName := "<via-lcd>"
-		// TODO: this manual input is likely not needed in the future.
-		// The members should have a name in the file (rest can be
-		// anonymous). So 'upgrading' someone in the future is probably
-		// easier by directly editing the CSV
-		if u.enterNameConsole {
-			u.t.WriteLCD(0, "Enter name on console")
-			reader := bufio.NewReader(os.Stdin)
-			fmt.Printf("Name for %-8s: ", rfid)
-			text, _ := reader.ReadString('\n')
-			text = strings.TrimSpace(text)
-			if len(text) > 0 {
-				userName = text
-				log.Printf("Got name from console '%s'", text)
-			}
-		}
+		// Let's create some name that is somewhat unique to be
+		// easy to find in the file later to edit.
+		userPrefix := time.Now().Format("0102-15")
+		u.userCounter++
+		userName := fmt.Sprintf("<u%s%02d>",
+			userPrefix, u.userCounter%100)
 		newUser := User{
 			Name:      userName,
 			UserLevel: LevelUser}
 		newUser.SetAuthCode(rfid)
 		if ok, msg := u.auth.AddNewUser(u.authUserCode, newUser); ok {
-			u.t.WriteLCD(0, "Success! User added.")
+			u.t.WriteLCD(0,
+				fmt.Sprintf("Success! += %s", userName))
 		} else {
 			u.t.WriteLCD(0, msg)
 		}

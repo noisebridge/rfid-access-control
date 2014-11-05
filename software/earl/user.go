@@ -54,14 +54,12 @@ func NewUserFromCSV(reader *csv.Reader) (user *User, result_err error) {
 		return nil, err
 	}
 	if len(line) != 7 {
-		// TODO: add legacy transformation.
 		return nil, nil
 	}
 	// comment
 	if strings.TrimSpace(line[0])[0] == '#' {
 		return nil, nil
 	}
-	// TODO: not sure if this does proper locale matching
 	ValidFrom, _ := time.Parse("2006-01-02 15:04", line[4])
 	ValidTo, _ := time.Parse("2006-01-02 15:04", line[5])
 	return &User{
