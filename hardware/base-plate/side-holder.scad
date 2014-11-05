@@ -8,8 +8,17 @@ screw_predrill=1.5;
 
 module side(right=1) {
     difference() {
-	cube([side_high, side_len + hold_thick, side_thick]);
-	translate([side_high - acryl_thick - hold_thick, right ? hold_thick : -epsilon, hold_thick]) cube([acryl_thick, side_len + 2*epsilon, side_thick]);
+	hull() {
+	    // Base block.
+	    cube([side_high, side_len + hold_thick, side_thick]);
+	    // Block that covers where the acryl holder is
+	    translate([side_high-3*hold_thick, 0, side_thick]) cube([3 * hold_thick, side_len + hold_thick, hold_thick]);
+	}
+	
+	// Acryl holder.
+	translate([side_high - acryl_thick - hold_thick, right ? hold_thick : -epsilon, -epsilon]) cube([acryl_thick, side_len + 2*epsilon, side_thick+2*epsilon]);
+
+	// Drill holes.
 	translate([-epsilon,1*side_len/4,side_thick/2]) rotate([0, 90, 0]) cylinder(r=screw_predrill, h=side_high - 20);
 	translate([-epsilon,3*side_len/4,side_thick/2]) rotate([0, 90, 0]) cylinder(r=screw_predrill, h=side_high - 20);    
     }
