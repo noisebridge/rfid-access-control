@@ -26,10 +26,10 @@ func (g *GPIOActions) OpenDoor(which Target) {
 		gpio_pin = 8
 
 	default:
-		log.Printf("Dude, don't know how to open '%s'", which)
+		log.Printf("DoorAction: Don't know how to open '%s'", which)
 	}
 	if gpio_pin > 0 {
-		log.Printf("Open door '%s'; gpio=%d", which, gpio_pin)
+		log.Printf("DoorAction: Open '%s'; gpio=%d", which, gpio_pin)
 		g.switchRelay(true, gpio_pin)
 		time.Sleep(2 * time.Second)
 		g.switchRelay(false, gpio_pin)
