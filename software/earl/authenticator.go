@@ -1,7 +1,10 @@
 package main
 
 // TODO
-// add reloadIfChanged()
+// - add reloadIfChanged(): check file-timestamp and reload if needed
+// - We need the concept of an 'open space'. If the space is open (e.g.
+//   two members state that they are there), then regular users should come
+//   in independent of time.
 
 import (
 	"crypto/md5"
@@ -204,9 +207,13 @@ func (a *FileBasedAuthenticator) AuthUser(code string, target Target) (bool, str
 
 // Certain levels only have access during the daytime
 // This implements that logic, which is 11:00 - 21:59
-func (a *FileBasedAuthenticator) isDaytime() bool {
+func (a *FileBasedAuthenticator) isUserDaytime() bool {
 	hour := a.clock.Now().Hour()
-	return hour >= 11 && hour < 22
+	return hour >= 11 && hour < 22 // 11:00..21:59
+}
+func (a *FileBasedAuthenticator) isFulltimeUserDaytime() bool {
+	hour := a.clock.Now().Hour()
+	return hour >= 7 && hour <= 23 // 7:00..23:59
 }
 
 func (a *FileBasedAuthenticator) levelHasAccess(level Level, target Target) (bool, string) {
@@ -214,8 +221,17 @@ func (a *FileBasedAuthenticator) levelHasAccess(level Level, target Target) (boo
 	case LevelMember:
 		return true, "" // Members always have access.
 
+	case LevelFulltimeUser:
+		isday := a.isFulltimeUserDaytime()
+		if !isday {
+			return false, "Fulltime user outside daytime"
+		}
+		return isday, ""
+
 	case LevelUser:
-		isday := a.isDaytime()
+		// TODO: we might want to make this dependent simply on
+		// members having 'opened' the space.
+		isday := a.isUserDaytime()
 		if !isday {
 			return false, "Regular user outside daytime"
 		}
@@ -223,7 +239,7 @@ func (a *FileBasedAuthenticator) levelHasAccess(level Level, target Target) (boo
 
 		// TODO: consider if we still need this level.
 	case LevelLegacy:
-		isday := a.isDaytime()
+		isday := a.isUserDaytime()
 		if !isday {
 			return false, "Gate user outside daytime"
 		}

@@ -32,7 +32,12 @@ func (a *MockAuthenticator) AuthUser(code string, target Target) (bool, string) 
 func (a *MockAuthenticator) AddNewUser(authentication_user string, user User) (bool, string) {
 	return false, ""
 }
-func (a *MockAuthenticator) FindUser(code string) *User { return nil }
+func (a *MockAuthenticator) FindUser(code string) *User {
+	// Return dummy user as accesshandler likes to independently find it.
+	return &User{
+		UserLevel: "member",
+	}
+}
 
 type Buzz struct {
 	toneCode string

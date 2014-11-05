@@ -9,10 +9,26 @@ import (
 
 type Level string
 
+// TODO: maybe we should qualify the levels with a struct containing the actual
+// constraints, that makes it more readable. Right now the names are defined
+// here, but the constraints codified in authenticator.go
 const (
-	LevelLegacy = Level("legacy") // Legacy gate
-	LevelUser   = Level("user")
+	// A member has no time constraints on the access and can add users.
 	LevelMember = Level("member")
+
+	// A user has time limited access to the space at
+	// 'daytime', 11:00..21:59
+	LevelUser = Level("user")
+
+	// A fulltime user is like a regular user with less strict daytime
+	// constraints: 07:00..23:59
+	LevelFulltimeUser = Level("fulltimeuser")
+
+	// Legacy access to gate. This used to be old PIN codes via the legacy
+	// file, but that doesn't exist anymore, so this level is
+	// not used. Maybe we want 'gate only' users, but then we should rename
+	// this.
+	LevelLegacy = Level("legacy")
 )
 
 const (

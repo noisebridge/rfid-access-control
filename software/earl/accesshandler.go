@@ -93,15 +93,19 @@ func (h *AccessHandler) checkAccess(code string) {
 		return
 	}
 	target := Target(h.t.GetTerminalName())
-	if access_ok, msg := h.auth.AuthUser(code, target); access_ok {
+	user := h.auth.FindUser(code)
+	access_ok, msg := h.auth.AuthUser(code, target)
+	if user != nil && access_ok {
 		h.t.ShowColor("G")
 		h.t.BuzzSpeaker("H", 500)
+		// Be sparse, don't log user, but keep track of level.
+		log.Printf("%s: opened. type=%s", target, user.UserLevel)
 		h.doorActions.OpenDoor(target)
 		h.t.ShowColor("")
 	} else {
 		// We don't want to reveal typos and stuff. So be very sparse
 		// logging:
-		log.Printf("Invalid code: %s len=%d", msg, len(code))
+		log.Printf("%s: denied. %s len=%d", target, msg, len(code))
 		h.t.ShowColor("R")
 		h.t.BuzzSpeaker("L", 200)
 		time.Sleep(500)

@@ -129,15 +129,18 @@ func TestTimeLimits(t *testing.T) {
 	defer syscall.Unlink(authFile.Name())
 
 	someMidnight, _ := time.Parse("2006-01-02", "2014-10-10") // midnight
-	registerTime := someMidnight.Add(8 * time.Hour)           // 08:00
-	earlyMorning := someMidnight.Add(9 * time.Hour)           // 09:00
-	hackerDaytime := someMidnight.Add(16 * time.Hour)         // 16:00
-	closingTime := someMidnight.Add(22 * time.Hour)           // 22:00
+	nightTime_3h := someMidnight.Add(3 * time.Hour)           // 03:00
+	earlyMorning_7h := someMidnight.Add(7 * time.Hour)        // 09:00
+	hackerDaytime_13h := someMidnight.Add(13 * time.Hour)     // 16:00
+	closingTime_22h := someMidnight.Add(22 * time.Hour)       // 22:00
+	lateStayUsers_23h := someMidnight.Add(23 * time.Hour)     // 23:00
+
 	// After 30 days, non-contact users expire.
 	// So fast forward 31 days, 16:00 in the afternoon.
-	anonExpiry := someMidnight.Add(31*24*time.Hour + 16*time.Hour)
+	anonExpiry_30d := someMidnight.Add(30*24*time.Hour + 16*time.Hour)
 
-	mockClock.now = registerTime
+	// We 'register' the users a day before
+	mockClock.now = someMidnight.Add(-12 * time.Hour)
 	// Adding various users.
 	u := User{
 		Name:        "Some Member",
@@ -151,6 +154,13 @@ func TestTimeLimits(t *testing.T) {
 		ContactInfo: "user@noisebridge.net",
 		UserLevel:   LevelUser}
 	u.SetAuthCode("user123")
+	auth.AddNewUser("root123", u)
+
+	u = User{
+		Name:        "Some Fulltime User",
+		ContactInfo: "ftuser@noisebridge.net",
+		UserLevel:   LevelFulltimeUser}
+	u.SetAuthCode("fulltimeuser123")
 	auth.AddNewUser("root123", u)
 
 	// Member without contact info
@@ -167,8 +177,10 @@ func TestTimeLimits(t *testing.T) {
 	u.SetAuthCode("gate1234567")
 	auth.AddNewUser("root123", u)
 
-	mockClock.now = earlyMorning
+	mockClock.now = nightTime_3h
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, true, "")
+	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, false,
+		"outside daytime")
 	ExpectAuthResult(t, auth, "user123", TargetUpstairs, false,
 		"outside daytime")
 	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, true, "")
@@ -179,16 +191,31 @@ func TestTimeLimits(t *testing.T) {
 	ExpectAuthResult(t, auth, "gate1234567", TargetDownstairs, false,
 		"Gate user outside daytime")
 
-	mockClock.now = hackerDaytime
+	mockClock.now = earlyMorning_7h
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, true, "")
+	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, true, "")
+	ExpectAuthResult(t, auth, "user123", TargetUpstairs, false,
+		"outside daytime")
+	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, true, "")
+	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs, false,
+		"outside daytime")
+	ExpectAuthResult(t, auth, "gate1234567", TargetUpstairs, false,
+		"Gate user outside daytime")
+	ExpectAuthResult(t, auth, "gate1234567", TargetDownstairs, false,
+		"Gate user outside daytime")
+
+	mockClock.now = hackerDaytime_13h
+	ExpectAuthResult(t, auth, "member123", TargetUpstairs, true, "")
+	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, true, "")
 	ExpectAuthResult(t, auth, "user123", TargetUpstairs, true, "")
 	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, true, "")
 	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs, true, "")
 	ExpectAuthResult(t, auth, "gate1234567", TargetUpstairs, false, "")
 	ExpectAuthResult(t, auth, "gate1234567", TargetDownstairs, true, "")
 
-	mockClock.now = closingTime // should behave similar to earlyMorning
+	mockClock.now = closingTime_22h // should behave similar to earlyMorning
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, true, "")
+	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, true, "")
 	ExpectAuthResult(t, auth, "user123", TargetUpstairs, false,
 		"outside daytime")
 	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, true, "")
@@ -199,8 +226,23 @@ func TestTimeLimits(t *testing.T) {
 	ExpectAuthResult(t, auth, "gate1234567", TargetDownstairs, false,
 		"Gate user outside daytime")
 
-	mockClock.now = anonExpiry
+	mockClock.now = lateStayUsers_23h // members and fulltimeusers left
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, true, "")
+	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, true, "")
+	ExpectAuthResult(t, auth, "user123", TargetUpstairs, false,
+		"outside daytime")
+	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, true, "")
+	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs, false,
+		"outside daytime")
+	ExpectAuthResult(t, auth, "gate1234567", TargetUpstairs, false,
+		"Gate user outside daytime")
+	ExpectAuthResult(t, auth, "gate1234567", TargetDownstairs, false,
+		"Gate user outside daytime")
+
+	// Automatic expiry of entries that don't have contact info
+	mockClock.now = anonExpiry_30d
+	ExpectAuthResult(t, auth, "member123", TargetUpstairs, true, "")
+	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, true, "")
 	ExpectAuthResult(t, auth, "user123", TargetUpstairs, true, "")
 	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, false,
 		"Code not valid yet/expired")
