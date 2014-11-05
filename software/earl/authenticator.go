@@ -136,7 +136,7 @@ func (a *FileBasedAuthenticator) readUserFile() {
 		counts[user.UserLevel]++
 		total++
 	}
-	log.Printf("Read %d RFID codes from %s", total, a.userFilename)
+	log.Printf("Read %d users from %s", total, a.userFilename)
 	for level, count := range counts {
 		log.Printf("%13s %4d", level, count)
 	}
