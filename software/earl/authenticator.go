@@ -205,14 +205,14 @@ func (a *FileBasedAuthenticator) AuthUser(code string, target Target) (bool, str
 	if user == nil {
 		return false, "No user for code"
 	}
-	if !user.InValidityPeriod(a.clock.Now()) {
-		return false, "Code not valid yet/expired"
-	}
 	// In case of Hiatus users, be a bit more specific with logging: this
 	// might be someone stolen a token of some person on leave or attempt
 	// of a blocked user to get access.
 	if user.UserLevel == LevelHiatus {
 		return false, fmt.Sprintf("User on hiatus '%s <%s>'", user.Name, user.ContactInfo)
+	}
+	if !user.InValidityPeriod(a.clock.Now()) {
+		return false, "Code not valid yet/expired"
 	}
 	return a.levelHasAccess(user.UserLevel, target)
 }
