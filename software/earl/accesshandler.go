@@ -99,13 +99,13 @@ func (h *AccessHandler) checkAccess(code string) {
 		h.t.ShowColor("G")
 		h.t.BuzzSpeaker("H", 500)
 		// Be sparse, don't log user, but keep track of level.
-		log.Printf("%s: opened. type=%s", target, user.UserLevel)
+		log.Printf("%s: opened. Type=%s", target, user.UserLevel)
 		h.doorActions.OpenDoor(target)
 		h.t.ShowColor("")
 	} else {
 		// We don't want to reveal typos and stuff. So be very sparse
 		// logging:
-		log.Printf("%s: denied. %s len=%d", target, msg, len(code))
+		log.Printf("%s: denied. %s (codelen=%d)", target, msg, len(code))
 		h.t.ShowColor("R")
 		h.t.BuzzSpeaker("L", 200)
 		time.Sleep(500)

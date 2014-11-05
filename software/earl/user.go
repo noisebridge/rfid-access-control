@@ -29,6 +29,11 @@ const (
 	// not used. Maybe we want 'gate only' users, but then we should rename
 	// this.
 	LevelLegacy = Level("legacy")
+
+	// User that is not active currently (either because of leave of
+	// absense, or blocked otherwise) - any code should be inactive.
+	// This allows absent users to be kept in the file.
+	LevelHiatus = Level("hiatus")
 )
 
 const (

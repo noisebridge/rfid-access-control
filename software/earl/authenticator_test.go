@@ -163,6 +163,13 @@ func TestTimeLimits(t *testing.T) {
 	u.SetAuthCode("fulltimeuser123")
 	auth.AddNewUser("root123", u)
 
+	u = User{
+		Name:        "User on Hiatus",
+		ContactInfo: "gone@fishing.net",
+		UserLevel:   LevelHiatus}
+	u.SetAuthCode("hiatus123")
+	auth.AddNewUser("root123", u)
+
 	// Member without contact info
 	u = User{UserLevel: LevelMember}
 	u.SetAuthCode("member_nocontact")
@@ -208,6 +215,7 @@ func TestTimeLimits(t *testing.T) {
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, true, "")
 	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, true, "")
 	ExpectAuthResult(t, auth, "user123", TargetUpstairs, true, "")
+	ExpectAuthResult(t, auth, "hiatus123", TargetUpstairs, false, "hiatus")
 	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, true, "")
 	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs, true, "")
 	ExpectAuthResult(t, auth, "gate1234567", TargetUpstairs, false, "")

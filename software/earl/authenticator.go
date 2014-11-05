@@ -10,6 +10,7 @@ import (
 	"crypto/md5"
 	"encoding/csv"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -202,6 +203,12 @@ func (a *FileBasedAuthenticator) AuthUser(code string, target Target) (bool, str
 	if !user.InValidityPeriod(a.clock.Now()) {
 		return false, "Code not valid yet/expired"
 	}
+	// In case of Hiatus users, be a bit more specific with logging: this
+	// might be someone stolen a token of some person on leave or attempt
+	// of a blocked user to get access.
+	if user.UserLevel == LevelHiatus {
+		return false, fmt.Sprintf("User on hiatus '%s <%s>'", user.Name, user.ContactInfo)
+	}
 	return a.levelHasAccess(user.UserLevel, target)
 }
 
@@ -238,6 +245,10 @@ func (a *FileBasedAuthenticator) levelHasAccess(level Level, target Target) (boo
 		return isday, ""
 
 		// TODO: consider if we still need this level.
+
+	case LevelHiatus:
+		return false, "On Hiatus"
+
 	case LevelLegacy:
 		isday := a.isUserDaytime()
 		if !isday {
