@@ -4,14 +4,12 @@ package main
 // add reloadIfChanged()
 
 import (
-	"bufio"
 	"crypto/md5"
 	"encoding/csv"
 	"encoding/hex"
 	"io"
 	"log"
 	"os"
-	"regexp"
 	"sync"
 )
 
@@ -30,9 +28,7 @@ type Authenticator interface {
 }
 
 type FileBasedAuthenticator struct {
-	userFilename string
-	// TODO: reload-if-changed by checking timestamp
-	legacyCodeFilename string // We load this once, but don't expect changes
+	userFilename string // TODO: reload-if-changed by checking timestamp
 
 	// Map of codes to users. Quick way to look-up auth. Never use direclty,
 	// use findUserSynchronized() and addUserSynchronized() for locking.
@@ -42,15 +38,13 @@ type FileBasedAuthenticator struct {
 	clock Clock // Our source of time. Useful for simulated clock in tests
 }
 
-func NewFileBasedAuthenticator(userFilename string, legacyCodeFilename string) *FileBasedAuthenticator {
+func NewFileBasedAuthenticator(userFilename string) *FileBasedAuthenticator {
 	a := &FileBasedAuthenticator{
-		userFilename:       userFilename,
-		legacyCodeFilename: legacyCodeFilename,
-		validUsers:         make(map[string]*User),
-		clock:              RealClock{},
+		userFilename: userFilename,
+		validUsers:   make(map[string]*User),
+		clock:        RealClock{},
 	}
 
-	a.readLegacyFile()
 	a.readUserFile()
 	return a
 }
@@ -105,51 +99,6 @@ func (a *FileBasedAuthenticator) addUserSynchronized(user *User) bool {
 		a.validUsers[code] = user
 	}
 	return true
-}
-
-// TODO: remove this one. Should everything converted new code file.
-func (a *FileBasedAuthenticator) readLegacyFile() {
-	if a.legacyCodeFilename == "" {
-		log.Println("Legacy key file not provided")
-		return
-	}
-	f, err := os.Open(a.legacyCodeFilename)
-	if err != nil {
-		log.Fatal("Could not read PIN-key file", err)
-	}
-	reader := bufio.NewReader(f)
-
-	scanregex := regexp.MustCompile("^([0-9]+)")
-
-	count := 0
-	for {
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			if err != io.EOF {
-				log.Fatal("Could not read file", err)
-			}
-			break
-		}
-		matches := scanregex.FindStringSubmatch(line)
-		if matches == nil {
-			continue
-		}
-
-		code := matches[1]
-		if !hasMinimalCodeRequirements(code) {
-			log.Printf("%s: Minimal criteria not met: '%s'", a.legacyCodeFilename, code)
-			continue
-		}
-
-		u := User{
-			Name:      code,
-			UserLevel: LevelLegacy,
-			ValidFrom: a.clock.Now()} // Will expire 30 days after file read.
-		u.SetAuthCode(code)
-		a.addUserSynchronized(&u)
-		count++
-	}
-	log.Printf("Read %d legacy codes from %s", count, a.legacyCodeFilename)
 }
 
 //
@@ -272,6 +221,7 @@ func (a *FileBasedAuthenticator) levelHasAccess(level Level, target Target) (boo
 		}
 		return isday, ""
 
+		// TODO: consider if we still need this level.
 	case LevelLegacy:
 		isday := a.isDaytime()
 		if !isday {

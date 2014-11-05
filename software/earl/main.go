@@ -197,7 +197,6 @@ func parseArg(arg string) (devicepath string, baudrate int) {
 
 func main() {
 	userFileName := flag.String("users", "/var/access/users.csv", "User Authentication file.")
-	legacyFileName := flag.String("users-legacy", "/var/access/legacy_keycode.txt", "Legacy Gate-PIN file")
 	logFileName := flag.String("logfile", "", "The log file, default = stdout")
 	flag.Parse()
 
@@ -220,7 +219,7 @@ func main() {
 
 	log.Println("Starting...")
 
-	authenticator := NewFileBasedAuthenticator(*userFileName, *legacyFileName)
+	authenticator := NewFileBasedAuthenticator(*userFileName)
 	doorActions := new(GPIOActions)
 	doorActions.Init()
 
