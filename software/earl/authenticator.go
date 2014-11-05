@@ -122,7 +122,8 @@ func (a *FileBasedAuthenticator) readUserFile() {
 	reader := csv.NewReader(f)
 	reader.FieldsPerRecord = -1 //variable length fields
 
-	count := 0
+	counts := make(map[Level]int)
+	total := 0
 	for {
 		user, err := NewUserFromCSV(reader)
 		if err != nil {
@@ -132,9 +133,13 @@ func (a *FileBasedAuthenticator) readUserFile() {
 			continue // e.g. due to comment or short line
 		}
 		a.addUserSynchronized(user)
-		count++
+		counts[user.UserLevel]++
+		total++
 	}
-	log.Printf("Read %d RFID codes from %s", count, a.userFilename)
+	log.Printf("Read %d RFID codes from %s", total, a.userFilename)
+	for level, count := range counts {
+		log.Printf("%13s %4d", level, count)
+	}
 }
 
 func (a *FileBasedAuthenticator) FindUser(plain_code string) *User {
