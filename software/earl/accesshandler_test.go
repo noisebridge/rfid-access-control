@@ -28,6 +28,7 @@ func (a *MockAuthenticator) AuthUser(code string, target Target) (bool, string) 
 	} else {
 		return false, "MockAuthenticator says: user doesn't exist"
 	}
+	return false, "" // Make old compiler happy.
 }
 func (a *MockAuthenticator) AddNewUser(authentication_user string, user User) (bool, string) {
 	return false, ""
