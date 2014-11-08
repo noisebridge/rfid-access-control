@@ -45,6 +45,7 @@ func IsValidLevel(input string) bool {
 	default:
 		return false
 	}
+	return false // Make old compilers happy.
 }
 
 const (
