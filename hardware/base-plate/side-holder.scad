@@ -4,7 +4,7 @@ side_high=50;
 side_thick=8;
 side_len=50;
 hold_thick=2;
-screw_predrill=1.5;
+screw_predrill=2;
 
 module side(right=1) {
     difference() {
