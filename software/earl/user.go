@@ -36,6 +36,17 @@ const (
 	LevelHiatus = Level("hiatus")
 )
 
+func IsValidLevel(input string) bool {
+	switch input {
+	case "member", "user", "fulltimeuser", "hiatus":
+		return true
+	case "legacy":
+		return true
+	default:
+		return false
+	}
+}
+
 const (
 	// Cards that don't have a name or contact info assigned to them are
 	// only valid for a limited period, as it otherwise it hard to find
@@ -69,29 +80,34 @@ type User struct {
 // Fields are stored in the sequence as they appear in the struct, with arrays
 // being represented as semicolon separated lists.
 // Create a new user read from a CSV reader
-func NewUserFromCSV(reader *csv.Reader) (user *User, result_err error) {
+func NewUserFromCSV(reader *csv.Reader) (user *User, done bool) {
 	line, err := reader.Read()
 	if err != nil {
-		return nil, err
+		return nil, true
 	}
 	if len(line) != 7 {
-		return nil, nil
+		return nil, false
 	}
 	// comment
 	if strings.TrimSpace(line[0])[0] == '#' {
-		return nil, nil
+		return nil, false
 	}
+	level := line[2]
 	ValidFrom, _ := time.Parse("2006-01-02 15:04", line[4])
 	ValidTo, _ := time.Parse("2006-01-02 15:04", line[5])
+	if !IsValidLevel(level) {
+		log.Printf("Got invalid level '%s'", level)
+		return nil, false
+	}
 	return &User{
 			Name:        line[0],
 			ContactInfo: line[1],
-			UserLevel:   Level(line[2]),
+			UserLevel:   Level(level),
 			Sponsors:    strings.Split(line[3], ";"),
 			ValidFrom:   ValidFrom, // field 4
 			ValidTo:     ValidTo,   // field 5
 			Codes:       strings.Split(line[6], ";")},
-		nil
+		false
 }
 
 func (user *User) WriteCSV(writer *csv.Writer) {

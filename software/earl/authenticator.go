@@ -124,9 +124,10 @@ func (a *FileBasedAuthenticator) readUserFile() {
 
 	counts := make(map[Level]int)
 	total := 0
+	log.Printf("Reading %s", a.userFilename)
 	for {
-		user, err := NewUserFromCSV(reader)
-		if err != nil {
+		user, done := NewUserFromCSV(reader)
+		if done {
 			break
 		}
 		if user == nil {
