@@ -1,10 +1,11 @@
+$fn=8;
 epsilon=0.1;
 acryl_thick=3;
 side_high=50;
 side_thick=8;
 side_len=50;
 hold_thick=2;
-screw_predrill=2;
+screw_predrill=1.8;
 
 module side(right=1) {
     difference() {
