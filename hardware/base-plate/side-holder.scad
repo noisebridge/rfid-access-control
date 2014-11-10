@@ -8,11 +8,15 @@ screw_predrill=2;
 
 module side(right=1) {
     difference() {
-	hull() {
+	union() {
 	    // Base block.
 	    cube([side_high, side_len + hold_thick, side_thick]);
 	    // Block that covers where the acryl holder is
-	    translate([side_high-3*hold_thick, 0, side_thick]) cube([3 * hold_thick, side_len + hold_thick, hold_thick]);
+
+	    hull() {
+		translate([side_high-3*hold_thick, 0, side_thick]) cube([3 * hold_thick, side_len + hold_thick, hold_thick]);
+		translate([side_high-6*hold_thick, 0, side_thick-hold_thick]) cube([3 * hold_thick, side_len + hold_thick, hold_thick]);
+	    }
 	}
 	
 	// Acryl holder.
