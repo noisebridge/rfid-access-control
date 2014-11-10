@@ -108,7 +108,7 @@ func (h *AccessHandler) checkAccess(code string) {
 		log.Printf("%s: denied. %s (codelen=%d)", target, msg, len(code))
 		h.t.ShowColor("R")
 		h.t.BuzzSpeaker("L", 200)
-		time.Sleep(500)
+		time.Sleep(500 * time.Millisecond)
 		h.t.ShowColor("")
 	}
 }
