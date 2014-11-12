@@ -11,7 +11,13 @@ import (
 type GPIOActions struct {
 }
 
-func (g *GPIOActions) Init() {
+func NewGPIOActions() *GPIOActions {
+	result := new(GPIOActions)
+	result.init()
+	return result
+}
+
+func (g *GPIOActions) init() {
 	g.initGPIO(7)
 	g.initGPIO(8)
 }
@@ -36,27 +42,27 @@ func (g *GPIOActions) OpenDoor(which Target) {
 	}
 }
 
-func (g *GPIOActions) initGPIO(pin int) {
-	//Initialize the GPIO stuffs
+func (g *GPIOActions) initGPIO(gpio_pin int) {
+	// Initialize the GPIO stuffs
 
-	//Create pin if it doesn't exist
+	// Create gpio_pin if it doesn't exist
 	f, err := os.OpenFile("/sys/class/gpio/export", os.O_WRONLY, 0444)
 	if err != nil {
-		log.Print("Creating Pin failed - continuing...", pin, err)
+		log.Print("Creating GPIO-pin failed - continuing...", gpio_pin, err)
 	} else {
-		f.Write([]byte(fmt.Sprintf("%d\n", pin)))
+		f.Write([]byte(fmt.Sprintf("%d\n", gpio_pin)))
 		f.Close()
 	}
 
 	// Put GPIO in Out mode
-	f, err = os.OpenFile(fmt.Sprintf("/sys/class/gpio/gpio%d/direction", pin), os.O_WRONLY, 0444)
+	f, err = os.OpenFile(fmt.Sprintf("/sys/class/gpio/gpio%d/direction", gpio_pin), os.O_WRONLY, 0444)
 	if err != nil {
 		log.Print("Error! Could not configure GPIO", err)
 	}
 	f.Write([]byte("out\n"))
 	f.Close()
 
-	g.switchRelay(false, pin)
+	g.switchRelay(false, gpio_pin) // initial state.
 }
 
 func (g *GPIOActions) switchRelay(switch_on bool, gpio_pin int) {
