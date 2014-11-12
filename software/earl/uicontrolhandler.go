@@ -103,11 +103,22 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 					u.t.WriteLCD(0, "Hi "+user.Name)
 				} else {
 					exp := user.ExpiryDate(time.Now())
-					u.t.WriteLCD(0, fmt.Sprintf("Up to %s",
-						exp.Format("Up to 2006-01-02 15:04")))
+					days_left := exp.Sub(time.Now()) / (24 * time.Hour)
+					if days_left <= 0 {
+						// Already expired; show when that happend.
+						u.t.WriteLCD(0, fmt.Sprintf("Exp %s",
+							exp.Format("2006-01-02 15:04")))
+					} else if days_left < 10 {
+						// When it gets more urgent to renew, show when
+						u.t.WriteLCD(0, fmt.Sprintf("%s (exp %dd)",
+							user.Name, days_left))
+					} else {
+						// Just show (arbitrary generated) name.
+						u.t.WriteLCD(0, user.Name)
+					}
 				}
 				if user.InValidityPeriod(time.Now()) {
-					u.t.WriteLCD(1, "This RFID opens doors :)")
+					u.t.WriteLCD(1, "This RFID opens doors.")
 				} else {
 					u.t.WriteLCD(1, "Ask member to renew")
 				}
@@ -135,7 +146,7 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 			u.t.WriteLCD(0,
 				fmt.Sprintf("Success! += %s", userName))
 		} else {
-			u.t.WriteLCD(0, msg)
+			u.t.WriteLCD(0, "Trouble:"+msg)
 		}
 		u.t.WriteLCD(1, "[*] Done    [1] Add More")
 		u.setState(StateWaitMemberCommand, 5*time.Second)
