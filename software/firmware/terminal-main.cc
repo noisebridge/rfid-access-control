@@ -65,21 +65,6 @@ static unsigned char from_hex(unsigned char c) {
 
 static inline bool isWhitespace(char c) { return c == ' ' || c == '\t'; }
 
-// Skips whitespace, reads the last available two digits into result. If there
-// are no digits, returns 0.
-static unsigned char parseHex(const char *buffer) {
-  unsigned char result = 0;
-  while (isWhitespace(*buffer)) buffer++;
-  while (*buffer) {
-    unsigned char nibble = from_hex(*buffer++);
-    if (nibble > 0x0f)
-      break;
-    result <<= 4;
-    result |= nibble;
-  }
-  return result;
-}
-
 #if FEATURE_BAUD_CHANGE
 // Like parseHex(), but decimal numbers.
 static uint16_t parseDec(const char *buffer) {
@@ -229,7 +214,6 @@ static void SendHelp(SerialCom *out) {
            "#\tT<L|H>[<ms>] Low or High tone for given time (default 250ms).\r\n"
            "#\tF<K><1|0> Set flag. 'K'=Keypad click.\r\n"
            "#\tR\tReset RFID reader.\r\n"
-           "#\tW<xx>\tRaw write output bits; param 8bit hex.\r\n"
            "#\tN<name> Set persistent name of this terminal. Send twice.\r\n"
 #if FEATURE_BAUD_CHANGE
            "#\tB<baud> Set baud rate. Persists if current rate confirmed.\r\n"
@@ -244,15 +228,6 @@ static void SendStats(SerialCom *out, unsigned short cmd_count) {
   print(out, _P("; dropped-rx-bytes=0x"));
   printHexShort(out, out->dropped_rx());
   print(out, _P("\r\n"));
-}
-
-static void SetAuxBits(const char *buffer, SerialCom *out) {
-  unsigned char value = parseHex(buffer + 1);
-  value &= AUX_BITS;
-  PORTC = value;
-  out->write('W');
-  printHexByte(out, value);
-  println(out);
 }
 
 // We require to send the same name twice in consecutive commands to make
@@ -411,9 +386,6 @@ int main() {
         SendHelp(&comm);
         break;
         // Commands that modify stuff. Upper case letters.
-      case 'W':
-        SetAuxBits(lineBuffer.line(), &comm);
-        break;
       case 'R':
         card_reader.PCD_Reset();
         card_reader.PCD_Init();
