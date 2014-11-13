@@ -37,7 +37,8 @@ case $1 in
 			--pidfile $PIDFILE \
 			--startas $DAEMON \
 			-- -logfile=$LOGFILE \
-				/dev/ttyAMA0:9600
+				/dev/ttyUSB0 /dev/ttyUSB1
+		    # /dev/ttyAMA0 not connected.
 		status=$?
 		log_end_msg $status
 		;;
