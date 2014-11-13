@@ -5,12 +5,20 @@
 # a slow communication as we have pretty long lines and don't use RS422, so
 # consider to reduce the baudrate for production use to something that works on
 # the line.
+# The FEATURE_* flags allow to switch features by setting them to 0 or 1
+#
 # FEATURE_BAUD_CHANGE allows to change baudrate via command. Good
-# for debugging and speed-testing in the field. But uses about 600 bytes space
-# in firmware, and fixed speed might be more useful in the field.
-# Compile-time choice.
-# Feature LCD switches on LCD support. Otherwise LED output.
-DEFINES=-DF_CPU=8000000UL -DSERIAL_BAUDRATE=9600 -DFEATURE_BAUD_CHANGE=1 -DFEATURE_LCD=0
+#    for debugging and speed-testing. But uses a quite a few bytes
+#    space in firmware, and fixed speed might be more useful in the field.
+#    (+= ~472 bytes)
+#
+# FEATURE_LCD switches between LCD and RGB LED support =1: LCD, =0: LED
+#    (LCD: += ~264 bytes)
+#
+# FEATURE_RFID_DEBUG provides query feature for RC522 status
+#    (+= ~298 bytes)
+#
+DEFINES=-DF_CPU=8000000UL -DSERIAL_BAUDRATE=9600 -DFEATURE_BAUD_CHANGE=0 -DFEATURE_LCD=0 -DFEATURE_RFID_DEBUG=0
 
 TARGET_ARCH=-mmcu=atmega8
 CXX=avr-g++
@@ -19,7 +27,7 @@ AVRDUDE_DEVICE ?= /dev/ttyUSB0
 AVRDUDE     = avrdude -p m8 -c stk500v2 -P $(AVRDUDE_DEVICE)
 FLASH_CMD   = $(AVRDUDE) -e -U flash:w:main.hex
 LINK=avr-g++ -g $(TARGET_ARCH) -Wl,-gc-sections
-OBJECTS=terminal-main.o lcd.o serial-com.o keypad.o tone-gen.o mfrc522/mfrc522.o
+OBJECTS=terminal-main.o lcd.o serial-com.o keypad.o tone-gen.o mfrc522/mfrc522.o mfrc522-debug.o
 
 all : main.hex
 

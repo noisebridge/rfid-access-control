@@ -16,6 +16,10 @@
 #include "serial-com.h"
 #include "tone-gen.h"
 
+#if FEATURE_RFID_DEBUG
+#  include "mfrc522-debug.h"
+#endif
+
 #define AUX_PORT PORTC
 #define AUX_BITS 0x3F
 
@@ -65,7 +69,6 @@ static unsigned char from_hex(unsigned char c) {
 
 static inline bool isWhitespace(char c) { return c == ' ' || c == '\t'; }
 
-#if FEATURE_BAUD_CHANGE
 // Like parseHex(), but decimal numbers.
 static uint16_t parseDec(const char *buffer) {
   uint16_t result = 0;
@@ -79,7 +82,6 @@ static uint16_t parseDec(const char *buffer) {
   }
   return result;
 }
-#endif
 
 inline static bool GetFlag(uint8_t* which) { return eeprom_read_byte(which); }
 inline static bool SetFlag(uint8_t* which, bool value) {
@@ -134,7 +136,7 @@ static void println(SerialCom *out, ProgmemPtr str) {
 }
 // Unlike the typically used progmem versions, print buffer from RAM. Named
 // obnoxiously so that typically the ProgmemPtr versions are considered.
-static void printlnFromRam(SerialCom *out, const char *str) {
+static void printlnFromRAMPointer(SerialCom *out, const char *str) {
   while (*str) out->write(*str++);
   println(out);
 }
@@ -201,6 +203,9 @@ static void SendHelp(SerialCom *out) {
            "# Lower case: read state\r\n"
            "#\t?\tThis help\r\n"
            "#\tn\tGet persistent name.\r\n"
+#if FEATURE_RFID_DEBUG
+           "#\tr\tShow MFRC522 registers.\r\n"
+#endif
            "#\ts\tShow stats.\r\n"
            "#\te<msg>\tEcho back msg (testing)\r\n"
            "#\r\n"
@@ -245,7 +250,7 @@ static void ReceiveName(SerialCom *com,
     if (checksum == name_checksum) {
       StoreNameEEPROM(line + 1);
       print(com, _P("Name set: "));
-      printlnFromRam(com, line + 1);
+      printlnFromRAMPointer(com, line + 1);
     } else {
       println(com, _P("Name mismatch!"));
     }
@@ -369,7 +374,7 @@ int main() {
   PrintShortHeader(&comm);
   println(&comm, _P("# Type '?<RETURN>' for help."));
   print(&comm, _P("# Name: "));
-  printlnFromRam(&comm, GetNameEEPROM(buffer));
+  printlnFromRAMPointer(&comm, GetNameEEPROM(buffer));
 
   LineBuffer lineBuffer;
   MFRC522::Uid current_uid;
@@ -422,14 +427,19 @@ int main() {
         break;
         // Lower case letters don't modify any state.
       case 'e':
-        printlnFromRam(&comm, lineBuffer.line());
+        printlnFromRAMPointer(&comm, lineBuffer.line());
         break;
+#if FEATURE_RFID_DEBUG
+      case 'r':
+        showRFIDStatus(&comm, &card_reader);
+        break;
+#endif
       case 's':
         SendStats(&comm, commands_seen_stat);
         break;
       case 'n':
         comm.write('n');
-        printlnFromRam(&comm, GetNameEEPROM(buffer));
+        printlnFromRAMPointer(&comm, GetNameEEPROM(buffer));
         break;
       case '\0': // TODO: the lineBuffer sometimes returns empty lines.
         break;
