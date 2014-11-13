@@ -49,17 +49,17 @@ If this terminal should have an LCD to display messages or interact wit the
 user, then these are connected to PC0..PC5 to the microcontroller.
 (TODO: make it #define-able which features are available)
 
-Unfortunately, many displays only work with 5V instead of 3.3V. Might need
-dual voltage on the board just to power the display.
+Unfortunately, many displays only work with 5V to display proper contrast.
+With 3.3V, the you need to connect the contrast input to a _negative_ voltage.
+In the board design, this is achieved by connecting it to one of the charge-pump
+outputs of the RS232 level shifter.
 
 ![LCD connector][lcd]
 
 The LCD typically has 14 or 16 connector pins. Connections from LCD to Atmega8
    - **LCD 1** _(GND)_ to **GND**
    - **LCD 2** _(+5V)_ to **5V**
-   - **LCD 3** _(contrast)_ to **GND**
-       _the contrast is controllable with a resistor, but connecting it to GND
-       is just fine_
+   - **LCD 3** _(contrast)_ to ~-1.5V negative voltage.
    - **LCD 4** _(RS)_ to **PC4** (Pin 27 on PDIP Atmega8)
    - **LCD 5** _(R/-W)_ to *GND** _We only write to the display,
       so we set this pin to GND_
@@ -142,6 +142,7 @@ Type `?` (+ newline) to get help over the serial line.
      ?       : Prints help.
      n       : Read name of terminal as set with 'N'.
      s       : Read stats.
+     r       : Show MFRC522 registers.
      e<msg>  : Just echo back given message. Useful for line-reliability test.
                (Use with line length ~ <= 30 characters).
 
@@ -153,20 +154,12 @@ Type `?` (+ newline) to get help over the serial line.
 
                  M1Hello World
 
-     W<xx>   : Writes output pins. Understands 8-bit hex number, but only
-               6 bits are currently addressed: PC[0..5] on the Atmega8
-               Responds with W<yy> with <yy> the actual bits being set (some
-               might not be available).
-               Can be used to switch on fancy LEDs or even remotely trigger a
-               relay or transistor to open the strike.
-               The following example sets all the bits:
-
-               W ff
-
      R       : Reset RFID reader (Mostly debug; should typically not be necessary
                except after physical connection reconnect of its SPI bus).
+               
      N<name> : Persistently set the name of this terminal. To avoid
                accidentally setting this, it prompts you to be called twice.
+               
      B<baud> : Set baudrate. Accepts one of the common baudrate
                values { 300, 600, 1200, 2400, 4800, 9600, 19200, 38400 }.
                This changes the baudrate when this command returns.
@@ -179,8 +172,17 @@ Type `?` (+ newline) to get help over the serial line.
                Next time the terminal comes up, it will use this baudrate.
                So essentially: similar to 'N', you have to give this command
                twice to actually persist a new baudrate.
+               
+     L[<R|G|B>]:  Set (combination of) LED Red/Green/Blue. Just L without
+                parameter switches LEDs off.
 
-     (TODO: specialized command to buzz or silent open, color leds etc)
+     T<L|H>[<ms>] Low or High tone for given time (default 250ms). Simple
+                user interaction.
+
+     F<K><1|0> Set flag. 'K'=Keypad click.
+    
+     (TODO: specialized command to buzz or silent open, using two outputs
+      to connect H-bridge)
 
 Each command is acknowledged with exactly one line prefixed with the letter of
 the command, *or* on error in that command, the returned line starts with `E`.
