@@ -7,6 +7,9 @@
 package main
 
 import (
+	"crypto/md5"
+	"encoding/hex"
+	"io"
 	"log"
 	"strings"
 	"time"
@@ -48,7 +51,7 @@ func (h *AccessHandler) HandleKeypress(b byte) {
 	switch b {
 	case '#':
 		if h.currentCode != "" {
-			h.checkAccess(h.currentCode)
+			h.checkAccess("keypad", h.currentCode)
 			h.currentCode = ""
 		}
 	case '*':
@@ -69,7 +72,7 @@ func (h *AccessHandler) HandleRFID(rfid string) {
 		h.currentRFID = rfid
 		h.lastCurrentRFID = h.clock.Now()
 	}
-	h.checkAccess(rfid)
+	h.checkAccess("RFID", rfid)
 }
 
 func (h *AccessHandler) HandleTick() {
@@ -86,7 +89,16 @@ func (h *AccessHandler) HandleTick() {
 	}
 }
 
-func (h *AccessHandler) checkAccess(code string) {
+// Hashing a value in a way that we can't recover the content of the value,
+// but only can compare if we get the same value.
+func scrubLogValue(in string) string {
+	hashgen := md5.New()
+	io.WriteString(hashgen, in)
+	// Some place in the middle of the hash.
+	return hex.EncodeToString(hashgen.Sum(nil))[0:6]
+}
+
+func (h *AccessHandler) checkAccess(origin string, code string) {
 	// Don't bother with too short codes. In particular, don't buzz
 	// or flash lights to not to seem overly interactive.
 	if !hasMinimalCodeRequirements(code) {
@@ -99,16 +111,20 @@ func (h *AccessHandler) checkAccess(code string) {
 		h.t.ShowColor("G")
 		h.t.BuzzSpeaker("H", 500)
 		// Be sparse, don't log user, but keep track of level.
-		log.Printf("%s: opened. Type=%s", target, user.UserLevel)
+		log.Printf("%s: opened. %s Type=%s",
+			target, origin, user.UserLevel)
 		h.doorActions.OpenDoor(target)
 		h.t.ShowColor("")
 	} else {
 		// This is either an invalid RFID (or used outside the
 		// validity), or a PIN-code, which is not valid for user
-		// access - thus we don't reveal PINs with one-off typos,
-		// as they won't exist in the first place.
-		// So let's say both types of codes are considered ok to log.
-		log.Printf("%s: denied. %s (%s)", target, msg, code)
+		// access.
+		// In that case, we log a scrubbed code - we won't be able
+		// to recover the code (we don't store the plain code anywhere
+		// to create a reverse table), but can see patterns when the
+		// same thing happens multiple times.
+		log.Printf("%s: denied. %s | %s (%s)",
+			target, msg, origin, scrubLogValue(code))
 		h.t.ShowColor("R")
 		h.t.BuzzSpeaker("L", 200)
 		time.Sleep(500 * time.Millisecond)
