@@ -94,7 +94,6 @@ func (h *AccessHandler) HandleTick() {
 func scrubLogValue(in string) string {
 	hashgen := md5.New()
 	io.WriteString(hashgen, in)
-	// Some place in the middle of the hash.
 	return hex.EncodeToString(hashgen.Sum(nil))[0:6]
 }
 
