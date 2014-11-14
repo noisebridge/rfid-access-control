@@ -103,9 +103,12 @@ func (h *AccessHandler) checkAccess(code string) {
 		h.doorActions.OpenDoor(target)
 		h.t.ShowColor("")
 	} else {
-		// We don't want to reveal typos and stuff. So be very sparse
-		// logging:
-		log.Printf("%s: denied. %s (codelen=%d)", target, msg, len(code))
+		// This is either an invalid RFID (or used outside the
+		// validity), or a PIN-code, which is not valid for user
+		// access - thus we don't reveal PINs with one-off typos,
+		// as they won't exist in the first place.
+		// So let's say both types of codes are considered ok to log.
+		log.Printf("%s: denied. %s (%s)", target, msg, code)
 		h.t.ShowColor("R")
 		h.t.BuzzSpeaker("L", 200)
 		time.Sleep(500 * time.Millisecond)
