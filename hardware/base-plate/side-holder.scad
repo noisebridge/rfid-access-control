@@ -4,7 +4,7 @@ clearance=0.5;
 acryl_thick=3 + clearance;
 side_high=50;
 side_thick=8.5;
-side_len=50;
+side_len=53;
 hold_thick=2;
 screw_predrill=1.8;
 
@@ -34,16 +34,16 @@ module left_bracket() {
     difference() {
 	translate([0, -(side_len+hold_thick)]) side(right=1);
 	// Drill holes.
-	translate([-epsilon,-15.96,side_thick-3.869]) rotate([0, 90, 0]) cylinder(r=screw_predrill, h=side_high - 20);
-	translate([-epsilon,-38.61,side_thick-4.755]) rotate([0, 90, 0]) cylinder(r=screw_predrill, h=side_high - 20);
+	translate([-epsilon,-14.96,side_thick-3.869]) rotate([0, 90, 0]) cylinder(r=screw_predrill, h=side_high - 20);
+	translate([-epsilon,-37.61,side_thick-4.755]) rotate([0, 90, 0]) cylinder(r=screw_predrill, h=side_high - 20);
     }
 }
 
 module right_bracket() {
     difference() {
 	side(right=0);
-	translate([-epsilon,14.83,side_thick-5.562]) rotate([0, 90, 0]) cylinder(r=screw_predrill, h=side_high - 20);
-	translate([-epsilon,39.25,side_thick-3.95]) rotate([0, 90, 0]) cylinder(r=screw_predrill, h=side_high - 20);
+	translate([-epsilon,12.83,side_thick-5.562]) rotate([0, 90, 0]) cylinder(r=screw_predrill, h=side_high - 20);
+	translate([-epsilon,37.25,side_thick-3.95]) rotate([0, 90, 0]) cylinder(r=screw_predrill, h=side_high - 20);
     }
 }
 
