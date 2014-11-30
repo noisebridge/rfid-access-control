@@ -55,11 +55,11 @@ equivalent connection on a 'standard' connector.
    - Line 1: Not connected (usually: DCE:RTS (out) / DTE:CTS (in)) *DB9-8*
    - Line 2: Not connected (usually: DCE:DTR (out) / DTE:DSR (in)) *DB9-1*
    - Line 3: **TxD**  (on host DTE:RxD) *DB9-2*
-   - Line 4: **GND** (on host DTE:RI, 'Ring indicator') *DB9-5* (DB9-9).
-   - Line 5: **GND** (GND) *DB9-5*
+   - Line 4: **GND** (on host DTE:RI, 'Ring indicator') *DB9-5* (DB9-9). (Blue solid).
+   - Line 5: **GND** (GND) *DB9-5* (Blue striped).
    - Line 6: **RxD** (on host DTE:TxD) *DB9-3*
-   - Line 7: **12V** supply in (usually: DCE:DSR (in) / DTE:DTR (out), DB9-4; but not connected there, just constantly powered.)
-   - Line 8: **12V** supply in (usually: DCE:CTS (in) / DTE:RTS (out), DB9-7; powered, dito)
+   - Line 7: **12V** supply in (usually: DCE:DSR (in) / DTE:DTR (out), DB9-4; but not connected there, just constantly powered. (Brown striped).
+   - Line 8: **12V** supply in (usually: DCE:CTS (in) / DTE:RTS (out), DB9-7; powered, dito) (Brown solid).
 
 (Let's see how well RS232 works, if long lines create trouble, we might consider
 RS422 physical).
