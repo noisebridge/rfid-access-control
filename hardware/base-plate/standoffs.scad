@@ -33,7 +33,6 @@ module terminal(h=standoff_height) {
 	translate([3, 3, 0]) drill();
 	translate([3, 21, 0]) drill();
     }
-    
 }
 
 module round_standoff(h=standoff_height, d=8) {
@@ -56,6 +55,16 @@ module standoff_collection(h=standoff_height) {
     translate([25, -20]) round_standoff(h=h);
 }
 
+module sd_holder(h=rpi_standoff_height,m=3) {
+    round_standoff(h=h);
+    difference() {
+	translate([-30.8+3.9-m/2,0.65- m/2,0])  cube([31.3+m,42.5+m,h]);
+	translate([-30.8+3.9,    0.65,-epsilon]) cube([31.3,42.5,h+m]);
+	drill();
+    }
+    translate([-30.8+3.9-m/2,4.65-m/2 + 38-15,0]) cube([31.3+m,15+m,0.4]);
+}
+
 // http://www.raspberrypi.org/wp-content/uploads/2012/12/Raspberry-Pi-Mounting-Hole-Template.png
 module raspi(h=rpi_standoff_height) {
     difference() {
@@ -67,7 +76,7 @@ module raspi(h=rpi_standoff_height) {
     translate([56-3, 0, 0]) cube([3, 6, h]);
 
     // We need another standoff
-    translate([5, 12, 0]) round_standoff(h=h);
+    translate([0, 12, 0]) sd_holder();
 }
 
 module print_all() {
