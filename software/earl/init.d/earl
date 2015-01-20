@@ -26,10 +26,8 @@ RUNASUSER=pi
 case $1 in 
 	start)
 		log_daemon_msg "Starting earl" "earl"
-		touch $LOGFILE
-		chmod a+w $LOGFILE
-		touch $PIDFILE
-		chown $RUNASUSER $PIDFILE
+		touch $PIDFILE $LOGFILE
+		chown $RUNASUSER:root $PIDFILE $LOGFILE
 		start-stop-daemon \
 			--start --oknodo \
 			--background \
