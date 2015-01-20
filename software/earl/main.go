@@ -171,7 +171,8 @@ func (t *TerminalStub) Run(handler TerminalEventHandler) {
 }
 
 func (t *TerminalStub) Shutdown() {
-	log.Printf("%s: Shutdown '%s'", t.logPrefix, t.GetTerminalName())
+	// Not logging to not trash SD card.
+	//log.Printf("%s: Shutdown '%s'", t.logPrefix, t.GetTerminalName())
 	t.errorState = true
 
 	// TODO: ideally, we want a clean shutdown of the reader
@@ -312,8 +313,11 @@ func HandleSerialDevice(devicepath string, baud int, backends *Backends) {
 
 		t, err = NewTerminalStub(devicepath, baud)
 		if t == nil {
-			log.Printf("%s:%d: couldn't connect: %s",
-				devicepath, baud, err.Error())
+			// TODO: Only log this rarely; We don't want the SD
+			// card to flow over from repeated logging of a
+			// disconnected device.
+			//log.Printf("%s:%d: couldn't connect: %s",
+			//devicepath, baud, err.Error())
 			continue
 		}
 		if t.GetTerminalName() == "" {

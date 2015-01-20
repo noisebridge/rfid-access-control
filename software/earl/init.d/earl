@@ -17,7 +17,7 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin
 DAEMON=/usr/local/bin/earl
 PIDFILE=/var/run/earl.pid
 LOGFILE=/var/log/earl
-
+SERIAL_INTERFACES="/dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyAMA0"
 test -x $DAEMON || exit 5
 
 RUNASUSER=pi
@@ -35,8 +35,7 @@ case $1 in
 			--pidfile $PIDFILE \
 			--startas $DAEMON \
 			-- -logfile=$LOGFILE \
-				/dev/ttyUSB0 /dev/ttyUSB1
-		    # /dev/ttyAMA0 not connected.
+		        $SERIAL_INTERFACES
 		status=$?
 		log_end_msg $status
 		;;
