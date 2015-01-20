@@ -304,14 +304,13 @@ type Backends struct {
 
 func HandleSerialDevice(devicepath string, baud int, backends *Backends) {
 	var t *TerminalStub
-	var err error
 	for ; ; time.Sleep(reconnectOnErrorTime) {
 		if t != nil {
 			// Shutdown previous terminal.
 			t.Shutdown()
 		}
 
-		t, err = NewTerminalStub(devicepath, baud)
+		t, _ = NewTerminalStub(devicepath, baud)
 		if t == nil {
 			// TODO: Only log this rarely; We don't want the SD
 			// card to flow over from repeated logging of a
