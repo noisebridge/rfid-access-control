@@ -74,7 +74,7 @@ The LCD typically has 14 or 16 connector pins. Connections from LCD to Atmega8
 
 ### RGB LED
 
-Compile time option `-DFEATURE_LCD=1`
+Compile time option `-DFEATURE_LCD=0`
 
 If the LCD is not chosen, a RGB LED with a common anode can be controlled
 instead. Output bits are somewhat random, so here documented for convenience:
@@ -102,7 +102,7 @@ connectors, 7 pins total.
 
 For keyboard beeps and server-controlled beep tones, connect
 
-    - **Speaker** to **PD2**
+   - **Speaker** to **PD2**
 
 Serial Protocol
 ---------------
@@ -268,7 +268,8 @@ A checklist:
 
    - Connect with a terminal program (e.g. `minicom`), test
      connected LEDs, buzzer, LCD etc. using the terminal interface and that
-     RFID reader and/or keypad return data.
+     RFID reader and/or keypad return data. Make sure to switch off hardware
+     and software flow control (`CTR-A O`, then `serial port setup` in minicom).
 
    - Optional: Test line speed as described above to optimize for your setup.
 
