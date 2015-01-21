@@ -34,7 +34,7 @@ type Authenticator interface {
 type FileBasedAuthenticator struct {
 	userFilename string // TODO: reload-if-changed by checking timestamp
 
-	// Map of codes to users. Quick way to look-up auth. Never use direclty,
+	// Map of codes to users. Quick way to look-up auth. Never use directly,
 	// use findUserSynchronized() and addUserSynchronized() for locking.
 	validUsers     map[string]*User
 	validUsersLock sync.Mutex
@@ -250,12 +250,10 @@ func (a *FileBasedAuthenticator) levelHasAccess(level Level, target Target) (boo
 		}
 		return isday, ""
 
-		// TODO: consider if we still need this level.
-
 	case LevelHiatus:
 		return false, "On Hiatus"
 
-	case LevelLegacy:
+	case LevelLegacy: // TODO: consider if we still need this level.
 		isday := a.isUserDaytime()
 		if !isday {
 			return false, "Gate user outside daytime"

@@ -41,7 +41,8 @@ type UIControlHandler struct {
 
 func NewControlHandler(authenticator Authenticator) *UIControlHandler {
 	return &UIControlHandler{
-		auth: authenticator,
+		auth:        authenticator,
+		userCounter: time.Now().Second() % 100, // semi-random start
 	}
 }
 
