@@ -53,9 +53,8 @@ func NewFileBasedAuthenticator(userFilename string) *FileBasedAuthenticator {
 
 	if !a.readUserFile() {
 		return nil
-	} else {
-		return a
 	}
+	return a
 }
 
 // We hash the authentication codes, as we don't need/want knowledge
