@@ -45,9 +45,10 @@ Connections from board to Atmega8
 
 ### LCD
 
+Compile time option `-DFEATURE_LCD=1`
+
 If this terminal should have an LCD to display messages or interact wit the
 user, then these are connected to PC0..PC5 to the microcontroller.
-(TODO: make it #define-able which features are available)
 
 Unfortunately, many displays only work with 5V to display proper contrast.
 With 3.3V, the you need to connect the contrast input to a _negative_ voltage.
@@ -71,6 +72,17 @@ The LCD typically has 14 or 16 connector pins. Connections from LCD to Atmega8
    - **LCD 14** _(Data 7)_ to **PC3** (Pin 26 on PDIP Atmega8)
    - If availble: LCD 15 and LCD 16 are for background light.
 
+### RGB LED
+
+Compile time option `-DFEATURE_LCD=1`
+
+If the LCD is not chosen, a RGB LED with a common anode can be controlled
+instead. Output bits are somewhat random, so here documented for convenience:
+
+  - **RED cathode** to **PC5** (Pin 23 on PDIP Atmega8; LCD-6 connector)
+  - **GREEN cathode** to **PC4** (Pin 27 on PDIP Atmega8; LCD-4 connector)
+  - **BLUE cathode** to **PC1** (Pin 24 on PDIP Atmega8; LCD-12 connector)
+
 ### Keypad
 
 Can read a standard 3 column x 4 row phone style keypad and output its debounced
@@ -86,9 +98,11 @@ connectors, 7 pins total.
    - **Col 1** to **PB6** (Pin 9 on PDIP Atmega8)
    - **Col 2** to **PB7** (Pin 10 on PDIP Atmega8)
 
-### Output Pins
+### Tone generation
 
-Output bits in PC0..PC5 if there is no LCD display. (TBD: and some leftover pins)
+For keyboard beeps and server-controlled beep tones, connect
+
+    - **Speaker** to **PD2**
 
 Serial Protocol
 ---------------
