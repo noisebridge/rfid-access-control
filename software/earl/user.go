@@ -90,7 +90,8 @@ func NewUserFromCSV(reader *csv.Reader) (user *User, done bool) {
 		return nil, false
 	}
 	// comment
-	if strings.TrimSpace(line[0])[0] == '#' {
+	firstElement := strings.TrimSpace(line[0])
+	if len(firstElement) > 0 && firstElement[0] == '#' {
 		return nil, false
 	}
 	level := line[2]

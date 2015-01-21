@@ -15,6 +15,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 )
 
 type Authenticator interface {
@@ -32,7 +33,8 @@ type Authenticator interface {
 }
 
 type FileBasedAuthenticator struct {
-	userFilename string // TODO: reload-if-changed by checking timestamp
+	userFilename  string
+	fileTimestamp time.Time // Timestamp at read time.
 
 	// Map of codes to users. Quick way to look-up auth. Never use directly,
 	// use findUserSynchronized() and addUserSynchronized() for locking.
@@ -49,8 +51,11 @@ func NewFileBasedAuthenticator(userFilename string) *FileBasedAuthenticator {
 		clock:        RealClock{},
 	}
 
-	a.readUserFile()
-	return a
+	if !a.readUserFile() {
+		return nil
+	} else {
+		return a
+	}
 }
 
 // We hash the authentication codes, as we don't need/want knowledge
@@ -109,15 +114,19 @@ func (a *FileBasedAuthenticator) addUserSynchronized(user *User) bool {
 // Read the user CSV file
 //
 // It is name, level, code[,code...]
-func (a *FileBasedAuthenticator) readUserFile() {
+func (a *FileBasedAuthenticator) readUserFile() bool {
 	if a.userFilename == "" {
 		log.Println("RFID-user file not provided")
-		return
+		return false
 	}
 	f, err := os.Open(a.userFilename)
 	if err != nil {
-		log.Fatal("Could not read RFID user-file", err)
+		log.Println("Could not read RFID user-file", err)
+		return false
 	}
+
+	fileinfo, _ := os.Stat(a.userFilename)
+	a.fileTimestamp = fileinfo.ModTime()
 
 	reader := csv.NewReader(f)
 	reader.FieldsPerRecord = -1 //variable length fields
@@ -141,6 +150,34 @@ func (a *FileBasedAuthenticator) readUserFile() {
 	for level, count := range counts {
 		log.Printf("%13s %4d", level, count)
 	}
+	return true
+}
+
+func (a *FileBasedAuthenticator) reloadIfChanged() {
+	fileinfo, err := os.Stat(a.userFilename)
+	if err != nil {
+		return // well, ok then.
+	}
+	if a.fileTimestamp == fileinfo.ModTime() {
+		return // nothing to do.
+	}
+	log.Printf("Refreshing changed %s (%s -> %s)\n",
+		a.userFilename,
+		a.fileTimestamp.Format("2006-01-02 15:04:05"),
+		fileinfo.ModTime().Format("2006-01-02 15:04:05"))
+
+	// For now, we are doing it simple: just create
+	// a new authenticator and steal the result.
+	// If we allow to modify users in-memory, we need to make
+	// sure that we don't replace contents while that is happening.
+	newAuth := NewFileBasedAuthenticator(a.userFilename)
+	if newAuth == nil {
+		return
+	}
+	a.validUsersLock.Lock()
+	defer a.validUsersLock.Unlock()
+	a.fileTimestamp = newAuth.fileTimestamp
+	a.validUsers = newAuth.validUsers
 }
 
 func (a *FileBasedAuthenticator) FindUser(plain_code string) *User {
@@ -194,6 +231,10 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 	writer := csv.NewWriter(f)
 	user.WriteCSV(writer)
 	writer.Flush()
+
+	fileinfo, _ := os.Stat(a.userFilename)
+	a.fileTimestamp = fileinfo.ModTime()
+
 	return true, ""
 }
 
@@ -202,6 +243,7 @@ func (a *FileBasedAuthenticator) AuthUser(code string, target Target) (bool, str
 	if !hasMinimalCodeRequirements(code) {
 		return false, "Auth failed: too short code."
 	}
+	a.reloadIfChanged()
 	user := a.findUserSynchronized(code)
 	if user == nil {
 		return false, "No user for code"

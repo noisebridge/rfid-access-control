@@ -11,6 +11,10 @@ import (
 	"time"
 )
 
+const (
+	keepGeneratedFiles = false // useful for debugging.
+)
+
 func ExpectTrue(t *testing.T, condition bool, message string) {
 	if !condition {
 		t.Errorf("Expected to succeed, but didn't: %s", message)
@@ -75,7 +79,9 @@ func CreateSimpleFileAuth(authFile *os.File, clock Clock) Authenticator {
 func TestAddUser(t *testing.T) {
 	authFile, _ := ioutil.TempFile("", "test-add-user")
 	auth := CreateSimpleFileAuth(authFile, RealClock{})
-	defer syscall.Unlink(authFile.Name())
+	if !keepGeneratedFiles {
+		defer syscall.Unlink(authFile.Name())
+	}
 
 	found := auth.FindUser("doe123")
 	ExpectTrue(t, found == nil, "Didn't expect non-existent code to work")
@@ -126,7 +132,9 @@ func TestTimeLimits(t *testing.T) {
 	authFile, _ := ioutil.TempFile("", "timing-tests")
 	mockClock := &MockClock{}
 	auth := CreateSimpleFileAuth(authFile, mockClock)
-	defer syscall.Unlink(authFile.Name())
+	if !keepGeneratedFiles {
+		defer syscall.Unlink(authFile.Name())
+	}
 
 	someMidnight, _ := time.Parse("2006-01-02", "2014-10-10") // midnight
 	nightTime_3h := someMidnight.Add(3 * time.Hour)           // 03:00
