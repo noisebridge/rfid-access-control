@@ -4,21 +4,33 @@
 # CPU frequency and baudrate as used at compile time. We want to have
 # a slow communication as we have pretty long lines and don't use RS422, so
 # consider to reduce the baudrate for production use to something that works on
-# the line.
+# the line (looks like 9600 is pretty ok for 10meters)
+#
 # The FEATURE_* flags allow to switch features by setting them to 0 or 1
+#
+# FEATURE_RFID_DEBUG provides query feature for RC522 status
+#    (+= ~298 bytes)
 #
 # FEATURE_BAUD_CHANGE allows to change baudrate via command. Good
 #    for debugging and speed-testing. But uses a quite a few bytes
 #    space in firmware, and fixed speed might be more useful in the field.
 #    (+= ~472 bytes)
 #
+# SERIAL_BAUDRATE is the baudrate used by the terminal. If FEATURE_BAUD_CHANGE
+#    is switched on, then this is the initial default baudrate.
+#
 # FEATURE_LCD switches between LCD and RGB LED support =1: LCD, =0: LED
 #    (LCD: += ~264 bytes)
 #
-# FEATURE_RFID_DEBUG provides query feature for RC522 status
-#    (+= ~298 bytes)
+# FIXED_TERMINAL_NAME : if defined (needs to be a string), then the name of the
+# terminal is compiled in and cannot be changed via EEPROM (-= ~420 bytes, so
+# saves code memory).
 #
-DEFINES=-DF_CPU=8000000UL -DSERIAL_BAUDRATE=9600 -DFEATURE_BAUD_CHANGE=0 -DFEATURE_LCD=0 -DFEATURE_RFID_DEBUG=0
+GIT_VERSION=$(shell git log --pretty=format:'%h' -n 1)
+
+DEFINES=-DGIT_VERSION=$(GIT_VERSION) -DF_CPU=8000000UL -DFEATURE_RFID_DEBUG=0 \
+        -DFEATURE_BAUD_CHANGE=0 -DSERIAL_BAUDRATE=9600 \
+        -DFEATURE_LCD=0  # -DFIXED_TERMINAL_NAME='"control"'
 
 TARGET_ARCH=-mmcu=atmega8
 CXX=avr-g++

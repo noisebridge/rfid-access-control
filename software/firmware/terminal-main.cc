@@ -23,6 +23,8 @@
 #define AUX_PORT PORTC
 #define AUX_BITS 0x3F
 
+#define AS_STRING(x) #x
+
 // Pointer to progmem string. Wrapped into separate type to have a type-safe
 // way to deal with it.
 struct ProgmemPtr {
@@ -33,12 +35,13 @@ struct ProgmemPtr {
 
 // TODO: move this repository to noisebridge github.
 const char kCodeUrl[] PROGMEM = "https://github.com/hzeller/rfid-access-control";
-const char kHeaderText[] PROGMEM = "Noisebridge access terminal | v0.2 | 8/2014";
+const char kHeaderText[] PROGMEM = "Noisebridge access terminal |"
+  " git-" AS_STRING(GIT_VERSION) " | 8/2014";
 
 // TODO: make configurable. This represents the layout downstairs.
-enum { RED_LED   = 0x20,   // LCD-EN
-       GREEN_LED = 0x10,   // LCD-RS
-       BLUE_LED  = 0x02 };  // LCD-D1
+enum { RED_LED   = 0x20,    // LCD-EN
+       GREEN_LED = 0x10,    // LCD-RS
+       BLUE_LED  = 0x02 };  // LCD-D5
 
 // Don't change sequence in here. Add stuff at end. This is the
 // raw layout in our eeprom which shouldn't change :)
@@ -98,17 +101,7 @@ static void StoreBaudEEPROM(uint16_t bd) {
 }
 #endif
 
-// Requires buffer with >= 32 bytes space (sizeof(ee_data.name)).
-static const char *GetNameEEPROM(char *buffer) {
-  eeprom_read_block(buffer, &ee_data.name, sizeof(ee_data.name));
-  buffer[sizeof(ee_data.name) - 1] = '\0';  // Ensure termination.
-  // If the eeprom just contains the default state (all 0xFF, which is not
-  // a useful ASCII character to begin with), just return an empty string.
-  if (buffer[0] == 0xff)
-    buffer[0] = '\0';
-  return buffer;
-}
-
+#ifndef FIXED_TERMINAL_NAME
 // Store NUL terminated string in eeprom. But not more than 31+1 bytes.
 static void StoreNameEEPROM(const char *name) {
   uint8_t len = strlen(name);
@@ -120,6 +113,7 @@ static void StoreNameEEPROM(const char *name) {
     eeprom_write_byte((uint8_t*)&ee_data.name + i, '\0');
   }
 }
+#endif
 
 // Some convenience methods around the serial line.
 static void print(SerialCom *out, ProgmemPtr str) {
@@ -140,6 +134,19 @@ static void printlnFromRAMPointer(SerialCom *out, const char *str) {
   while (*str) out->write(*str++);
   println(out);
 }
+#ifndef FIXED_TERMINAL_NAME
+static void printlnFromEEPROM(SerialCom *out, void *eeprom_ptr,
+                              uint8_t remaining) {
+  const uint8_t *ptr = (uint8_t*) eeprom_ptr;
+  char c;
+  while (remaining-- && (c = eeprom_read_byte(ptr++))) {
+    if (c == 0xff) break;   // Uninitialized EEPROM looks like this.
+    out->write(c);
+  }
+  println(out);
+}
+#endif
+
 static void printHexByte(SerialCom *out, unsigned char c) {
   out->write(to_hex(c >> 4));
   out->write(to_hex(c & 0x0f));
@@ -219,7 +226,9 @@ static void SendHelp(SerialCom *out) {
            "#\tT<L|H>[<ms>] Low or High tone for given time (default 250ms).\r\n"
            "#\tF<K><1|0> Set flag. 'K'=Keypad click.\r\n"
            "#\tR\tReset RFID reader.\r\n"
+#ifndef FIXED_TERMINAL_NAME
            "#\tN<name> Set persistent name of this terminal. Send twice.\r\n"
+#endif
 #if FEATURE_BAUD_CHANGE
            "#\tB<baud> Set baud rate. Persists if current rate confirmed.\r\n"
 #endif
@@ -235,6 +244,7 @@ static void SendStats(SerialCom *out, unsigned short cmd_count) {
   print(out, _P("\r\n"));
 }
 
+#ifndef FIXED_TERMINAL_NAME
 // We require to send the same name twice in consecutive commands to make
 // sure to not set the name due to accidents or random line noise.
 static uint8_t first_name_write_command_count = 0x42;
@@ -243,14 +253,20 @@ static void ReceiveName(SerialCom *com,
                         const char *line, uint8_t command_count) {
   uint8_t checksum = 0;
   const char *cs_run = line;
-  for (uint8_t i = 0; *cs_run; ++i, ++cs_run)
+  for (uint8_t i = 0; *cs_run; ++i, ++cs_run) {
     checksum ^= *cs_run + i;  // crude, but should catch typos.
+  }
+  if (cs_run - line < 4) {
+    // Make sure that we don't run into random line-noise
+    println(com, _P("Name too short!"));
+    return;
+  }
   if (first_name_write_command_count + 1 == command_count) {
     // The previous command was name setting as well. See if we got the same.
     if (checksum == name_checksum) {
       StoreNameEEPROM(line + 1);
       print(com, _P("Name set: "));
-      printlnFromRAMPointer(com, line + 1);
+      printlnFromEEPROM(com, &ee_data.name, sizeof(ee_data.name));
     } else {
       println(com, _P("Name mismatch!"));
     }
@@ -259,6 +275,14 @@ static void ReceiveName(SerialCom *com,
     name_checksum = checksum;
     println(com, _P("Name received. Send 2nd time to confirm."));
   }
+}
+#endif
+static void PrintTerminalName(SerialCom *com) {
+#ifdef FIXED_TERMINAL_NAME
+  print(com, _P(FIXED_TERMINAL_NAME));
+#else
+  printlnFromEEPROM(com, &ee_data.name, sizeof(ee_data.name));
+#endif
 }
 
 static void OutputTone(SerialCom *com, const char *line) {
@@ -292,10 +316,10 @@ static void SetLED(SerialCom *com, const char *line) {
 static void SetFlagCommand(SerialCom *com, const char *line) {
   bool result;
   switch (line[1]) {
-  case 'K':
+  case 'K':  // Keyboard click
     result = SetFlag(&ee_data.flag_keyboard_tone, line[2] == '1');
     break;
-  default:
+  default:   // Any other character or end of string.
     println(com, _P("E invalid flag"));
     return;
   }
@@ -352,8 +376,6 @@ int main() {
 
   _delay_ms(100);  // Wait for voltage to settle before we reset the 522
 
-  char buffer[32];  // general purpose. Allocated once for no stack-surprises.
-
   Clock::init();
 
   ToneGen::Init();
@@ -374,7 +396,7 @@ int main() {
   PrintShortHeader(&comm);
   println(&comm, _P("# Type '?<RETURN>' for help."));
   print(&comm, _P("# Name: "));
-  printlnFromRAMPointer(&comm, GetNameEEPROM(buffer));
+  PrintTerminalName(&comm);
 
   LineBuffer lineBuffer;
   MFRC522::Uid current_uid;
@@ -411,9 +433,11 @@ int main() {
         SetLED(&comm, lineBuffer.line());
         break;
 #endif
+#ifndef FIXED_TERMINAL_NAME
       case 'N':
         ReceiveName(&comm, lineBuffer.line(), commands_seen_stat & 0xff);
         break;
+#endif
 #if FEATURE_BAUD_CHANGE
       case 'B':
         SetNewBaudRate(&comm, lineBuffer.line());
@@ -439,7 +463,7 @@ int main() {
         break;
       case 'n':
         comm.write('n');
-        printlnFromRAMPointer(&comm, GetNameEEPROM(buffer));
+        PrintTerminalName(&comm);
         break;
       case '\0': // TODO: the lineBuffer sometimes returns empty lines.
         break;
