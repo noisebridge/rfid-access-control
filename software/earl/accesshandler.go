@@ -53,6 +53,8 @@ func (h *AccessHandler) HandleKeypress(b byte) {
 		if h.currentCode != "" {
 			h.checkAccess("keypad", h.currentCode)
 			h.currentCode = ""
+		} else {
+			// Consider this a doorbell ?
 		}
 	case '*':
 		h.currentCode = "" // reset
@@ -83,9 +85,8 @@ func (h *AccessHandler) HandleTick() {
 	// Keypad got a partial code, but never finished with '#'
 	if h.clock.Now().Sub(h.lastKeypressTime) > kKeypadTimeout &&
 		h.currentCode != "" {
-		// indicate timeout
 		h.currentCode = ""
-		h.t.BuzzSpeaker("L", 500)
+		h.t.BuzzSpeaker("L", 500) // indicate timeout
 	}
 }
 
@@ -105,8 +106,8 @@ func (h *AccessHandler) checkAccess(origin string, code string) {
 	}
 	target := Target(h.t.GetTerminalName())
 	user := h.auth.FindUser(code)
-	access_ok, msg := h.auth.AuthUser(code, target)
-	if user != nil && access_ok {
+	auth_result, msg := h.auth.AuthUser(code, target)
+	if user != nil && auth_result == AuthOk {
 		h.t.ShowColor("G")
 		h.t.BuzzSpeaker("H", 500)
 		// Be sparse, don't log user, but keep track of level.
@@ -124,7 +125,16 @@ func (h *AccessHandler) checkAccess(origin string, code string) {
 		// same thing happens multiple times.
 		log.Printf("%s: denied. %s | %s (%s)",
 			target, msg, origin, scrubLogValue(code))
-		h.t.ShowColor("R")
+		if auth_result == AuthFail {
+			h.t.ShowColor("R")
+		} else {
+			// Show blue for authentication that is just failing
+			// due to expired token/outside daytime. That gives some
+			// valueable feedback to the user.
+			h.t.ShowColor("B")
+			// TODO: should this trigger a doorbell ? Usually if
+			// someone is there, they might open the door.
+		}
 		h.t.BuzzSpeaker("L", 200)
 		time.Sleep(500 * time.Millisecond)
 		h.t.ShowColor("")

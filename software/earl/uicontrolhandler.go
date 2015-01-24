@@ -124,11 +124,6 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 					u.t.WriteLCD(1, "Ask member to renew")
 				}
 				u.setState(StateDisplayInfoMessage, 2*time.Second)
-
-			case LevelLegacy:
-				// This should never happen. Display anyway.
-				u.t.WriteLCD(1, "Valid RFID to open Gate")
-				u.setState(StateDisplayInfoMessage, 2*time.Second)
 			}
 		}
 

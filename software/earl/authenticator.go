@@ -18,9 +18,18 @@ import (
 	"time"
 )
 
+type AuthResult int
+
+const (
+	AuthFail             = AuthResult(0) // Not authorized.
+	AuthExpired          = AuthResult(1)
+	AuthOkButOutsideTime = AuthResult(2) // User ok; time-of-day limit.
+	AuthOk               = AuthResult(42)
+)
+
 type Authenticator interface {
 	// Given a code, is the user allowed to access "target" ?
-	AuthUser(code string, target Target) (ok bool, msg string)
+	AuthUser(code string, target Target) (AuthResult, string)
 
 	// Given the authenticator token (checked for memberness),
 	// add the given user.
@@ -190,7 +199,6 @@ func (a *FileBasedAuthenticator) FindUser(plain_code string) *User {
 	return &retval
 }
 
-// TODO: return readable error instead of false.
 func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user User) (bool, string) {
 	// Only members can add.
 	authMember := a.findUserSynchronized(authentication_code)
@@ -238,23 +246,23 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 }
 
 // Check if access for a given code is granted to a given Target
-func (a *FileBasedAuthenticator) AuthUser(code string, target Target) (bool, string) {
+func (a *FileBasedAuthenticator) AuthUser(code string, target Target) (AuthResult, string) {
 	if !hasMinimalCodeRequirements(code) {
-		return false, "Auth failed: too short code."
+		return AuthFail, "Auth failed: too short code."
 	}
 	a.reloadIfChanged()
 	user := a.findUserSynchronized(code)
 	if user == nil {
-		return false, "No user for code"
+		return AuthFail, "No user for code"
 	}
 	// In case of Hiatus users, be a bit more specific with logging: this
 	// might be someone stolen a token of some person on leave or attempt
 	// of a blocked user to get access.
 	if user.UserLevel == LevelHiatus {
-		return false, fmt.Sprintf("User on hiatus '%s <%s>'", user.Name, user.ContactInfo)
+		return AuthFail, fmt.Sprintf("User on hiatus '%s <%s>'", user.Name, user.ContactInfo)
 	}
 	if !user.InValidityPeriod(a.clock.Now()) {
-		return false, "Code not valid yet/expired"
+		return AuthExpired, "Code not valid yet/expired"
 	}
 	return a.levelHasAccess(user.UserLevel, target)
 }
@@ -270,36 +278,31 @@ func (a *FileBasedAuthenticator) isFulltimeUserDaytime() bool {
 	return hour >= 7 && hour <= 23 // 7:00..23:59
 }
 
-func (a *FileBasedAuthenticator) levelHasAccess(level Level, target Target) (bool, string) {
+func (a *FileBasedAuthenticator) levelHasAccess(level Level, target Target) (AuthResult, string) {
 	switch level {
 	case LevelMember:
-		return true, "" // Members always have access.
+		return AuthOk, "" // Members always have access.
 
 	case LevelFulltimeUser:
 		isday := a.isFulltimeUserDaytime()
 		if !isday {
-			return false, "Fulltime user outside daytime"
+			return AuthOkButOutsideTime,
+				"Fulltime user outside daytime"
 		}
-		return isday, ""
+		return AuthOk, ""
 
 	case LevelUser:
 		// TODO: we might want to make this dependent simply on
 		// members having 'opened' the space.
 		isday := a.isUserDaytime()
 		if !isday {
-			return false, "Regular user outside daytime"
+			return AuthOkButOutsideTime,
+				"Regular user outside daytime"
 		}
-		return isday, ""
+		return AuthOk, ""
 
 	case LevelHiatus:
-		return false, "On Hiatus"
-
-	case LevelLegacy: // TODO: consider if we still need this level.
-		isday := a.isUserDaytime()
-		if !isday {
-			return false, "Gate user outside daytime"
-		}
-		return target == TargetDownstairs, ""
+		return AuthFail, "On Hiatus"
 	}
-	return false, ""
+	return AuthFail, ""
 }

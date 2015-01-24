@@ -13,23 +13,25 @@ type ACKey struct {
 
 // Implements Athenticator interface.
 type MockAuthenticator struct {
-	allow map[ACKey]bool
+	allow map[ACKey]AuthResult
 }
 
 func NewMockAuthenticator() *MockAuthenticator {
 	return &MockAuthenticator{
-		allow: make(map[ACKey]bool)}
+		allow: make(map[ACKey]AuthResult)}
 }
 
-func (a *MockAuthenticator) AuthUser(code string, target Target) (bool, string) {
-	_, ok := a.allow[ACKey{code, target}]
-	if ok {
-		return true, ""
-	} else {
-		return false, "MockAuthenticator says: user doesn't exist"
+func (a *MockAuthenticator) AuthUser(code string, target Target) (AuthResult, string) {
+	result, ok := a.allow[ACKey{code, target}]
+	if !ok {
+		return AuthFail, "User does not exist"
 	}
-	return false, "" // Make old compiler happy.
+	if result == AuthOk {
+		return AuthOk, ""
+	}
+	return result, "MockAuthenticator says: some failure occured"
 }
+
 func (a *MockAuthenticator) AddNewUser(authentication_user string, user User) (bool, string) {
 	return false, ""
 }
@@ -128,7 +130,7 @@ func PressKeys(h *AccessHandler, keys string) {
 func TestValidAccessCode(t *testing.T) {
 	term := NewMockTerminal(t)
 	auth := NewMockAuthenticator()
-	auth.allow[ACKey{"123456", Target("mock")}] = true
+	auth.allow[ACKey{"123456", Target("mock")}] = AuthOk
 	doorActions := NewMockDoorActions(t)
 	handler := NewAccessHandler(auth, doorActions)
 	handler.Init(term)
@@ -142,13 +144,30 @@ func TestValidAccessCode(t *testing.T) {
 func TestInvalidAccessCode(t *testing.T) {
 	term := NewMockTerminal(t)
 	auth := NewMockAuthenticator()
-	auth.allow[ACKey{"123456", Target("mock")}] = true
+	auth.allow[ACKey{"123456", Target("mock")}] = AuthOk
 	doorActions := NewMockDoorActions(t)
 	handler := NewAccessHandler(auth, doorActions)
 	handler.Init(term)
 	handler.clock = MockClock{}
 	PressKeys(handler, "654321#")
 	term.expectColor("R")
+	term.expectBuzz(Buzz{"L", 200})
+	doorActions.expectOpenState(false, Target("mock"))
+	if doorActions.openedAnyDoor() {
+		t.Errorf("There are doors opened, but shouldn't")
+	}
+}
+
+func TestExpiredAccessCode(t *testing.T) {
+	term := NewMockTerminal(t)
+	auth := NewMockAuthenticator()
+	auth.allow[ACKey{"123456", Target("mock")}] = AuthExpired
+	doorActions := NewMockDoorActions(t)
+	handler := NewAccessHandler(auth, doorActions)
+	handler.Init(term)
+	handler.clock = MockClock{}
+	PressKeys(handler, "123456#")
+	term.expectColor("B") // Blue indicator
 	term.expectBuzz(Buzz{"L", 200})
 	doorActions.expectOpenState(false, Target("mock"))
 	if doorActions.openedAnyDoor() {

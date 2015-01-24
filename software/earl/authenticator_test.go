@@ -27,16 +27,16 @@ func ExpectFalse(t *testing.T, condition bool, message string) {
 	}
 }
 
-func ExpectResult(t *testing.T, ok bool, msg string,
-	expected_ok bool, expected_re string, fail_prefix string) {
+func ExpectResult(t *testing.T, auth AuthResult, msg string,
+	expected_auth AuthResult, expected_re string, fail_prefix string) {
 	matcher := regexp.MustCompile(expected_re)
 	matches := matcher.MatchString(msg)
 	if !matches {
 		t.Errorf("%s: Expected '%s' to match '%s'",
 			fail_prefix, msg, expected_re)
 	}
-	if ok != expected_ok {
-		t.Errorf("%s: Expected %t, got %t", fail_prefix, expected_ok, ok)
+	if auth != expected_auth {
+		t.Errorf("%s: Expected %d, got %d", fail_prefix, expected_auth, auth)
 	}
 }
 
@@ -44,9 +44,9 @@ func ExpectResult(t *testing.T, ok bool, msg string,
 // So doing this manually here.
 func ExpectAuthResult(t *testing.T, auth Authenticator,
 	code string, target Target,
-	expected_ok bool, expected_re string) {
-	ok, msg := auth.AuthUser(code, target)
-	ExpectResult(t, ok, msg, expected_ok, expected_re,
+	expected_auth AuthResult, expected_re string) {
+	auth_result, msg := auth.AuthUser(code, target)
+	ExpectResult(t, auth_result, msg, expected_auth, expected_re,
 		code+","+string(target))
 }
 
@@ -188,83 +188,59 @@ func TestTimeLimits(t *testing.T) {
 	u.SetAuthCode("user_nocontact")
 	auth.AddNewUser("root123", u)
 
-	u = User{UserLevel: LevelLegacy}
-	u.SetAuthCode("gate1234567")
-	auth.AddNewUser("root123", u)
-
 	mockClock.now = nightTime_3h
-	ExpectAuthResult(t, auth, "member123", TargetUpstairs, true, "")
-	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, false,
-		"outside daytime")
-	ExpectAuthResult(t, auth, "user123", TargetUpstairs, false,
-		"outside daytime")
-	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, true, "")
-	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs, false,
-		"outside daytime")
-	ExpectAuthResult(t, auth, "gate1234567", TargetUpstairs, false,
-		"Gate user outside daytime")
-	ExpectAuthResult(t, auth, "gate1234567", TargetDownstairs, false,
-		"Gate user outside daytime")
+	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs,
+		AuthOkButOutsideTime, "outside daytime")
+	ExpectAuthResult(t, auth, "user123", TargetUpstairs,
+		AuthOkButOutsideTime, "outside daytime")
+	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs,
+		AuthOkButOutsideTime, "outside daytime")
 
 	mockClock.now = earlyMorning_7h
-	ExpectAuthResult(t, auth, "member123", TargetUpstairs, true, "")
-	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, true, "")
-	ExpectAuthResult(t, auth, "user123", TargetUpstairs, false,
-		"outside daytime")
-	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, true, "")
-	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs, false,
-		"outside daytime")
-	ExpectAuthResult(t, auth, "gate1234567", TargetUpstairs, false,
-		"Gate user outside daytime")
-	ExpectAuthResult(t, auth, "gate1234567", TargetDownstairs, false,
-		"Gate user outside daytime")
+	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "user123", TargetUpstairs,
+		AuthOkButOutsideTime, "outside daytime")
+	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs,
+		AuthOkButOutsideTime, "outside daytime")
 
 	mockClock.now = hackerDaytime_13h
-	ExpectAuthResult(t, auth, "member123", TargetUpstairs, true, "")
-	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, true, "")
-	ExpectAuthResult(t, auth, "user123", TargetUpstairs, true, "")
-	ExpectAuthResult(t, auth, "hiatus123", TargetUpstairs, false, "hiatus")
-	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, true, "")
-	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs, true, "")
-	ExpectAuthResult(t, auth, "gate1234567", TargetUpstairs, false, "")
-	ExpectAuthResult(t, auth, "gate1234567", TargetDownstairs, true, "")
+	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "user123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "hiatus123", TargetUpstairs,
+		AuthFail, "hiatus")
+	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs, AuthOk, "")
 
 	mockClock.now = closingTime_22h // should behave similar to earlyMorning
-	ExpectAuthResult(t, auth, "member123", TargetUpstairs, true, "")
-	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, true, "")
-	ExpectAuthResult(t, auth, "user123", TargetUpstairs, false,
-		"outside daytime")
-	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, true, "")
-	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs, false,
-		"outside daytime")
-	ExpectAuthResult(t, auth, "gate1234567", TargetUpstairs, false,
-		"Gate user outside daytime")
-	ExpectAuthResult(t, auth, "gate1234567", TargetDownstairs, false,
-		"Gate user outside daytime")
+	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "user123", TargetUpstairs,
+		AuthOkButOutsideTime, "outside daytime")
+	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs,
+		AuthOkButOutsideTime, "outside daytime")
 
 	mockClock.now = lateStayUsers_23h // members and fulltimeusers left
-	ExpectAuthResult(t, auth, "member123", TargetUpstairs, true, "")
-	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, true, "")
-	ExpectAuthResult(t, auth, "user123", TargetUpstairs, false,
-		"outside daytime")
-	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, true, "")
-	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs, false,
-		"outside daytime")
-	ExpectAuthResult(t, auth, "gate1234567", TargetUpstairs, false,
-		"Gate user outside daytime")
-	ExpectAuthResult(t, auth, "gate1234567", TargetDownstairs, false,
-		"Gate user outside daytime")
+	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "user123", TargetUpstairs,
+		AuthOkButOutsideTime, "outside daytime")
+	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs,
+		AuthOkButOutsideTime, "outside daytime")
 
 	// Automatic expiry of entries that don't have contact info
 	mockClock.now = anonExpiry_30d
-	ExpectAuthResult(t, auth, "member123", TargetUpstairs, true, "")
-	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, true, "")
-	ExpectAuthResult(t, auth, "user123", TargetUpstairs, true, "")
-	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, false,
-		"Code not valid yet/expired")
-	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs, false,
-		"Code not valid yet/expired")
-	ExpectAuthResult(t, auth, "gate1234567", TargetUpstairs, false, "")
-	ExpectAuthResult(t, auth, "gate1234567", TargetDownstairs, false,
-		"Code not valid yet/expired")
+	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "user123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs,
+		AuthExpired, "Code not valid yet/expired")
+	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs,
+		AuthExpired, "Code not valid yet/expired")
 }

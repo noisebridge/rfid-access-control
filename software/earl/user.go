@@ -24,12 +24,6 @@ const (
 	// constraints: 07:00..23:59
 	LevelFulltimeUser = Level("fulltimeuser")
 
-	// Legacy access to gate. This used to be old PIN codes via the legacy
-	// file, but that doesn't exist anymore, so this level is
-	// not used. Maybe we want 'gate only' users, but then we should rename
-	// this.
-	LevelLegacy = Level("legacy")
-
 	// User that is not active currently (either because of leave of
 	// absense, or blocked otherwise) - any code should be inactive.
 	// This allows absent users to be kept in the file.
@@ -39,8 +33,6 @@ const (
 func IsValidLevel(input string) bool {
 	switch input {
 	case "member", "user", "fulltimeuser", "hiatus":
-		return true
-	case "legacy":
 		return true
 	default:
 		return false
