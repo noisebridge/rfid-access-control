@@ -23,8 +23,6 @@
 #define AUX_PORT PORTC
 #define AUX_BITS 0x3F
 
-#define AS_STRING(x) #x
-
 // Pointer to progmem string. Wrapped into separate type to have a type-safe
 // way to deal with it.
 struct ProgmemPtr {
@@ -36,7 +34,7 @@ struct ProgmemPtr {
 // TODO: move this repository to noisebridge github.
 const char kCodeUrl[] PROGMEM = "https://github.com/hzeller/rfid-access-control";
 const char kHeaderText[] PROGMEM = "Noisebridge access terminal |"
-  " git-" AS_STRING(GIT_VERSION) " | 8/2014";
+  " firmware version git:" GIT_VERSION;
 
 // TODO: make configurable. This represents the layout downstairs.
 enum { RED_LED   = 0x20,    // LCD-EN
@@ -265,7 +263,7 @@ static void ReceiveName(SerialCom *com,
     // The previous command was name setting as well. See if we got the same.
     if (checksum == name_checksum) {
       StoreNameEEPROM(line + 1);
-      print(com, _P("Name set: "));
+      print(com, _P("Name stored: "));
       printlnFromEEPROM(com, &ee_data.name, sizeof(ee_data.name));
     } else {
       println(com, _P("Name mismatch!"));
@@ -279,7 +277,7 @@ static void ReceiveName(SerialCom *com,
 #endif
 static void PrintTerminalName(SerialCom *com) {
 #ifdef FIXED_TERMINAL_NAME
-  print(com, _P(FIXED_TERMINAL_NAME));
+  println(com, _P(FIXED_TERMINAL_NAME));
 #else
   printlnFromEEPROM(com, &ee_data.name, sizeof(ee_data.name));
 #endif
@@ -408,7 +406,8 @@ int main() {
     char line_len;
     if ((line_len = lineBuffer.ReadlineNoblock(&comm)) != 0) {
       ++commands_seen_stat;
-      switch (lineBuffer.line()[0]) {
+      const char command = lineBuffer.line()[0];
+      switch (command) {
       case '?':
         SendHelp(&comm);
         break;
@@ -468,9 +467,16 @@ int main() {
       case '\0': // TODO: the lineBuffer sometimes returns empty lines.
         break;
       default:
-        print(&comm, _P("E Unknown command 0x"));
-        printHexByte(&comm, lineBuffer.line()[0]);
-        println(&comm, _P("; '?' for help."));
+          print(&comm, _P("E Unknown command "));
+          if (command < ' ' || command > 'z') {
+            print(&comm, _P("0x"));
+            printHexByte(&comm, command);
+          } else {  // printable as ASCII
+            comm.write('\'');
+            comm.write(command);
+            comm.write('\'');
+          }
+          println(&comm, _P("; '?' for help."));
       }
     }
 

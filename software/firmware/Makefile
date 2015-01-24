@@ -26,11 +26,11 @@
 # terminal is compiled in and cannot be changed via EEPROM (-= ~420 bytes, so
 # saves code memory).
 #
-GIT_VERSION=$(shell git log --pretty=format:'%h' -n 1)
+GIT_VERSION="$(shell git log --date=short --pretty=format:'[%h] @ %cd' -n 1)"
 
-DEFINES=-DGIT_VERSION=$(GIT_VERSION) -DF_CPU=8000000UL -DFEATURE_RFID_DEBUG=0 \
+DEFINES=-DGIT_VERSION='$(GIT_VERSION)' -DF_CPU=8000000UL -DFEATURE_RFID_DEBUG=0 \
         -DFEATURE_BAUD_CHANGE=0 -DSERIAL_BAUDRATE=9600 \
-        -DFEATURE_LCD=0  # -DFIXED_TERMINAL_NAME='"control"'
+        -DFEATURE_LCD=0 # -DFIXED_TERMINAL_NAME='"gate"'
 
 TARGET_ARCH=-mmcu=atmega8
 CXX=avr-g++
