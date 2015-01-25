@@ -50,8 +50,8 @@ The interesting stuff interacting with the access terminals is implemented
 in `accesshandler.go`. In `authenticator.go`, there is the ACL file handling.
 The LCD frontend stuff is implemented in `uicontrolhandler.go`.
 
-Interface
----------
+Serial Interface
+----------------
 If you want to use the `/dev/AMA0` serial interface of the Raspberry Pi, make sure
 to comment out the getty line in `/etc/inittab` that grabs that interface.
 Otherwise things don't work smoothly :)

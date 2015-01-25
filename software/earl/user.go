@@ -1,3 +1,10 @@
+// A user record - the information stored per user. This provides the basic record and ways
+// to read and write to CSV files.
+// Users can have a time limit in which they are valid. This is typically a time-range (which
+// can be not set, which means no expiry limit).
+//
+// This has one exception: if there is no contact info associated (yet), it will expire
+// after 30 days.
 package main
 
 import (

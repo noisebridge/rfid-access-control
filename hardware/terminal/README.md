@@ -87,6 +87,10 @@ Unfortunately, it has a different pintout than other voltage regulators, this
 is why it slipped in. Instead of [`Vin`, `GND`, `Vout`], it is
 [`GND`, `Vout`, `Vin`]. So you need to solder in some lead-twisting :)
 
+Tip for the RC522 reader. Depending on how you sandwich it, the chrystal oscillator it
+has on top pokes out to the front; it might make sense to resolder it and put on the back
+of the board.
+
 [pcb]: https://github.com/hzeller/rfid-access-control/raw/master/img/terminal-pcb.png
 [sp3232-spec]: http://www.exar.com/common/content/document.ashx?id=619
 [rj45-terminal-1]: http://www.allpinouts.org/index.php/Cisco_Console_RJ45_to_DB9_Pin
