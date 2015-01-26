@@ -3,7 +3,7 @@
 // (TODO(Henner): now that we know how it should look like: simplify)
 // --
 $fn=32;
-case_fn=96;       // Resolution of the case. Also funky with lo-res 8
+case_fn=512;       // Resolution of the case. Also funky with lo-res 8
 border_roundness=6;
 
 case_height=17.5;    // More precisely: the inner height. Outer is + top_thick.
@@ -11,7 +11,7 @@ case_height=17.5;    // More precisely: the inner height. Outer is + top_thick.
 // Various cable outlets. Negative number to switch off that hole.
 cable_to_back_r  = 5;   // radius for cable out the backplane or < 0 for not
 cable_to_left_top_r  = -3.5; // radius for cable out of the top, or < 0 for not.
-cable_to_right_top_r = -3.5; // radius for cable out of the top, or < 0 for not.
+cable_to_right_top_r = 3.5; // radius for cable out of the top, or < 0 for not.
 
 epsilon=0.05;
 
@@ -27,7 +27,7 @@ rfid_board_rest_height=5;  // Height of the lowest board in the sandwich.
 rfid_board_register_height=rfid_board_rest_height + 2; // case_height;
 
 top_thick  = 1.2;  // Thickness of the top shell.
-base_thick = 1;    // Thickness of the base-plate, mounted to the wall.
+base_thick = 1.2;    // Thickness of the base-plate, mounted to the wall.
 clearance  = 0.8;  // clearance between moving parts. Depends on printer-Q.
 logo_imprint=0.3;  // depth of the logo imprint.
 
@@ -48,7 +48,8 @@ screw_block_offset=base_radius - 5;  // Distance from y-center where the
                                      // diagonal mount-screw cut is.
 
 // X/Y locations for the wall mount screws. Some manual fiddling involved.
-drywall_mount_locations=[ [0, base_radius - 6],
+drywall_mount_locations=[ [-rfid_w/2+8, rfid_h/2 - 6],
+                          [ rfid_w/2-8, rfid_h/2 - 6],
                           [-rfid_w/2+4, -rfid_h/2 + 6],
 			  [ rfid_w/2-4, -rfid_h/2 + 6] ];
 cable_hole_location = [0,rfid_h/4,-epsilon];
@@ -197,11 +198,13 @@ module diagonal_split_block(b=[1,1,1], left=1) {
 }
 
 // A cable hole that optionally can have a cutout to the bottom.
-module cable_duct(r=1,cutout=14,xoffset=-18) {
+// (poke_length determines how far outwards the duct goes. Right now we use a
+// negative number as we only want to poke through the cleat to connect the LED)
+module cable_duct(r=1,cutout=14,xoffset=-18, poke_length=-12) {
     translate([xoffset,0,base_thick + r]) {
         rotate([-90, 0, 0]) {
-            cylinder(r=r, h=base_radius);
-            rotate([0,0,90]) translate([0,-r,0]) cube([cutout, 2*r, base_radius]);
+            cylinder(r=r, h=base_radius+poke_length);
+            rotate([0,0,90]) translate([0,-r,0]) cube([cutout, 2*r, base_radius+poke_length]);
         }
     }
 }
@@ -215,8 +218,21 @@ module cable_drills(cutout=0, widening=0) {
        cable_duct(xoffset=18,cable_to_right_top_r + widening, cutout=cutout);
 }
 
-module screw_block(w=15,left=1,padding=0,h=slope_start_fraction * case_height) {
-    color("red") translate([0,-screw_block_offset,0]) diagonal_split_block(b=[w + 2 * padding,base_radius,h + padding], left=left);
+module screw_block(w=19,left=1,padding=0,h=slope_start_fraction * case_height) {
+    color("gray") translate([0,-screw_block_offset,0]) diagonal_split_block(b=[w + 2 * padding,base_radius,h + padding], left=left);
+}
+
+module led() {
+    cylinder(r=3, h=15,$fn=8);
+}
+
+module light_block(w=25,padding=0) {
+    color("white") translate([-w/2-padding, 40, -epsilon]) union() {
+        difference() {
+            cube([w+2*padding, 20, case_height/2+padding]);
+            translate([w,0,case_height/4]) rotate([-90,0,60]) led();
+        }
+    }
 }
 
 module base_screws_podests(raised=4) {
@@ -249,7 +265,7 @@ module base_assembly() {
 	}
     }
 
-    pcb_podests(); // allow these to use the full height, e.g. for heatstaking.
+    //pcb_podests(); // allow these to use the full height, e.g. for heatstaking.
 
     // Screw block to mount the top
     // The screw holder is actually extending to the outside world, so we
@@ -257,7 +273,10 @@ module base_assembly() {
     difference() {
 	intersection() {
 	    case_outer_volume();
-	    screw_block(left=1);
+            union() {
+	        screw_block(left=1);
+                light_block();
+            }
 	}
 	positioned_mount_screw();
 	// Fudging away some sharp corner. Not calculated, needs mnual fiddling.
@@ -300,6 +319,7 @@ module top_assembly() {
 	top_case();
 	screw_block(left=1, padding=clearance);
 	cable_drills(cutout=case_height);
+        light_block(padding=clearance);
     }
 }
 
@@ -324,13 +344,19 @@ module xray() {
 }
 
 // The printable form: flat surfaces on the print-bed
-module print() {
-    translate([-oval_ratio * base_radius,0,0]) base_assembly();
+module print(print_base=true, print_cover=true) {
+    // This should be printed in transparent
+    if (print_base) {
+        translate([-oval_ratio * base_radius,0,0]) base_assembly();
+    }
 
+    // .. and this in the color the case should be.
     // We turn the case-assembly upside down and print next to it.
-    translate([oval_ratio * base_radius,0,0]) rotate([0,180,0]) translate([0,0,-case_height - top_thick]) top_assembly();
+    if (print_cover) {
+        translate([oval_ratio * base_radius,0,0]) rotate([0,180,0]) translate([0,0,-case_height - top_thick]) top_assembly();
+    }
 }
 
 //show();
 //xray();
-print();
+print(print_base=true, print_cover=true);
