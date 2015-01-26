@@ -1,8 +1,10 @@
-// ControlHandler.
-// A TerminalEventHandler, that interacts with users in the
-// space. Its primary goal is not to open doors and such, but to provide an
+// UIControlHandler.
+// A TerminalEventHandler, that interacts with users in the space.
+//
+// Its primary goal is not to open doors and such, but to provide an
 // user-interface to verify RFID cards and convenient way for members to
 // add new users.
+//
 // It is a regular terminal (same serial protocol), but has a LCD attached as
 // output and a Keypad and RFID reader as input.
 package main
@@ -81,6 +83,8 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 	}
 }
 
+// TODO: we need a little better way to represent this state-machine, this gets a little
+// bit nested.
 func (u *UIControlHandler) HandleRFID(rfid string) {
 	// The ID comes as "<length> <code>". Get the code.
 	rfid = strings.TrimSpace(strings.Split(rfid, " ")[1])

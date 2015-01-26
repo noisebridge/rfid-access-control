@@ -1,11 +1,19 @@
+// The Authenticator provides the storage of user information that knows about users and provide
+// the interface to ask if a particular user is authenticated.
+//
+// This file defines the Authenticator interface, which is the simple API to be used by
+// all the handlers that need to authenticate or modify users.
+//
+// This file also contains a concrete implementation (FileBasedAuthenticator) that stores users
+// in a CSV file.
+//
 package main
 
 // TODO
-// - add reloadIfChanged(): check file-timestamp and reload if needed
 // - We need the concept of an 'open space'. If the space is open (e.g.
 //   two members state that they are there), then regular users should come
 //   in independent of time.
-
+// - be able to write
 import (
 	"crypto/md5"
 	"encoding/csv"
@@ -28,11 +36,10 @@ const (
 )
 
 type Authenticator interface {
-	// Given a code, is the user allowed to access "target" ?
+	// Given a code (RFID or PIN), does it exist and is the user allowed to access "target" ?
 	AuthUser(code string, target Target) (AuthResult, string)
 
-	// Given the authenticator token (checked for memberness),
-	// add the given user.
+	// Given a valid code of some member (PIN or RFID), add the new user object.
 	// Updates the file
 	AddNewUser(authentication_code string, user User) (ok bool, msg string)
 
