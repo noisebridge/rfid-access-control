@@ -22,8 +22,6 @@ const (
 	TargetUpstairs   = Target("upstairs")
 	TargetElevator   = Target("elevator")
 	TargetControlUI  = Target("control") // UI to add new users.
-	// Someday we'll have the network closet locked down
-	//TargetNetwork = "closet"
 )
 
 const (
