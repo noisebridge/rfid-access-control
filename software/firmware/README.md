@@ -59,7 +59,7 @@ outputs of the RS232 level shifter.
 
 The LCD typically has 14 or 16 connector pins. Connections from LCD to Atmega8
    - **LCD 1** _(GND)_ to **GND**
-   - **LCD 2** _(+5V)_ to **5V**
+   - **LCD 2** _(VCC)_ to **3.3V**
    - **LCD 3** _(contrast)_ to ~-1.5V negative voltage.
    - **LCD 4** _(RS)_ to **PC4** (Pin 27 on PDIP Atmega8)
    - **LCD 5** _(R/-W)_ to *GND** _We only write to the display,
@@ -79,6 +79,7 @@ Compile time option `-DFEATURE_LCD=0`
 If the LCD is not chosen, a RGB LED with a common anode can be controlled
 instead. Output bits are somewhat random, so here documented for convenience:
 
+  - **Common Anode** to **3.3V** (LCD-2 connector)
   - **RED cathode** to **PC5** (Pin 23 on PDIP Atmega8; LCD-6 connector)
   - **GREEN cathode** to **PC4** (Pin 27 on PDIP Atmega8; LCD-4 connector)
   - **BLUE cathode** to **PC1** (Pin 24 on PDIP Atmega8; LCD-12 connector)

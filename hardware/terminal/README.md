@@ -6,11 +6,17 @@ RFID reader (via SPI interface), but also a 4x3 keypad (or just simple door-bell
 button) and an LCD can be connected. If wanted, even an electric strike via
 some external H-bridge.
 
+This is based on an Atmega8 because I had a bunch lying around, but the DIL
+version is bulky and ideally, I'd like to have a bit more IO pins, such as
+for a 4th row of the keypad or separate LED outputs; future versions might
+change to atmega168 (currently the best Atmel-IO bang for the buck).
+
 This board provides the necessary breakouts to connect the peripherals to an
 Atmega8 and holds the MAX232 compatible line driver.
 The software in `../../software/firmware` makes it useful.
 
-For a simple housing of this board and the RFID reader, have a look at `../case`
+For a housing of this board and the RFID reader, have a look at
+`../terminal-case`
 
 Feature overview
 ----------------
