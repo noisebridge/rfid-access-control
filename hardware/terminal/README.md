@@ -115,6 +115,7 @@ TODOs for future versions; learning from previous board
      connected from the reverse side)
    - Provide additional 16x1 connector to simply connect these LCD types.
    - Directly mount RGB LED on bord for less mouting hassle
+   - Separate RX/TX connector on TTL side for easier testing.
    - Add space for 754410 to possibly directly drive door-strikes.
    - Add space for extra transistor to amplify speaker output.
    - Add space for little buzzer on-board.
