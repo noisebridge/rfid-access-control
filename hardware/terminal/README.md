@@ -27,12 +27,12 @@ Feature overview
    - Separate 4-pin header to connect without RJ45
    - In-circuit programming header.
    - Uses Atmega8 in PDIP cases, mostly because I had a bunch lying around :)
-   - Allows to connect RFID-RC522, 4x3 keypad, HD44780 LCD, 2 aux; supported
-     by firmware.
+   - Allows to connect RFID-RC522, 4x3 keypad, HD44780 LCD, RGB-LED,
+     speaker-buzzer. All supported by firmware.
    - Uses a [SP3232E][sp3232-spec], essentially a MAX232 compatible chip
      for 3.3V supply voltage and only 100nF capcitors needed.
    - Uses the SP3232E charge pump to get the negative voltage needed to drive
-     LCD contrast (untested)
+     LCD contrast.
    - Little 'breadboard area' for quick hacks.
 
 Serial connection with RJ45
@@ -96,6 +96,29 @@ is why it slipped in. Instead of [`Vin`, `GND`, `Vout`], it is
 Tip for the RC522 reader. Depending on how you sandwich it, the chrystal oscillator it
 has on top pokes out to the front; it might make sense to resolder it and put on the back
 of the board.
+
+TODO
+----
+TODOs for future versions; learning from previous board
+
+   - Switch to atmega168 with less bulky 32 TQFP and 4 more IO pins.
+   - Fix pin-out of LDO (also, switch to ceramic capacitors for less
+     board height)
+   - In general optimize board for best stacking, e.g. avoid collision with
+     the crystal on the RFID board.
+   - Provide an extra fourth column for keypad.
+   - separate connector for 4st row, 4th column for an optional door-bell.
+   - Silkscreen label all the pins for RC522 to minimize confusion which way
+     to stack.
+   - separate out RGB LEDs from LCD (when more IO available)
+   - Maybe provide a reverse 8x2 connector for LCD (some LCDs are better
+     connected from the reverse side)
+   - Provide additional 16x1 connector to simply connect these LCD types.
+   - Directly mount RGB LED on bord for less mouting hassle
+   - Add space for 754410 to possibly directly drive door-strikes.
+   - Add space for extra transistor to amplify speaker output.
+   - Add space for little buzzer on-board.
+
 
 [pcb]: https://github.com/hzeller/rfid-access-control/raw/master/img/terminal-pcb.png
 [sp3232-spec]: http://www.exar.com/common/content/document.ashx?id=619
