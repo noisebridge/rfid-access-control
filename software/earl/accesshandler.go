@@ -32,7 +32,7 @@ type AccessHandler struct {
 }
 
 const (
-	kRFIDRepeatDebounce = 5 * time.Second  // RFID is repeated. Pace down.
+	kRFIDRepeatDebounce = 2 * time.Second  // RFID is repeated. Pace down.
 	kKeypadTimeout      = 30 * time.Second // Timeout: user stopped typing
 )
 
@@ -69,12 +69,10 @@ func (h *AccessHandler) HandleRFID(rfid string) {
 	rfid = strings.TrimSpace(strings.Split(rfid, " ")[1])
 
 	if h.currentRFID == rfid {
-		//log.Println("debounce")
-		return
-	} else {
-		h.currentRFID = rfid
-		h.lastCurrentRFID = h.clock.Now()
+		return // debounce.
 	}
+	h.currentRFID = rfid
+	h.lastCurrentRFID = h.clock.Now()
 	h.checkAccess("RFID", rfid)
 }
 
