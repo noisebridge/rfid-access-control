@@ -53,10 +53,9 @@ type Authenticator interface {
 	// Find user by code to update: the updater_fun is called with the current
 	// user information. Within the function, the user can be modified; the
 	// database is updated when that call comes back.
-	UpdateUser(user_code string, updater_fun ModifyFun) bool
+	UpdateUser(authentication_code string, user_code string, updater_fun ModifyFun) (bool, string)
 
-	// TODO: - authentication code to UpdateUser
-	//       - delete user
+	// TODO: - delete user
 	//       - actually persist the last two :)
 }
 
@@ -272,17 +271,24 @@ func (a *FileBasedAuthenticator) AuthUser(code string, target Target) (AuthResul
 	return a.levelHasAccess(user.UserLevel, target)
 }
 
-func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user User) (bool, string) {
-	// Only members can add.
-	authMember := a.findUserSynchronized(authentication_code, nil)
+func (a *FileBasedAuthenticator) verifyModifyOperationAllowed(auth_code string) (bool, string) {
+	// Only members can modify.
+	authMember := a.findUserSynchronized(auth_code, nil)
 	if authMember == nil {
-		return false, "Couldn't find member with authentication code"
+		return false, "Couldn't find member with authentication code."
 	}
 	if authMember.UserLevel != LevelMember {
-		return false, "Non-member AddNewUser attempt"
+		return false, "Non-member modify attempt"
 	}
 	if !authMember.InValidityPeriod(a.clock.Now()) {
-		return false, "Auth-Member not in valid time-frame"
+		return false, "Auth-Member expired."
+	}
+	return true, ""
+}
+
+func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user User) (bool, string) {
+	if auth_ok, auth_msg := a.verifyModifyOperationAllowed(authentication_code); !auth_ok {
+		return false, auth_msg
 	}
 
 	// TODO: Verify that there is some identifying information for the
@@ -325,7 +331,13 @@ func (a *FileBasedAuthenticator) writeCSV(filename string) bool {
 	return false
 }
 
-func (a *FileBasedAuthenticator) UpdateUser(user_code string, updater_fun ModifyFun) bool {
+func (a *FileBasedAuthenticator) UpdateUser(authentication_code string,
+	user_code string, updater_fun ModifyFun) (bool, string) {
+	log.Fatal("Work in progress, does not work yet")
+	if auth_ok, auth_msg := a.verifyModifyOperationAllowed(authentication_code); !auth_ok {
+		return false, auth_msg
+	}
+
 	var previous_revision int
 	orig_user := a.findUserSynchronized(user_code, &previous_revision)
 	modification_copy := *orig_user
@@ -333,21 +345,21 @@ func (a *FileBasedAuthenticator) UpdateUser(user_code string, updater_fun Modify
 	// a copy to mess with. if updater_fun() decides to not modify or discard the modification,
 	// it can return false.
 	if !updater_fun(&modification_copy) {
-		return false
+		return false, "Upate abort"
 	}
 
 	// Alright, some modification has been done. Update but make sure to only do that if
 	// nothing has changed in the meantime.
 	if !a.updateUserSynchronized(previous_revision, orig_user, &modification_copy) {
-		return false
+		return false, "Changed while editing"
 	}
 
 	tmpFilename := a.userFilename + ".tmp"
 	if !a.writeCSV(tmpFilename) {
-		return false
+		return false, "Storage error."
 	}
 	os.Rename(tmpFilename, a.userFilename)
-	return true
+	return true, ""
 }
 
 // Certain levels only have access during the daytime

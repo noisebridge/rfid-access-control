@@ -41,8 +41,8 @@ func (a *MockAuthenticator) FindUser(code string) *User {
 		UserLevel: "member",
 	}
 }
-func (a *MockAuthenticator) UpdateUser(user_code string, updater_fun ModifyFun) bool {
-	return false
+func (a *MockAuthenticator) UpdateUser(auth_code string, user_code string, updater_fun ModifyFun) (bool, string) {
+	return false, ""
 }
 
 type Buzz struct {
