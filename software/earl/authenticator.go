@@ -54,9 +54,6 @@ type Authenticator interface {
 	// user information. Within the function, the user can be modified; the
 	// database is updated when that call comes back.
 	UpdateUser(authentication_code string, user_code string, updater_fun ModifyFun) (bool, string)
-
-	// TODO: - delete user
-	//       - actually persist the last two :)
 }
 
 type FileBasedAuthenticator struct {
@@ -65,8 +62,10 @@ type FileBasedAuthenticator struct {
 
 	// Map of codes to users. Quick way to look-up auth. Never use directly,
 	// use findUserSynchronized() and addUserSynchronized() for locking.
-	validUsers     map[string]*User
-	validUsersLock sync.Mutex
+	userList   []*User          // Sequence of users
+	user2index map[*User]int    // user-pointer to index in userList
+	code2user  map[string]*User // access-code to user
+	userLock   sync.Mutex
 
 	revision int // counter for optimistic locking.
 
@@ -76,7 +75,9 @@ type FileBasedAuthenticator struct {
 func NewFileBasedAuthenticator(userFilename string) *FileBasedAuthenticator {
 	a := &FileBasedAuthenticator{
 		userFilename: userFilename,
-		validUsers:   make(map[string]*User),
+		userList:     make([]*User, 0, 10),
+		user2index:   make(map[*User]int),
+		code2user:    make(map[string]*User),
 		revision:     0,
 		clock:        RealClock{},
 	}
@@ -116,57 +117,80 @@ func hasMinimalCodeRequirements(code string) bool {
 // If revision is non-nil, fills in the current revision.
 func (a *FileBasedAuthenticator) findUserSynchronized(plain_code string, rev *int) *User {
 	a.reloadIfChanged()
-	a.validUsersLock.Lock()
-	defer a.validUsersLock.Unlock()
-	user, _ := a.validUsers[hashAuthCode(plain_code)]
+	a.userLock.Lock()
+	defer a.userLock.Unlock()
+	user, _ := a.code2user[hashAuthCode(plain_code)]
 	if rev != nil {
 		*rev = a.revision
 	}
 	return user
 }
 
-func (a *FileBasedAuthenticator) deleteUserRequiresLock(user *User) {
-	// First verify that there is no code in there that is already set..
-	for _, code := range user.Codes {
-		delete(a.validUsers, code)
+// Delete user and return index where it was
+func (a *FileBasedAuthenticator) deleteUserRequiresLock(user *User) int {
+	pos, found := a.user2index[user]
+	if !found {
+		return -1
 	}
+
+	a.userList[pos] = nil
+	delete(a.user2index, user)
+	for _, code := range user.Codes {
+		delete(a.code2user, code)
+	}
+	return pos
 }
 
-// Add a user, requires the validUsersLock to be locked.
-func (a *FileBasedAuthenticator) addUserRequiresLock(user *User) bool {
+// Add a user at particular position. Requires the userLock to be locked.
+func (a *FileBasedAuthenticator) addUserAtPosRequiresLock(user *User, at_index int) bool {
 	// First verify that there is no code in there that is already set..
 	for _, code := range user.Codes {
-		if a.validUsers[code] != nil {
+		if a.code2user[code] != nil {
 			log.Printf("Ignoring multiple used code '%s'", code)
 			return false // Existing user with that code
 		}
 	}
 	// Then ok to add.
+	if at_index < 0 {
+		a.userList = append(a.userList, user)
+		a.user2index[user] = len(a.userList) - 1
+	} else {
+		if a.userList[at_index] != nil {
+			// Someone internally messed up using this.
+			log.Fatalf("Doh' spot is actually not empty (%d)", at_index)
+		}
+		a.userList[at_index] = user
+		a.user2index[user] = at_index
+	}
 	for _, code := range user.Codes {
-		a.validUsers[code] = user
+		a.code2user[code] = user
 	}
 	return true
+}
+
+func (a *FileBasedAuthenticator) appendUserRequiresLock(user *User) bool {
+	return a.addUserAtPosRequiresLock(user, -1)
 }
 
 // Add user to the internal data structure.
 // Makes sure the data structure is synchronized.
 func (a *FileBasedAuthenticator) addUserSynchronized(user *User) bool {
-	a.validUsersLock.Lock()
-	defer a.validUsersLock.Unlock()
+	a.userLock.Lock()
+	defer a.userLock.Unlock()
 	a.revision++
-	return a.addUserRequiresLock(user)
+	return a.appendUserRequiresLock(user)
 }
 
 // Update user if the revision of the system is still the same as expected.
 func (a *FileBasedAuthenticator) updateUserSynchronized(expected_revision int, old_user *User, new_user *User) bool {
-	a.validUsersLock.Lock()
-	defer a.validUsersLock.Unlock()
+	a.userLock.Lock()
+	defer a.userLock.Unlock()
 	if a.revision != expected_revision {
 		return false
 	}
 	a.revision++
-	a.deleteUserRequiresLock(old_user)
-	return a.addUserRequiresLock(new_user)
+	user_index := a.deleteUserRequiresLock(old_user)
+	return a.addUserAtPosRequiresLock(new_user, user_index)
 }
 
 //
@@ -235,10 +259,13 @@ func (a *FileBasedAuthenticator) reloadIfChanged() {
 	if newAuth == nil {
 		return
 	}
-	a.validUsersLock.Lock()
-	defer a.validUsersLock.Unlock()
+	a.userLock.Lock()
+	defer a.userLock.Unlock()
+	// Steal all the fields :)
 	a.fileTimestamp = newAuth.fileTimestamp
-	a.validUsers = newAuth.validUsers
+	a.userList = newAuth.userList
+	a.user2index = newAuth.user2index
+	a.code2user = newAuth.code2user
 }
 
 func (a *FileBasedAuthenticator) FindUser(plain_code string) *User {
@@ -324,16 +351,40 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 	return true, ""
 }
 
-// Write content of the 'user database' to CSV file.
-func (a *FileBasedAuthenticator) writeCSV(filename string) bool {
+// Write content of the 'user database' to temp CSV file.
+func (a *FileBasedAuthenticator) writeTempCSV(filename string) bool {
 	os.Remove(filename)
-	//f, err := os.OpenFile(a.userFilename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	return false
+	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	writer := csv.NewWriter(f)
+	for _, user := range a.userList {
+		user.WriteCSV(writer)
+	}
+	writer.Flush()
+	if writer.Error() != nil {
+		log.Println(writer.Error())
+		return false
+	}
+	return true
+}
+
+func (a *FileBasedAuthenticator) writeDatabase() bool {
+	tmpFilename := a.userFilename + ".tmp"
+	if !a.writeTempCSV(tmpFilename) {
+		return false
+	}
+	os.Rename(tmpFilename, a.userFilename)
+	fileinfo, _ := os.Stat(a.userFilename)
+	a.fileTimestamp = fileinfo.ModTime()
+
+	return true
 }
 
 func (a *FileBasedAuthenticator) UpdateUser(authentication_code string,
 	user_code string, updater_fun ModifyFun) (bool, string) {
-	log.Fatal("Work in progress, does not work yet")
 	if auth_ok, auth_msg := a.verifyModifyOperationAllowed(authentication_code); !auth_ok {
 		return false, auth_msg
 	}
@@ -342,8 +393,8 @@ func (a *FileBasedAuthenticator) UpdateUser(authentication_code string,
 	orig_user := a.findUserSynchronized(user_code, &previous_revision)
 	modification_copy := *orig_user
 	// Call back the caller asking for modification of this user record. We hand out
-	// a copy to mess with. if updater_fun() decides to not modify or discard the modification,
-	// it can return false.
+	// a copy to mess with. If updater_fun() decides to not modify or discard the
+	// modification, it can return false.
 	if !updater_fun(&modification_copy) {
 		return false, "Upate abort"
 	}
@@ -354,12 +405,7 @@ func (a *FileBasedAuthenticator) UpdateUser(authentication_code string,
 		return false, "Changed while editing"
 	}
 
-	tmpFilename := a.userFilename + ".tmp"
-	if !a.writeCSV(tmpFilename) {
-		return false, "Storage error."
-	}
-	os.Rename(tmpFilename, a.userFilename)
-	return true, ""
+	return a.writeDatabase(), ""
 }
 
 // Certain levels only have access during the daytime

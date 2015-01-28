@@ -107,6 +107,8 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 				if user.HasContactInfo() {
 					u.t.WriteLCD(0, "Hi "+user.Name)
 				} else {
+					// No contact info; this is a temporary ID that
+					// expires after some time.
 					exp := user.ExpiryDate(time.Now())
 					days_left := exp.Sub(time.Now()) / (24 * time.Hour)
 					if days_left <= 0 {
@@ -125,7 +127,7 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 				if user.InValidityPeriod(time.Now()) {
 					u.t.WriteLCD(1, "This RFID opens doors.")
 				} else {
-					u.t.WriteLCD(1, "Ask member to renew")
+					u.t.WriteLCD(1, "Ask member to renew.")
 				}
 				u.setState(StateDisplayInfoMessage, 2*time.Second)
 			}

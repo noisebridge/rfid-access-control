@@ -162,6 +162,7 @@ func (user *User) ExpiryDate(now time.Time) time.Time {
 
 // Set the auth code to some value (should probably be add-auth-code)
 // Returns true if code is long enough to meet criteria.
+// (todo: right now we only set one code, but we need something like add)
 func (user *User) SetAuthCode(code string) bool {
 	if !hasMinimalCodeRequirements(code) {
 		return false

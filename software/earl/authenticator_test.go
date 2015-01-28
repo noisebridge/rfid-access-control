@@ -135,6 +135,44 @@ func TestAddUser(t *testing.T) {
 	ExpectTrue(t, auth.FindUser("expired123") != nil, "Finding expired123")
 }
 
+func TestUpdateUser(t *testing.T) {
+	authFile, _ := ioutil.TempFile("", "test-update-user")
+	auth := CreateSimpleFileAuth(authFile, RealClock{})
+	if !keepGeneratedFiles {
+		defer syscall.Unlink(authFile.Name())
+	}
+
+	u := User{
+		Name:      "Jon Doe",
+		UserLevel: LevelUser}
+	u.SetAuthCode("doe123")
+	auth.AddNewUser("root123", u)
+
+	u.Name = "Unchanged User"
+	u.SetAuthCode("unchanged123")
+	auth.AddNewUser("root123", u)
+
+	ExpectTrue(t, auth.FindUser("doe123") != nil, "Old doe123")
+	ExpectTrue(t, auth.FindUser("unchanged123") != nil, "Unchanged User")
+	ExpectFalse(t, auth.FindUser("newdoe123") != nil, "Not yet newdoe123")
+
+	// Now let the root user modify user identified by doe123
+	auth.UpdateUser("root123", "doe123", func(user *User) bool {
+		user.SetAuthCode("newdoe123")
+		user.ContactInfo = "hello@world"
+		return true
+	})
+
+	ExpectFalse(t, auth.FindUser("doe123") != nil, "New, doe123 not valid anymore")
+
+	updateUser := auth.FindUser("newdoe123")
+	ExpectTrue(t, updateUser != nil, "Finding newdoe123")
+	ExpectTrue(t, updateUser.ContactInfo == "hello@world", "Finding newdoe123")
+
+	// This guy should still be there and found.
+	ExpectTrue(t, auth.FindUser("unchanged123") != nil, "Unchanged User")
+}
+
 func TestTimeLimits(t *testing.T) {
 	authFile, _ := ioutil.TempFile("", "timing-tests")
 	mockClock := &MockClock{}
