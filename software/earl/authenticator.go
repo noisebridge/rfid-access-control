@@ -379,10 +379,12 @@ func (a *FileBasedAuthenticator) writeTempCSV(filename string) bool {
 		}
 	}
 	writer.Flush()
+	/* writer.Error() does not exist in older go versions.
 	if writer.Error() != nil {
 		log.Println(writer.Error())
 		return false
 	}
+	*/
 	return true
 }
 
