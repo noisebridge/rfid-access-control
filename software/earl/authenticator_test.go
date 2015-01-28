@@ -50,6 +50,7 @@ func ExpectAuthResult(t *testing.T, auth Authenticator,
 		code+","+string(target))
 }
 
+// Strip message from bool/string tuple and just return the bool
 func eatmsg(ok bool, msg string) bool {
 	if msg != "" {
 		log.Printf("TEST: ignore msg '%s'", msg)
@@ -92,7 +93,7 @@ func TestAddUser(t *testing.T) {
 	ExpectFalse(t, u.SetAuthCode("short"), "Adding too short code")
 	ExpectTrue(t, u.SetAuthCode("doe123"), "Adding long enough auth code")
 	// Can't add with bogus member
-	ExpectFalse(t, eatmsg(auth.AddNewUser("non-existent", u)),
+	ExpectFalse(t, eatmsg(auth.AddNewUser("non-existent member", u)),
 		"Adding new user with non-existent code.")
 
 	// Proper member adding user.
@@ -118,6 +119,12 @@ func TestAddUser(t *testing.T) {
 	u.SetAuthCode("expired123")
 	u.ValidTo = time.Now().Add(-1 * time.Hour)
 	ExpectTrue(t, eatmsg(auth.AddNewUser("root123", u)), "Adding user")
+
+	// Attempt to add a user with a non-member auth code
+	u.Name = "Shouldnotbeadded"
+	u.SetAuthCode("shouldfail")
+	ExpectFalse(t, eatmsg(auth.AddNewUser("doe123", u)),
+		"John Doe may not add users")
 
 	// Ok, now let's see if an new authenticator can make sense of the
 	// file we appended to.
