@@ -25,10 +25,11 @@ const (
 )
 
 const (
-	maxLCDRows           = 2
-	maxLCDCols           = 24
-	defaultBaudrate      = 9600
-	reconnectOnErrorTime = 2 * time.Second
+	maxLCDRows                  = 2
+	maxLCDCols                  = 24
+	defaultBaudrate             = 9600
+	initialReconnectOnErrorTime = 2 * time.Second
+	maxReconnectOnErrorTime     = 60 * time.Second
 )
 
 // Interacting with the terminal.
@@ -132,7 +133,7 @@ func (t *TerminalStub) discardInitialInput() {
 
 // Run until we encounter an IO problem or the terminal name changed
 // (e.g. due to plug-swapping)
-func (t *TerminalStub) Run(handler TerminalEventHandler) {
+func (t *TerminalStub) RunEventLoop(handler TerminalEventHandler) {
 	var tick_count uint32
 	handler.Init(t)
 	for !t.errorState {
@@ -151,6 +152,7 @@ func (t *TerminalStub) Run(handler TerminalEventHandler) {
 			handler.HandleTick()
 			tick_count++
 			// Regularly confirm that we are still connected to same terminal
+			// i.e. if connectors are disconnected or plugged around.
 			if tick_count%10 == 0 {
 				new_name := t.requestName()
 				if t.errorState {
@@ -174,10 +176,10 @@ func (t *TerminalStub) Shutdown() {
 	t.errorState = true
 
 	// TODO: ideally, we want a clean shutdown of the reader
-	// in readLineLoop() which is blocking at this moment.
+	// in inputScanLoop() which is blocking at this moment.
 	// We would like to send it a message telling to stop
 	// reading and closing the channel.
-	// However, this doesn't work: the Reader is blocking and
+	// However, this doesn't work: reader.ReadString() is blocking and
 	// we can't select on it, thus also not a way to select
 	// in parallel on some <-shutdownRequested channel.
 	// The only chance I see is to close the channel here and
@@ -302,28 +304,24 @@ type Backends struct {
 
 func HandleSerialDevice(devicepath string, baud int, backends *Backends) {
 	var t *TerminalStub
-	for ; ; time.Sleep(reconnectOnErrorTime) {
-		if t != nil {
-			// Shutdown previous terminal.
-			t.Shutdown()
+	connect_successful := true
+	retry_time := initialReconnectOnErrorTime
+	for {
+		if !connect_successful {
+			time.Sleep(retry_time)
+			retry_time *= 2 // exponential backoff.
+			if retry_time > maxReconnectOnErrorTime {
+				retry_time = maxReconnectOnErrorTime
+			}
 		}
+
+		connect_successful = false
 
 		t, _ = NewTerminalStub(devicepath, baud)
 		if t == nil {
-			// TODO: Only log this rarely; We don't want the SD
-			// card to flow over from repeated logging of a
-			// disconnected device.
-			//log.Printf("%s:%d: couldn't connect: %s",
-			//devicepath, baud, err.Error())
 			continue
 		}
-		if t.GetTerminalName() == "" {
-			log.Printf("%s:%d: got empty name.", devicepath, baud)
-			continue
-		} else {
-			log.Printf("%s:%d: connected to '%s'",
-				devicepath, baud, t.GetTerminalName())
-		}
+
 		// Terminals are dispatched by name. There are different handlers
 		// for the name e.g. handlers that deal with reading codes
 		// and opening doors, but also the UI handler dealing with
@@ -337,12 +335,16 @@ func HandleSerialDevice(devicepath string, baud int, backends *Backends) {
 			handler = NewControlHandler(backends.authenticator)
 
 		default:
-			log.Printf("%s:%d: Don't know how to deal with terminal '%s'",
+			log.Printf("%s:%d: Terminal with unrecognized name '%s'",
 				devicepath, baud, t.GetTerminalName())
 		}
 
 		if handler != nil {
-			t.Run(handler)
+			connect_successful = true
+			retry_time = initialReconnectOnErrorTime
+			log.Printf("%s:%d: connected to '%s'",
+				devicepath, baud, t.GetTerminalName())
+			t.RunEventLoop(handler)
 		}
 		t.Shutdown()
 		t = nil
@@ -378,6 +380,8 @@ func main() {
 		doorActions:   NewGPIOActions(),
 	}
 
+	// For each serial interface, we run an indepenent loop
+	// making sure we are constantly connected.
 	for _, arg := range flag.Args() {
 		devicepath, baudrate := parseArg(arg)
 		go HandleSerialDevice(devicepath, baudrate, backends)
