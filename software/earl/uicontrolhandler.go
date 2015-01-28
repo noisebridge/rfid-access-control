@@ -12,6 +12,7 @@ package main
 // TODO
 //  - A single member can give a day's pass, 2 members a user
 //  - How to enter names for members ? For initiall mass-adding: on console
+//  - make this state-machine more readable.
 import (
 	"fmt"
 	"strings"
@@ -25,6 +26,7 @@ const (
 	StateDisplayInfoMessage = UIState(1) // Interrupt idle screen and show info message
 	StateWaitMemberCommand  = UIState(2) // Member showed RFID; awaiting instruction
 	StateAddAwaitNewRFID    = UIState(3) // Member adds new user: wait for new user RFID
+	StateUpdateAwaitRFID    = UIState(4) // Member updates user: wait for new user RFID
 )
 
 type UIControlHandler struct {
@@ -81,10 +83,14 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 		u.setState(StateAddAwaitNewRFID, 30*time.Second)
 		return
 	}
+	if u.state == StateWaitMemberCommand && key == '2' {
+		u.t.WriteLCD(0, "Read user RFID to update")
+		u.t.WriteLCD(1, "[*] Cancel")
+		u.setState(StateUpdateAwaitRFID, 30*time.Second)
+		return
+	}
 }
 
-// TODO: we need a little better way to represent this state-machine, this gets a little
-// bit nested.
 func (u *UIControlHandler) HandleRFID(rfid string) {
 	// The ID comes as "<length> <code>". Get the code.
 	rfid = strings.TrimSpace(strings.Split(rfid, " ")[1])
@@ -100,7 +106,7 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 			case LevelMember:
 				u.authUserCode = rfid
 				u.t.WriteLCD(0, fmt.Sprintf("Howdy %s", user.Name))
-				u.t.WriteLCD(1, "[*] Cancel  [1] Add User")
+				u.t.WriteLCD(1, "[*]ESC [1]Add [2]Update")
 				u.setState(StateWaitMemberCommand, 5*time.Second)
 
 			case LevelUser:
@@ -152,7 +158,28 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 		}
 		u.t.WriteLCD(1, "[*] Done    [1] Add More")
 		u.setState(StateWaitMemberCommand, 5*time.Second)
+
+	case StateUpdateAwaitRFID:
+		updateUser := u.auth.FindUser(rfid)
+		if updateUser == nil {
+			u.t.WriteLCD(0, "Unknown RFID")
+		} else if updateUser.ExpiryDate(time.Now()).IsZero() {
+			u.t.WriteLCD(0, fmt.Sprintf("%s does not expire", updateUser.Name))
+		} else {
+			// TODO: maybe ask for confirmation ?
+			u.auth.UpdateUser(u.authUserCode, rfid,
+				func(user *User) bool {
+					user.ValidFrom = time.Now()
+					return true
+				})
+			updateUser = u.auth.FindUser(rfid)
+			newExp := updateUser.ExpiryDate(time.Now()).Format("Jan 02")
+			u.t.WriteLCD(0, fmt.Sprintf("Extended to %s", newExp))
+		}
+		u.t.WriteLCD(1, "[*] Done [2] Update More")
+		u.setState(StateWaitMemberCommand, 5*time.Second)
 	}
+
 }
 
 func (u *UIControlHandler) HandleTick() {
