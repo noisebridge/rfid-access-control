@@ -45,6 +45,10 @@ enum { RED_LED   = 0x20,    // LCD-EN
 // raw layout in our eeprom which shouldn't change :)
 // We store flags in full bytes for convenience reasons.
 struct EepromLayout {
+  // The first character sometimes seems to be wiped out in power-glitch
+  // situations; so let's not store anything of interest here.
+  char dummy;
+
   char name[32];      // Shall be nul terminated. So at most 31 long.
   uint16_t baud_rate; // If garbage, falls back to SERIAL_BAUDRATE
   uint8_t flag_keyboard_tone;  // Use a keyboard tone.
@@ -53,6 +57,7 @@ struct EepromLayout {
 
 // EEPROM layout with some defaults in case we'd want to prepare eeprom flash.
 struct EepromLayout EEMEM ee_data = {
+  /* .dummy     = */          0,
   /* .name      = */          "terminal",
   /* .baud_rate = */          SERIAL_BAUDRATE,
   /* .flag_keyboard_tone = */ 1,

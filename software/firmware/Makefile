@@ -88,8 +88,8 @@ clean:
 # 0 bootrst     1   starting at 0x0000
 
 ### low byte:
-# 7 bodlevel	1   brown out
-# 6 boden	1   brown out
+# 7 bodlevel	1   brown out detect at 2.7v
+# 6 boden	0   brown out enable.
 # 5 sut1	1-+ slow rising power (page 30)
 # 4 sut0	0/
 #
