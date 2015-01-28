@@ -128,6 +128,10 @@ func (doorActions *MockDoorActions) expectOpenState(expected bool, target Target
 	}
 }
 
+func (doorActions *MockDoorActions) resetDoors() {
+	doorActions.opened = make(map[Target]bool)
+}
+
 func PressKeys(h *AccessHandler, keys string) {
 	for _, key := range keys {
 		h.HandleKeypress(byte(key))
@@ -182,6 +186,48 @@ func TestExpiredAccessCode(t *testing.T) {
 	}
 }
 
+func TestKeypadTimeout(t *testing.T) {
+	term := NewMockTerminal(t)
+	auth := NewMockAuthenticator()
+	auth.allow[ACKey{"123456", Target("mock")}] = AuthOk
+	doorActions := NewMockDoorActions(t)
+	handler := NewAccessHandler(auth, doorActions)
+	handler.Init(term)
+	mockClock := &MockClock{}
+	handler.clock = mockClock
+
+	PressKeys(handler, "123456")                        // missing #
+	mockClock.now = mockClock.now.Add(60 * time.Second) // >> keypad timeout
+	handler.HandleTick()
+	term.expectBuzz(Buzz{"L", 500}) // timeout buzz
+	if doorActions.openedAnyDoor() {
+		t.Errorf("There are doors opened, but shouldn't")
+	}
+}
+
+func TestRFIDDebounce(t *testing.T) {
+	term := NewMockTerminal(t)
+	auth := NewMockAuthenticator()
+	auth.allow[ACKey{"rfid-123", Target("mock")}] = AuthOk
+	doorActions := NewMockDoorActions(t)
+	handler := NewAccessHandler(auth, doorActions)
+	handler.Init(term)
+	mockClock := &MockClock{}
+	handler.clock = mockClock
+
+	handler.HandleRFID("8 rfid-123")
+	doorActions.expectOpenState(true, Target("mock"))
+	doorActions.resetDoors()
+
+	// A quickly coming same RFID should not open the door again
+	handler.HandleRFID("8 rfid-123")
+	doorActions.expectOpenState(false, Target("mock"))
+
+	// .. but after some de-bounce time, this should work again.
+	mockClock.now = mockClock.now.Add(10 * time.Second)
+	handler.HandleRFID("8 rfid-123")
+	doorActions.expectOpenState(true, Target("mock"))
+}
+
 // test ideas:
-//  - wrong code: buzz low and red light
 //  - too short code: don't buzz

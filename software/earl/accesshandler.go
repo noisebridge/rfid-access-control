@@ -66,7 +66,11 @@ func (h *AccessHandler) HandleKeypress(b byte) {
 
 func (h *AccessHandler) HandleRFID(rfid string) {
 	// The ID comes as "<length> <code>". Get the code.
-	rfid = strings.TrimSpace(strings.Split(rfid, " ")[1])
+	rfid_elements := strings.Split(rfid, " ")
+	if len(rfid_elements) != 2 {
+		return
+	}
+	rfid = strings.TrimSpace(rfid_elements[1])
 
 	// The reader might send IDs faster than we can checkAccess()
 	// which currently blocks the event thread.
