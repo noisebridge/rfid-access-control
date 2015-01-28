@@ -165,12 +165,53 @@ func TestUpdateUser(t *testing.T) {
 
 	ExpectFalse(t, auth.FindUser("doe123") != nil, "New, doe123 not valid anymore")
 
-	updateUser := auth.FindUser("newdoe123")
-	ExpectTrue(t, updateUser != nil, "Finding newdoe123")
-	ExpectTrue(t, updateUser.ContactInfo == "hello@world", "Finding newdoe123")
+	updatedUser := auth.FindUser("newdoe123")
+	ExpectTrue(t, updatedUser != nil, "Finding newdoe123")
+	ExpectTrue(t, updatedUser.ContactInfo == "hello@world", "Finding newdoe123")
 
 	// This guy should still be there and found.
 	ExpectTrue(t, auth.FindUser("unchanged123") != nil, "Unchanged User")
+
+	// Now let's see if everything is properly persisted
+	auth = NewFileBasedAuthenticator(authFile.Name())
+	ExpectTrue(t, auth.FindUser("root123") != nil, "Reread: Finding root123")
+	ExpectTrue(t, auth.FindUser("unchanged123") != nil, "Reread: Finding unchanged123")
+	ExpectTrue(t, auth.FindUser("newdoe123") != nil, "Reread: Finding newdoe123")
+	updatedUser = auth.FindUser("newdoe123")
+	ExpectTrue(t, updatedUser.ContactInfo == "hello@world", "Reread: contact newdoe123")
+}
+
+func TestDeleteUser(t *testing.T) {
+	authFile, _ := ioutil.TempFile("", "test-delete-user")
+	auth := CreateSimpleFileAuth(authFile, RealClock{})
+	if !keepGeneratedFiles {
+		defer syscall.Unlink(authFile.Name())
+	}
+
+	u := User{
+		Name:      "Jon Doe",
+		UserLevel: LevelUser}
+	u.SetAuthCode("doe123")
+	auth.AddNewUser("root123", u)
+
+	u.Name = "Unchanged User"
+	u.SetAuthCode("unchanged123")
+	auth.AddNewUser("root123", u)
+
+	ExpectTrue(t, auth.FindUser("doe123") != nil, "Old doe123")
+	ExpectTrue(t, auth.FindUser("unchanged123") != nil, "Unchanged User")
+
+	// Now let the root user delete user identified by doe123
+	auth.DeleteUser("root123", "doe123")
+
+	ExpectFalse(t, auth.FindUser("doe123") != nil, "New, doe123 not valid anymore")
+	// This guy should still be there and found.
+	ExpectTrue(t, auth.FindUser("unchanged123") != nil, "Unchanged User")
+
+	auth = NewFileBasedAuthenticator(authFile.Name())
+	ExpectTrue(t, auth.FindUser("root123") != nil, "Reread: Finding root123")
+	ExpectTrue(t, auth.FindUser("unchanged123") != nil, "Reread: Finding unchanged")
+	ExpectFalse(t, auth.FindUser("doe123") != nil, "Reread: Finding doe123")
 }
 
 func TestTimeLimits(t *testing.T) {

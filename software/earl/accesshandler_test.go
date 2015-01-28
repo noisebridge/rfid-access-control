@@ -45,6 +45,10 @@ func (a *MockAuthenticator) UpdateUser(auth_code string, user_code string, updat
 	return false, ""
 }
 
+func (a *MockAuthenticator) DeleteUser(auth_code string, user_code string) (bool, string) {
+	return false, ""
+}
+
 type Buzz struct {
 	toneCode string
 	duration time.Duration

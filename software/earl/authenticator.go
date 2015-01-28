@@ -46,14 +46,19 @@ type Authenticator interface {
 	// Given a code (RFID or PIN), does it exist and is the user allowed to access "target" ?
 	AuthUser(code string, target Target) (AuthResult, string)
 
-	// Given a valid code of some member (PIN or RFID), add the new user object.
-	// Updates the file
-	AddNewUser(authentication_code string, user User) (ok bool, msg string)
+	// Given a valid authentication code of some member (PIN or RFID), add the new user
+	// object. Updates the file.
+	AddNewUser(authentication_code string, user User) (bool, string)
 
-	// Find user by code to update: the updater_fun is called with the current
-	// user information. Within the function, the user can be modified; the
-	// database is updated when that call comes back.
+	// Given a valid authentication code of some member, find user by code to update:
+	// the updater_fun is called with the current user information.
+	// Within the function, the user can be modified.
+	// If updater_fun returns true, database is updated.
 	UpdateUser(authentication_code string, user_code string, updater_fun ModifyFun) (bool, string)
+
+	// Given a valid authentication code of some member, delete user associated with
+	// user_code.
+	DeleteUser(authentication_code string, user_code string) (bool, string)
 }
 
 type FileBasedAuthenticator struct {
@@ -191,6 +196,14 @@ func (a *FileBasedAuthenticator) updateUserSynchronized(expected_revision int, o
 	a.revision++
 	user_index := a.deleteUserRequiresLock(old_user)
 	return a.addUserAtPosRequiresLock(new_user, user_index)
+}
+
+func (a *FileBasedAuthenticator) deleteUserSynchronized(user *User) bool {
+	a.userLock.Lock()
+	defer a.userLock.Unlock()
+	a.revision++
+	user_index := a.deleteUserRequiresLock(user)
+	return user_index >= 0
 }
 
 //
@@ -361,7 +374,9 @@ func (a *FileBasedAuthenticator) writeTempCSV(filename string) bool {
 	defer f.Close()
 	writer := csv.NewWriter(f)
 	for _, user := range a.userList {
-		user.WriteCSV(writer)
+		if user != nil {
+			user.WriteCSV(writer)
+		}
 	}
 	writer.Flush()
 	if writer.Error() != nil {
@@ -403,6 +418,20 @@ func (a *FileBasedAuthenticator) UpdateUser(authentication_code string,
 	// nothing has changed in the meantime.
 	if !a.updateUserSynchronized(previous_revision, orig_user, &modification_copy) {
 		return false, "Changed while editing"
+	}
+
+	return a.writeDatabase(), ""
+}
+
+func (a *FileBasedAuthenticator) DeleteUser(
+	authentication_code string, user_code string) (bool, string) {
+	if auth_ok, auth_msg := a.verifyModifyOperationAllowed(authentication_code); !auth_ok {
+		return false, auth_msg
+	}
+
+	user := a.findUserSynchronized(user_code, nil)
+	if !a.deleteUserSynchronized(user) {
+		return false, "Delete failed"
 	}
 
 	return a.writeDatabase(), ""
