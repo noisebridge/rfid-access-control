@@ -102,18 +102,25 @@ func (term *MockTerminal) expectBuzz(buzz Buzz) {
 }
 
 type MockDoorActions struct {
-	t      *testing.T
-	opened map[Target]bool
+	t        *testing.T
+	opened   map[Target]bool
+	doorbell map[Target]bool
 }
 
 func NewMockDoorActions(t *testing.T) *MockDoorActions {
 	return &MockDoorActions{
-		t:      t,
-		opened: make(map[Target]bool)}
+		t:        t,
+		opened:   make(map[Target]bool),
+		doorbell: make(map[Target]bool),
+	}
 }
 
 func (doorActions *MockDoorActions) OpenDoor(target Target) {
 	doorActions.opened[target] = true
+}
+
+func (doorActions *MockDoorActions) RingDoorbell(target Target) {
+	doorActions.doorbell[target] = true
 }
 
 func (doorActions *MockDoorActions) openedAnyDoor() bool {
@@ -128,8 +135,17 @@ func (doorActions *MockDoorActions) expectOpenState(expected bool, target Target
 	}
 }
 
+func (doorActions *MockDoorActions) expectDoorbell(expected bool, target Target) {
+	// Both the existence an value in doorActions are to be like expected
+	opened, has := doorActions.doorbell[target]
+	if !(has == expected && opened == expected) {
+		doorActions.t.Errorf("Expected %v to be ring=%v", target, expected)
+	}
+}
+
 func (doorActions *MockDoorActions) resetDoors() {
 	doorActions.opened = make(map[Target]bool)
+	doorActions.doorbell = make(map[Target]bool)
 }
 
 func PressKeys(h *AccessHandler, keys string) {
@@ -150,6 +166,7 @@ func TestValidAccessCode(t *testing.T) {
 	term.expectColor("G")
 	term.expectBuzz(Buzz{"H", 500})
 	doorActions.expectOpenState(true, Target("mock"))
+	doorActions.expectDoorbell(false, Target("mock"))
 }
 
 func TestInvalidAccessCode(t *testing.T) {
@@ -164,6 +181,7 @@ func TestInvalidAccessCode(t *testing.T) {
 	term.expectColor("R")
 	term.expectBuzz(Buzz{"L", 200})
 	doorActions.expectOpenState(false, Target("mock"))
+	doorActions.expectDoorbell(false, Target("mock"))
 	if doorActions.openedAnyDoor() {
 		t.Errorf("There are doors opened, but shouldn't")
 	}
@@ -181,9 +199,21 @@ func TestExpiredAccessCode(t *testing.T) {
 	term.expectColor("B") // Blue indicator
 	term.expectBuzz(Buzz{"L", 200})
 	doorActions.expectOpenState(false, Target("mock"))
+	doorActions.expectDoorbell(true, Target("mock"))
 	if doorActions.openedAnyDoor() {
 		t.Errorf("There are doors opened, but shouldn't")
 	}
+}
+
+func TestKeypadDoorbell(t *testing.T) {
+	term := NewMockTerminal(t)
+	auth := NewMockAuthenticator()
+	doorActions := NewMockDoorActions(t)
+	handler := NewAccessHandler(auth, doorActions)
+	handler.Init(term)
+	PressKeys(handler, "#") // Just a single '#' should ring the bell.
+	doorActions.expectDoorbell(true, Target("mock"))
+	doorActions.expectOpenState(false, Target("mock"))
 }
 
 func TestKeypadTimeout(t *testing.T) {

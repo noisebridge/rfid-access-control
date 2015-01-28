@@ -42,6 +42,12 @@ func (g *GPIOActions) OpenDoor(which Target) {
 	}
 }
 
+func (g *GPIOActions) RingDoorbell(which Target) {
+	log.Printf("Ringing doorbell for %s", which)
+	// Ringing doorbell.
+	// TODO: implement. Maybe play a little wav to /dev/audio ?
+}
+
 func (g *GPIOActions) initGPIO(gpio_pin int) {
 	// Initialize the GPIO stuffs
 

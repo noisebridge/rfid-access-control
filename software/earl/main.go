@@ -81,7 +81,8 @@ type TerminalEventHandler interface {
 
 // Actions as result of the authentication decisions.
 type DoorActions interface {
-	OpenDoor(which Target)
+	OpenDoor(which Target)     // Open strike for given door
+	RingDoorbell(which Target) // Inside space: ring appropriate bell.
 }
 
 type TerminalImpl struct {

@@ -55,7 +55,9 @@ func (h *AccessHandler) HandleKeypress(b byte) {
 			h.checkAccess(h.currentCode, "keypad")
 			h.currentCode = ""
 		} else {
-			// Consider this a doorbell ?
+			// As long as we don't have a 4x4 keypad, we
+			// use the single '#' to be the doorbell.
+			h.doorActions.RingDoorbell(Target(h.t.GetTerminalName()))
 		}
 	case '*':
 		h.currentCode = "" // reset
@@ -134,12 +136,13 @@ func (h *AccessHandler) checkAccess(code string, fyi_origin string) {
 		if auth_result == AuthFail {
 			h.t.ShowColor("R")
 		} else {
-			// Show blue for authentication that is just failing
-			// due to expired token/outside daytime. That gives some
-			// valueable feedback to the user.
+			// Show blue (='nighttime') for authentication that is
+			// just failing due to be outside daytime (or expired).
+			// Better than otherwise confusing 'red' feeback.
 			h.t.ShowColor("B")
-			// TODO: should this trigger a doorbell ? Usually if
+			// Trigger doorbell. Usually if
 			// someone is there, they might open the door.
+			h.doorActions.RingDoorbell(target)
 		}
 		h.t.BuzzSpeaker("L", 200)
 		time.Sleep(500 * time.Millisecond)
