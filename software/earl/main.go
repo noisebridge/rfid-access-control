@@ -30,11 +30,12 @@ const (
 	defaultBaudrate             = 9600
 	initialReconnectOnErrorTime = 2 * time.Second
 	maxReconnectOnErrorTime     = 60 * time.Second
+	idleTickTime                = 500 * time.Millisecond
 )
 
-// Interacting with the terminal.
-// The terminal does send as well asynchronous
-// information, reflected in the 'Handler' interface below.
+// The API to interact with the Terminal.
+// Note, the terminal also sends asynchronous information,
+// reflected in the 'TerminalEventHandler' interface below.
 type Terminal interface {
 	// Get the name of the terminal.
 	GetTerminalName() string
@@ -55,7 +56,8 @@ type Terminal interface {
 }
 
 // Callback interface to be implemented to receive events generated
-// by terminals.
+// by terminals. This is the interface that code should implement
+// to interact with a terminal - the Init() function gives you the API.
 // Each method call should return quickly; if you need to do something
 // dependent on time, implement HandleTick()
 type TerminalEventHandler interface {
@@ -82,7 +84,7 @@ type DoorActions interface {
 	OpenDoor(which Target)
 }
 
-type TerminalStub struct {
+type TerminalImpl struct {
 	serialFile      io.ReadWriteCloser
 	responseChannel chan string // Strings coming as response to requests
 	eventChannel    chan string // Strings representing input events.
@@ -92,8 +94,8 @@ type TerminalStub struct {
 	logPrefix       string
 }
 
-func NewTerminalStub(port string, baudrate int) (*TerminalStub, error) {
-	t := &TerminalStub{
+func NewTerminalImpl(port string, baudrate int) (*TerminalImpl, error) {
+	t := &TerminalImpl{
 		errorState: false,
 		logPrefix:  fmt.Sprintf("%s:%d", port, baudrate),
 	}
@@ -109,101 +111,18 @@ func NewTerminalStub(port string, baudrate int) (*TerminalStub, error) {
 	t.discardInitialInput()
 	t.name = t.requestName()
 	if t.errorState {
-		t.Shutdown()
+		t.shutdown()
 		return nil, errors.New("Couldn't get name of terminal.")
 	}
 	return t, nil
 }
 
-// Blow out the tubes.
-func (t *TerminalStub) discardInitialInput() {
-	// The first connect with the terminal might catch the line in some
-	// strange state with undiscarded input, so just discard that here
-	// until we see a couple of 100ms of silence.
-	// Also send one dummy request to properly blow out the TX-line
-	// (whose response is discarded as well)
-	t.serialFile.Write([]byte("n\n")) // dummy request for name
-	select {
-	case <-t.eventChannel: // discard
-	case <-t.responseChannel: // discard
-	case <-time.After(1000 * time.Millisecond):
-		break
-	}
-}
-
-// Run until we encounter an IO problem or the terminal name changed
-// (e.g. due to plug-swapping)
-func (t *TerminalStub) RunEventLoop(handler TerminalEventHandler) {
-	var tick_count uint32
-	handler.Init(t)
-	for !t.errorState {
-		select {
-		case line := <-t.eventChannel:
-			switch {
-			case line[0] == 'I':
-				handler.HandleRFID(line[1:])
-			case line[0] == 'K':
-				handler.HandleKeypress(line[1])
-			default:
-				log.Printf("%s: Unexpected input '%s'", t.logPrefix, line)
-			}
-
-		case <-time.After(500 * time.Millisecond):
-			handler.HandleTick()
-			tick_count++
-			// Regularly confirm that we are still connected to same terminal
-			// i.e. if connectors are disconnected or plugged around.
-			if tick_count%10 == 0 {
-				new_name := t.requestName()
-				if t.errorState {
-					log.Printf("%s: Error pinging terminal '%s'",
-						t.logPrefix, t.name)
-					return
-				}
-				if new_name != t.name {
-					log.Printf("%s: Name change ('%s', was '%s')",
-						t.logPrefix, new_name, t.name)
-					return
-				}
-			}
-		}
-	}
-}
-
-func (t *TerminalStub) Shutdown() {
-	// Not logging to not trash SD card.
-	//log.Printf("%s: Shutdown '%s'", t.logPrefix, t.GetTerminalName())
-	t.errorState = true
-
-	// TODO: ideally, we want a clean shutdown of the reader
-	// in inputScanLoop() which is blocking at this moment.
-	// We would like to send it a message telling to stop
-	// reading and closing the channel.
-	// However, this doesn't work: reader.ReadString() is blocking and
-	// we can't select on it, thus also not a way to select
-	// in parallel on some <-shutdownRequested channel.
-	// The only chance I see is to close the channel here and
-	// expect the Read() to return with an error (it does not,
-	// immediately,  so the ReaderWriterCloser in the serial package
-	// has to be adapted).
-	// Maybe there is a better solution ?
-	t.serialFile.Close()
-}
-
-// Ask the terminal about its name. Returns true if we ran into a timeout.
-func (t *TerminalStub) requestName() string {
-	result := t.sendAndAwaitResponse("n")
-	if result == "" {
-		return ""
-	}
-	return strings.TrimSpace(result[1:])
-}
-
-func (t *TerminalStub) GetTerminalName() string {
+// Public 'Terminal' interface
+func (t *TerminalImpl) GetTerminalName() string {
 	return t.name
 }
 
-func (t *TerminalStub) WriteLCD(line int, text string) {
+func (t *TerminalImpl) WriteLCD(line int, text string) {
 	if line < 0 || line >= maxLCDRows {
 		return
 	}
@@ -221,17 +140,17 @@ func (t *TerminalStub) WriteLCD(line int, text string) {
 }
 
 //Tell the buzzer to buzz. If toneCode should be 'H' or 'L'
-func (t *TerminalStub) BuzzSpeaker(toneCode string, duration time.Duration) {
+func (t *TerminalImpl) BuzzSpeaker(toneCode string, duration time.Duration) {
 	t.sendAndAwaitResponse(fmt.Sprintf("T%s%d", toneCode, int64(duration/time.Millisecond)))
 }
 
-func (t *TerminalStub) ShowColor(colors string) {
+func (t *TerminalImpl) ShowColor(colors string) {
 	t.sendAndAwaitResponse(fmt.Sprintf("L%s", colors))
 }
 
 // Read data coming from the terminal and stuff it into the right
 // channels (we distinguish responses of commands from event notifications)
-func (t *TerminalStub) inputScanLoop() {
+func (t *TerminalImpl) inputScanLoop() {
 	reader := bufio.NewReader(t.serialFile)
 	for !t.errorState {
 		line, err := reader.ReadString('\n')
@@ -255,12 +174,11 @@ func (t *TerminalStub) inputScanLoop() {
 
 // Line-level interaction with the terminal. The protocol encodes
 // the command as the first character, and the reply of the terminal
-// echos that character as first character of its response.
+// (which arrives in the responseChannel) echos that character as first char.
 // If that is not the case, we're in some error condition.
 // This function sends the request and verifies that the response
 // is as expected.
-func (t *TerminalStub) sendAndAwaitResponse(toSend string) string {
-	//log.Printf("%s Sending ", t.logPrefix, toSend)
+func (t *TerminalImpl) sendAndAwaitResponse(toSend string) string {
 	_, err := t.serialFile.Write([]byte(toSend + "\n"))
 	if err != nil {
 		t.errorState = true
@@ -277,11 +195,109 @@ func (t *TerminalStub) sendAndAwaitResponse(toSend string) string {
 			t.errorState = true
 			return ""
 		}
-	case <-time.After(2 * time.Second): // Terminal always returns immediately
+	case <-time.After(2 * time.Second):
+		// Terminal should've returned immediately. Timeout: bad.
 		t.errorState = true
 		return ""
 	}
 	return "" // make old compiler happy
+}
+
+// Blow out the tubes.
+func (t *TerminalImpl) discardInitialInput() {
+	// The first connect with the terminal might catch the line in some
+	// strange state with undiscarded input, so just discard that here
+	// until we see a couple of 100ms of silence.
+	// Also send one dummy request to properly blow out the TX-line
+	// (whose response is discarded as well)
+	t.serialFile.Write([]byte("n\n")) // dummy request for name
+	select {
+	case <-t.eventChannel: // discard
+	case <-t.responseChannel: // discard
+	case <-time.After(1000 * time.Millisecond):
+		break
+	}
+}
+
+// Run until we encounter an IO problem or we can't verify to be
+// connected anymore.
+func (t *TerminalImpl) runEventLoop(handler TerminalEventHandler) {
+	var tick_count uint32
+	lastTickTime := time.Now()
+	handler.Init(t)
+	for !t.errorState {
+		// If the events come in very quickly, the idle tick might
+		// be starved. So make sure to inject some.
+		if time.Now().Sub(lastTickTime) > 4*idleTickTime {
+			handler.HandleTick()
+			lastTickTime = time.Now()
+		}
+		select {
+		case line := <-t.eventChannel:
+			switch {
+			case line[0] == 'I':
+				handler.HandleRFID(line[1:])
+			case line[0] == 'K':
+				handler.HandleKeypress(line[1])
+			default:
+				log.Printf("%s: Unexpected input '%s'", t.logPrefix, line)
+			}
+
+		case <-time.After(idleTickTime):
+			handler.HandleTick()
+			lastTickTime = time.Now()
+			tick_count++
+			if tick_count%10 == 0 && !t.verifyConnected() {
+				return
+			}
+		}
+	}
+}
+
+// Regularly confirm that we are still connected to same terminal
+// i.e. if connectors are disconnected or plugged around.
+func (t *TerminalImpl) verifyConnected() bool {
+	new_name := t.requestName()
+	if t.errorState {
+		log.Printf("%s: Error pinging terminal '%s'",
+			t.logPrefix, t.name)
+		return false
+	}
+	if new_name != t.name {
+		log.Printf("%s: Name change ('%s', was '%s')",
+			t.logPrefix, new_name, t.name)
+		return false
+	}
+	return true
+}
+
+func (t *TerminalImpl) shutdown() {
+	// Not logging to not trash SD card.
+	//log.Printf("%s: Shutdown '%s'", t.logPrefix, t.GetTerminalName())
+	t.errorState = true
+
+	// TODO: ideally, we want a clean shutdown of the reader
+	// in inputScanLoop() which is blocking at this moment.
+	// We would like to send it a message telling to stop
+	// reading and closing the channel.
+	// However, this doesn't work: reader.ReadString() is blocking and
+	// we can't select on it, thus also not a way to select
+	// in parallel on some <-shutdownRequested channel.
+	// The only chance I see is to close the channel here and
+	// expect the Read() to return with an error (it does not,
+	// immediately,  so the ReaderWriterCloser in the serial package
+	// has to be adapted).
+	// Maybe there is a better solution ?
+	t.serialFile.Close()
+}
+
+// Ask the terminal about its name. Returns true if we ran into a timeout.
+func (t *TerminalImpl) requestName() string {
+	result := t.sendAndAwaitResponse("n")
+	if result == "" {
+		return ""
+	}
+	return strings.TrimSpace(result[1:])
 }
 
 func parseArg(arg string) (devicepath string, baudrate int) {
@@ -303,7 +319,7 @@ type Backends struct {
 }
 
 func HandleSerialDevice(devicepath string, baud int, backends *Backends) {
-	var t *TerminalStub
+	var t *TerminalImpl
 	connect_successful := true
 	retry_time := initialReconnectOnErrorTime
 	for {
@@ -317,7 +333,7 @@ func HandleSerialDevice(devicepath string, baud int, backends *Backends) {
 
 		connect_successful = false
 
-		t, _ = NewTerminalStub(devicepath, baud)
+		t, _ = NewTerminalImpl(devicepath, baud)
 		if t == nil {
 			continue
 		}
@@ -344,9 +360,9 @@ func HandleSerialDevice(devicepath string, baud int, backends *Backends) {
 			retry_time = initialReconnectOnErrorTime
 			log.Printf("%s:%d: connected to '%s'",
 				devicepath, baud, t.GetTerminalName())
-			t.RunEventLoop(handler)
+			t.runEventLoop(handler)
 		}
-		t.Shutdown()
+		t.shutdown()
 		t = nil
 	}
 }
