@@ -35,7 +35,7 @@ func (g *GPIOActions) OpenDoor(which Target) {
 		log.Printf("DoorAction: Don't know how to open '%s'", which)
 	}
 	if gpio_pin > 0 {
-		log.Printf("DoorAction: Open '%s'; gpio=%d", which, gpio_pin)
+		//log.Printf("DoorAction: Open '%s'; gpio=%d", which, gpio_pin)
 		g.switchRelay(true, gpio_pin)
 		time.Sleep(2 * time.Second)
 		g.switchRelay(false, gpio_pin)
@@ -79,7 +79,7 @@ func (g *GPIOActions) switchRelay(switch_on bool, gpio_pin int) {
 	gpioFile := fmt.Sprintf("/sys/class/gpio/gpio%d/value", gpio_pin)
 	f, err := os.OpenFile(gpioFile, os.O_WRONLY, 0444)
 	if err != nil {
-		log.Print("Error! Could not activate relay", err)
+		log.Print("Error! Could not activate relay: ", err)
 		return
 	}
 	if switch_on {
