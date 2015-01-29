@@ -13,7 +13,6 @@ package main
 // - We need the concept of an 'open space'. If the space is open (e.g.
 //   two members state that they are there), then regular users should come
 //   in independent of time.
-// - be able to write
 import (
 	"crypto/md5"
 	"encoding/csv"
@@ -43,30 +42,35 @@ type Authenticator interface {
 	// user doesn't exist.
 	FindUser(plain_code string) *User
 
-	// Given a code (RFID or PIN), does it exist and is the user allowed to access "target" ?
+	// Given a code (RFID or PIN), does it exist and is the user allowed
+	// to access "target" ?
 	AuthUser(code string, target Target) (AuthResult, string)
 
-	// Given a valid authentication code of some member (PIN or RFID), add the new user
-	// object. Updates the file.
+	// Given a valid authentication code of some member (PIN or RFID), add
+	/// the new user object. Updates the file.
 	AddNewUser(authentication_code string, user User) (bool, string)
 
-	// Given a valid authentication code of some member, find user by code to update:
-	// the updater_fun is called with the current user information.
-	// Within the function, the user can be modified.
+	// Given a valid authentication code of some member, find user by code
+	// to update: the updater_fun callback is called with the current user
+	// information. Within the function, the user can be modified.
 	// If updater_fun returns true, database is updated.
 	UpdateUser(authentication_code string, user_code string, updater_fun ModifyFun) (bool, string)
 
-	// Given a valid authentication code of some member, delete user associated with
-	// user_code.
+	// Given a valid authentication code of some member, delete user
+	// associated with user_code.
 	DeleteUser(authentication_code string, user_code string) (bool, string)
 }
 
 type FileBasedAuthenticator struct {
 	userFilename  string
-	fileTimestamp time.Time // Timestamp at read time.
+	fileTimestamp time.Time  // modification timestamp.
+	fileLock      sync.Mutex // File writing
 
 	// List of users and various indexes needed to look-up. Never use
 	// directly, use the ...UserSyncronized() methods.
+	// For modifications, we employ an optimistic concurrency control:
+	// on change operations we determine if we are still in the same
+	// revision when we looked up the item to change.
 	userLock   sync.Mutex       // Mutex to protect following data structures
 	userList   []*User          // Sequence of users
 	user2index map[*User]int    // user-pointer to index in userList
@@ -102,7 +106,8 @@ func NewFileBasedAuthenticator(userFilename string) *FileBasedAuthenticator {
 // But then again, you are more than welcome in a Hackerspace in that case :)
 //
 // So we merely protect against accidentally revealing a PIN or card-ID and
-// their lengths while browsing the file.
+// their lengths while browsing the file. A weak MD5 is more than enough for
+// this use-case.
 func hashAuthCode(plain string) string {
 	hashgen := md5.New()
 	io.WriteString(hashgen, "MakeThisALittleBitLongerToChewOnEarlFoo"+plain)
@@ -117,7 +122,9 @@ func hasMinimalCodeRequirements(code string) bool {
 	return len(code) >= 6
 }
 
-// Find user. Synchronizes map.
+// Find user; this returns the raw pointer to the User and you really only
+// should modify while holdling a lock.
+// If you want to use the returned object to call a modification operation:
 // If revision is non-nil, fills in the current revision.
 func (a *FileBasedAuthenticator) findUserSynchronized(plain_code string, rev *int) *User {
 	a.reloadIfChanged()
@@ -130,8 +137,9 @@ func (a *FileBasedAuthenticator) findUserSynchronized(plain_code string, rev *in
 	return user
 }
 
-// Delete user and return index where it was
+// Delete user and return index where it was.
 func (a *FileBasedAuthenticator) deleteUserRequiresLock(user *User) int {
+	// ASSERT: a.userLock already locked.
 	pos, found := a.user2index[user]
 	if !found {
 		return -1
@@ -145,9 +153,12 @@ func (a *FileBasedAuthenticator) deleteUserRequiresLock(user *User) int {
 	return pos
 }
 
-// Add a user at particular position. Requires the userLock to be locked.
+// Add a user at particular position. -1 for append.
+// Requires the userLock to be held.
 func (a *FileBasedAuthenticator) addUserAtPosRequiresLock(user *User, at_index int) bool {
-	// First verify that there is no code in there that is already set..
+	// ASSERT: a.userLock already locked.
+	// First verify that there is no code in there that is already used by
+	// someone else.
 	for _, code := range user.Codes {
 		if a.code2user[code] != nil {
 			log.Printf("Ignoring multiple used code '%s'", code)
@@ -160,7 +171,7 @@ func (a *FileBasedAuthenticator) addUserAtPosRequiresLock(user *User, at_index i
 		a.user2index[user] = len(a.userList) - 1
 	} else {
 		if a.userList[at_index] != nil {
-			// Someone internally messed up using this.
+			// The caller messed up.
 			log.Fatalf("Doh' spot is actually not empty (%d)", at_index)
 		}
 		a.userList[at_index] = user
@@ -185,8 +196,8 @@ func (a *FileBasedAuthenticator) addUserSynchronized(user *User) bool {
 	return a.appendUserRequiresLock(user)
 }
 
-// Update user if the revision of the system is still the same as expected.
-func (a *FileBasedAuthenticator) updateUserSynchronized(expected_revision int, old_user *User, new_user *User) bool {
+// Replace user if the revision of the system is still the same as expected.
+func (a *FileBasedAuthenticator) replaceUserSynchronized(expected_revision int, old_user *User, new_user *User) bool {
 	a.userLock.Lock()
 	defer a.userLock.Unlock()
 	if a.revision != expected_revision {
@@ -197,9 +208,12 @@ func (a *FileBasedAuthenticator) updateUserSynchronized(expected_revision int, o
 	return a.addUserAtPosRequiresLock(new_user, user_index)
 }
 
-func (a *FileBasedAuthenticator) deleteUserSynchronized(user *User) bool {
+func (a *FileBasedAuthenticator) deleteUserSynchronized(expected_revision int, user *User) bool {
 	a.userLock.Lock()
 	defer a.userLock.Unlock()
+	if a.revision != expected_revision {
+		return false
+	}
 	a.revision++
 	user_index := a.deleteUserRequiresLock(user)
 	return user_index >= 0
@@ -248,7 +262,7 @@ func (a *FileBasedAuthenticator) readUserFile() bool {
 	return true
 }
 
-// For now, we sometimes need to modify the file directly, e.g. to add contact
+// For now, we sometimes need to modify the file manually, e.g. to add contact
 // info. This allows to automatically reload it.
 func (a *FileBasedAuthenticator) reloadIfChanged() {
 	fileinfo, err := os.Stat(a.userFilename)
@@ -330,11 +344,7 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 		return false, auth_msg
 	}
 
-	// TODO: Verify that there is some identifying information for the
-	// user, otherwise only allow limited time range.
-
-	// Right now, one sponsor, in the future we might require
-	// a list depending on short/long-term expiry.
+	// We remember the sponsor who added the user.
 	user.Sponsors = []string{hashAuthCode(authentication_code)}
 	// If no valid from date is given, then this is creation time.
 	if user.ValidFrom.IsZero() {
@@ -345,9 +355,59 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 		return false, "Duplicate codes while adding user"
 	}
 
+	return a.appendDatabaseSingleEntry(&user)
+}
+
+// Write content of the 'user database' to temp CSV file.
+func (a *FileBasedAuthenticator) writeTempCSV(filename string) (bool, string) {
+	os.Remove(filename)
+	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return false, err.Error()
+	}
+	defer f.Close()
+	writer := csv.NewWriter(f)
+	for _, user := range a.userList {
+		if user != nil {
+			user.WriteCSV(writer)
+		}
+	}
+	writer.Flush()
+	/* writer.Error() does not exist in older go versions :(
+	if writer.Error() != nil {
+		log.Println(writer.Error())
+		return false, writer.Error()
+	}
+	*/
+	return true, ""
+}
+
+// Full dump of database.
+func (a *FileBasedAuthenticator) writeDatabase() (bool, string) {
+	// First, dump out the database to a temporary file and
+	// make sure it succeeds.
+	tmpFilename := a.userFilename + ".tmp"
+	if ok, msg := a.writeTempCSV(tmpFilename); !ok {
+		return false, msg
+	}
+
+	// Alright, good. Atomic rename.
+	a.fileLock.Lock()
+	defer a.fileLock.Unlock()
+	os.Rename(tmpFilename, a.userFilename)
+
+	fileinfo, _ := os.Stat(a.userFilename)
+	a.fileTimestamp = fileinfo.ModTime()
+
+	return true, ""
+}
+
+// Like write database, but just append a single user. In that case, a file
+// append is sufficient.
+func (a *FileBasedAuthenticator) appendDatabaseSingleEntry(user *User) (bool, string) {
 	// Just append the user to the file which is sufficient for AddNewUser()
-	// TODO: When we allow for updates, we need to dump out the whole file
-	// and do atomic rename.
+	a.fileLock.Lock()
+	defer a.fileLock.Unlock()
 	f, err := os.OpenFile(a.userFilename, os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return false, err.Error()
@@ -363,42 +423,6 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 	return true, ""
 }
 
-// Write content of the 'user database' to temp CSV file.
-func (a *FileBasedAuthenticator) writeTempCSV(filename string) bool {
-	os.Remove(filename)
-	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		return false
-	}
-	defer f.Close()
-	writer := csv.NewWriter(f)
-	for _, user := range a.userList {
-		if user != nil {
-			user.WriteCSV(writer)
-		}
-	}
-	writer.Flush()
-	/* writer.Error() does not exist in older go versions.
-	if writer.Error() != nil {
-		log.Println(writer.Error())
-		return false
-	}
-	*/
-	return true
-}
-
-func (a *FileBasedAuthenticator) writeDatabase() bool {
-	tmpFilename := a.userFilename + ".tmp"
-	if !a.writeTempCSV(tmpFilename) {
-		return false
-	}
-	os.Rename(tmpFilename, a.userFilename)
-	fileinfo, _ := os.Stat(a.userFilename)
-	a.fileTimestamp = fileinfo.ModTime()
-
-	return true
-}
-
 func (a *FileBasedAuthenticator) UpdateUser(authentication_code string,
 	user_code string, updater_fun ModifyFun) (bool, string) {
 	if auth_ok, auth_msg := a.verifyModifyOperationAllowed(authentication_code); !auth_ok {
@@ -408,20 +432,20 @@ func (a *FileBasedAuthenticator) UpdateUser(authentication_code string,
 	var previous_revision int
 	orig_user := a.findUserSynchronized(user_code, &previous_revision)
 	modification_copy := *orig_user
-	// Call back the caller asking for modification of this user record. We hand out
-	// a copy to mess with. If updater_fun() decides to not modify or discard the
-	// modification, it can return false.
+	// Call back the caller asking for modification of this user record. We
+	// hand out a copy to mess with. If updater_fun() decides to not modify
+	// or discard the modification, it can return false and we abort.
 	if !updater_fun(&modification_copy) {
-		return false, "Upate abort"
+		return false, "Upate abort."
 	}
 
-	// Alright, some modification has been done. Update but make sure to only do that if
-	// nothing has changed in the meantime.
-	if !a.updateUserSynchronized(previous_revision, orig_user, &modification_copy) {
-		return false, "Changed while editing"
+	// Alright, some modification has been done. Update, but make sure to
+	// only do that if nothing has changed in the meantime.
+	if !a.replaceUserSynchronized(previous_revision, orig_user, &modification_copy) {
+		return false, "Changed while editing."
 	}
 
-	return a.writeDatabase(), ""
+	return a.writeDatabase()
 }
 
 func (a *FileBasedAuthenticator) DeleteUser(
@@ -430,12 +454,13 @@ func (a *FileBasedAuthenticator) DeleteUser(
 		return false, auth_msg
 	}
 
-	user := a.findUserSynchronized(user_code, nil)
-	if !a.deleteUserSynchronized(user) {
+	var revision int
+	user := a.findUserSynchronized(user_code, &revision)
+	if !a.deleteUserSynchronized(revision, user) {
 		return false, "Delete failed"
 	}
 
-	return a.writeDatabase(), ""
+	return a.writeDatabase()
 }
 
 // Certain levels only have access during the daytime
