@@ -25,15 +25,15 @@ type AccessHandler struct {
 	t Terminal // Our terminal we can do operations on
 
 	// Current state
-	currentCode         string    // PIN typed so far on keypad
-	lastKeypressTime    time.Time // Last touch of key to reset
-	currentRFID         string    // Current RFID we received
-	lastCurrentRFIDTime time.Time // Time we have seen the current RFID
+	currentCode        string    // PIN typed so far on keypad
+	lastKeypressTime   time.Time // Last touch of key to reset
+	currentRFID        string    // Current RFID we received
+	nextRFIDActionTime time.Time // Time we have seen the current RFID
 }
 
 const (
-	kRFIDRepeatDebounce = 3 * time.Second  // RFID is repeated. Pace down.
-	kKeypadTimeout      = 30 * time.Second // Timeout: user stopped typing
+	kRFIDRepeatDebounce = 300 * time.Millisecond // RFID is repeated. Pace down.
+	kKeypadTimeout      = 30 * time.Second       // Timeout: user stopped typing
 )
 
 func NewAccessHandler(a Authenticator, actions DoorActions) *AccessHandler {
@@ -75,16 +75,15 @@ func (h *AccessHandler) HandleRFID(rfid string) {
 	rfid = strings.TrimSpace(rfid_elements[1])
 
 	// The reader might send IDs faster than we can checkAccess()
-	// which currently blocks the event thread.
-	// Discard to prevent our event queue to backlog.
-	if rfid == h.currentRFID &&
-		h.clock.Now().Sub(h.lastCurrentRFIDTime) < kRFIDRepeatDebounce {
+	// which is problematic, as checkAccess() blocks the event thread.
+	// If we get the same ID again, ignore until nextRFIDActionTime
+	if rfid == h.currentRFID && h.clock.Now().Before(h.nextRFIDActionTime) {
 		return
 	}
 
-	h.currentRFID = rfid
-	h.lastCurrentRFIDTime = h.clock.Now()
 	h.checkAccess(rfid, "RFID")
+	h.currentRFID = rfid
+	h.nextRFIDActionTime = h.clock.Now().Add(kRFIDRepeatDebounce)
 }
 
 func (h *AccessHandler) HandleTick() {
