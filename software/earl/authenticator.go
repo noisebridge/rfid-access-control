@@ -65,14 +65,13 @@ type FileBasedAuthenticator struct {
 	userFilename  string
 	fileTimestamp time.Time // Timestamp at read time.
 
-	// Map of codes to users. Quick way to look-up auth. Never use directly,
-	// use findUserSynchronized() and addUserSynchronized() for locking.
+	// List of users and various indexes needed to look-up. Never use
+	// directly, use the ...UserSyncronized() methods.
+	userLock   sync.Mutex       // Mutex to protect following data structures
 	userList   []*User          // Sequence of users
 	user2index map[*User]int    // user-pointer to index in userList
 	code2user  map[string]*User // access-code to user
-	userLock   sync.Mutex
-
-	revision int // counter for optimistic locking.
+	revision   int              // counter for optimistic locking.
 
 	clock Clock // Our source of time. Useful for simulated clock in tests
 }
