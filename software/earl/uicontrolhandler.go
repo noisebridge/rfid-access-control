@@ -110,6 +110,7 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 				u.setState(StateWaitMemberCommand, 5*time.Second)
 
 			case LevelUser:
+				// First line
 				if user.HasContactInfo() {
 					u.t.WriteLCD(0, "Hi "+user.Name)
 				} else {
@@ -130,8 +131,12 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 						u.t.WriteLCD(0, user.Name)
 					}
 				}
+
+				// Second line
 				if user.InValidityPeriod(time.Now()) {
-					u.t.WriteLCD(1, "This RFID opens doors.")
+					from, to := user.AccessHours()
+					u.t.WriteLCD(1, fmt.Sprintf("Open doors [%d:00-%d:00)",
+						from, to))
 				} else {
 					u.t.WriteLCD(1, "Ask member to renew.")
 				}
