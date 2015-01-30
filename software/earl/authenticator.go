@@ -200,17 +200,6 @@ func (a *FileBasedAuthenticator) verifyModifyOperationAllowed(auth_code string) 
 	return true, ""
 }
 
-// Certain levels only have access during the daytime
-// This implements that logic, which is 11:00 - 21:59
-func (a *FileBasedAuthenticator) isUserDaytime() bool {
-	hour := a.clock.Now().Hour()
-	return hour >= 11 && hour < 22 // 11:00..21:59
-}
-func (a *FileBasedAuthenticator) isFulltimeUserDaytime() bool {
-	hour := a.clock.Now().Hour()
-	return hour >= 7 && hour <= 23 // 7:00..23:59
-}
-
 // Find user; this returns the raw pointer to the User and you really only
 // should modify while holdling a lock.
 // If you want to use the returned object to call a modification operation:
@@ -473,25 +462,33 @@ func hasMinimalCodeRequirements(code string) bool {
 }
 
 func (a *FileBasedAuthenticator) levelHasAccess(level Level, target Target) (AuthResult, string) {
+	// TODO: we need a concept of an 'open' space, i.e. a responsible user
+	// opens the space to be accessible by the public, so that other users
+	// can come in even outside 'their' times. Right now only dummy - never
+	// open.
+	space_open_to_public := false
+
+	hour_from, hour_to := AccessHours(level)
+	current_hour := a.clock.Now().Hour()
+	isday := space_open_to_public ||
+		(current_hour >= hour_from && current_hour < hour_to)
 	switch level {
 	case LevelMember:
 		return AuthOk, "" // Members always have access.
 
 	case LevelFulltimeUser:
-		isday := a.isFulltimeUserDaytime()
 		if !isday {
 			return AuthOkButOutsideTime,
-				"Fulltime user outside daytime."
+				fmt.Sprintf("Fulltime user outside %d:00..%d:00",
+					hour_from, hour_to)
 		}
 		return AuthOk, ""
 
 	case LevelUser:
-		// TODO: we might want to make this dependent simply on
-		// members having 'opened' the space.
-		isday := a.isUserDaytime()
 		if !isday {
 			return AuthOkButOutsideTime,
-				"Regular user outside daytime."
+				fmt.Sprintf("Regular user outside %d:00..%d:00",
+					hour_from, hour_to)
 		}
 		return AuthOk, ""
 

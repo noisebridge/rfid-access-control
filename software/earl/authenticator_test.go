@@ -277,21 +277,21 @@ func TestTimeLimits(t *testing.T) {
 	mockClock.now = nightTime_3h
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs,
-		AuthOkButOutsideTime, "outside daytime")
+		AuthOkButOutsideTime, "outside")
 	ExpectAuthResult(t, auth, "user123", TargetUpstairs,
-		AuthOkButOutsideTime, "outside daytime")
+		AuthOkButOutsideTime, "outside")
 	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs,
-		AuthOkButOutsideTime, "outside daytime")
+		AuthOkButOutsideTime, "outside")
 
 	mockClock.now = earlyMorning_7h
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "user123", TargetUpstairs,
-		AuthOkButOutsideTime, "outside daytime")
+		AuthOkButOutsideTime, "outside")
 	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs,
-		AuthOkButOutsideTime, "outside daytime")
+		AuthOkButOutsideTime, "outside")
 
 	mockClock.now = hackerDaytime_13h
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
@@ -306,19 +306,19 @@ func TestTimeLimits(t *testing.T) {
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "user123", TargetUpstairs,
-		AuthOkButOutsideTime, "outside daytime")
+		AuthOkButOutsideTime, "outside")
 	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs,
-		AuthOkButOutsideTime, "outside daytime")
+		AuthOkButOutsideTime, "outside")
 
 	mockClock.now = lateStayUsers_23h // members and fulltimeusers left
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "user123", TargetUpstairs,
-		AuthOkButOutsideTime, "outside daytime")
+		AuthOkButOutsideTime, "outside")
 	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs,
-		AuthOkButOutsideTime, "outside daytime")
+		AuthOkButOutsideTime, "outside")
 
 	// Automatic expiry of entries that don't have contact info
 	mockClock.now = anonExpiry_30d

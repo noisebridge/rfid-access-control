@@ -37,16 +37,6 @@ const (
 	LevelHiatus = Level("hiatus")
 )
 
-func IsValidLevel(input string) bool {
-	switch input {
-	case "member", "user", "fulltimeuser", "hiatus":
-		return true
-	default:
-		return false
-	}
-	return false // Make old compilers happy.
-}
-
 const (
 	// Cards that don't have a name or contact info assigned to them are
 	// only valid for a limited period, as it otherwise it hard to find
@@ -96,7 +86,7 @@ func NewUserFromCSV(reader *csv.Reader) (user *User, done bool) {
 	level := line[2]
 	ValidFrom, _ := time.Parse("2006-01-02 15:04", line[4])
 	ValidTo, _ := time.Parse("2006-01-02 15:04", line[5])
-	if !IsValidLevel(level) {
+	if !isValidLevel(level) {
 		log.Printf("Got invalid level '%s'", level)
 		return nil, false
 	}
@@ -109,6 +99,16 @@ func NewUserFromCSV(reader *csv.Reader) (user *User, done bool) {
 			ValidTo:     ValidTo,   // field 5
 			Codes:       strings.Split(line[6], ";")},
 		false
+}
+
+func isValidLevel(input string) bool {
+	switch input {
+	case "member", "user", "fulltimeuser", "hiatus":
+		return true
+	default:
+		return false
+	}
+	return false // Make old compilers happy.
 }
 
 func (user *User) WriteCSV(writer *csv.Writer) {
@@ -158,6 +158,20 @@ func (user *User) ExpiryDate(now time.Time) time.Time {
 		}
 	}
 	return result
+}
+
+// Returns the interval in hours this user may open doors. Includes from,
+// excludes to [from...to). So (7, 22) means >= 7:00 && < 22
+func AccessHours(level Level) (from int, to int) {
+	switch level {
+	case LevelMember:
+		return 0, 24 // all access
+	case LevelFulltimeUser:
+		return 7, 24 // 7:00 .. 23:59
+	case LevelUser:
+		return 11, 22 // 7:00 .. 21:59
+	}
+	return 0, 0 // no access.
 }
 
 // Set the auth code to some value (should probably be add-auth-code)
