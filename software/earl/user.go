@@ -162,8 +162,8 @@ func (user *User) ExpiryDate(now time.Time) time.Time {
 
 // Returns the interval in hours this user may open doors. Includes from,
 // excludes to [from...to). So (7, 22) means >= 7:00 && < 22
-func AccessHours(level Level) (from int, to int) {
-	switch level {
+func (user *User) AccessHours() (from int, to int) {
+	switch user.UserLevel {
 	case LevelMember:
 		return 0, 24 // all access
 	case LevelFulltimeUser:
@@ -171,6 +171,9 @@ func AccessHours(level Level) (from int, to int) {
 	case LevelUser:
 		return 11, 22 // 7:00 .. 21:59
 	}
+	// TODO: for time-restricted users such as users for classes,
+	// we can have custom hours here.
+
 	return 0, 0 // no access.
 }
 

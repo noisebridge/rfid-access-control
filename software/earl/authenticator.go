@@ -123,7 +123,7 @@ func (a *FileBasedAuthenticator) AuthUser(code string, target Target) (AuthResul
 	if !user.InValidityPeriod(a.clock.Now()) {
 		return AuthExpired, "Code not valid yet/expired"
 	}
-	return a.levelHasAccess(user.UserLevel, target)
+	return a.userHasAccess(user, target)
 }
 
 func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user User) (bool, string) {
@@ -461,18 +461,18 @@ func hasMinimalCodeRequirements(code string) bool {
 	return len(code) >= 6
 }
 
-func (a *FileBasedAuthenticator) levelHasAccess(level Level, target Target) (AuthResult, string) {
+func (a *FileBasedAuthenticator) userHasAccess(user *User, target Target) (AuthResult, string) {
 	// TODO: we need a concept of an 'open' space, i.e. a responsible user
 	// opens the space to be accessible by the public, so that other users
 	// can come in even outside 'their' times. Right now only dummy - never
 	// open.
 	space_open_to_public := false
 
-	hour_from, hour_to := AccessHours(level)
+	hour_from, hour_to := user.AccessHours()
 	current_hour := a.clock.Now().Hour()
 	isday := space_open_to_public ||
 		(current_hour >= hour_from && current_hour < hour_to)
-	switch level {
+	switch user.UserLevel {
 	case LevelMember:
 		return AuthOk, "" // Members always have access.
 
