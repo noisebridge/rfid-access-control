@@ -119,7 +119,7 @@ func (doorActions *MockDoorActions) OpenDoor(target Target) {
 	doorActions.opened[target] = true
 }
 
-func (doorActions *MockDoorActions) RingDoorbell(target Target) {
+func (doorActions *MockDoorActions) RingBell(target Target) {
 	doorActions.doorbell[target] = true
 }
 
@@ -148,6 +148,14 @@ func (doorActions *MockDoorActions) resetDoors() {
 	doorActions.doorbell = make(map[Target]bool)
 }
 
+func NewMockBackends(auth Authenticator, actions PhysicalActions) *Backends {
+	return &Backends{
+		authenticator:   auth,
+		physicalActions: actions,
+		doorbellUI:      &SimpleDoorbellUI{actions: actions},
+	}
+}
+
 func PressKeys(h *AccessHandler, keys string) {
 	for _, key := range keys {
 		h.HandleKeypress(byte(key))
@@ -159,7 +167,7 @@ func TestValidAccessCode(t *testing.T) {
 	auth := NewMockAuthenticator()
 	auth.allow[ACKey{"123456", Target("mock")}] = AuthOk
 	doorActions := NewMockDoorActions(t)
-	handler := NewAccessHandler(auth, doorActions)
+	handler := NewAccessHandler(NewMockBackends(auth, doorActions))
 	handler.Init(term)
 	handler.clock = MockClock{}
 	PressKeys(handler, "123456#")
@@ -174,7 +182,7 @@ func TestInvalidAccessCode(t *testing.T) {
 	auth := NewMockAuthenticator()
 	auth.allow[ACKey{"123456", Target("mock")}] = AuthOk
 	doorActions := NewMockDoorActions(t)
-	handler := NewAccessHandler(auth, doorActions)
+	handler := NewAccessHandler(NewMockBackends(auth, doorActions))
 	handler.Init(term)
 	handler.clock = MockClock{}
 	PressKeys(handler, "654321#")
@@ -192,7 +200,7 @@ func TestExpiredAccessCode(t *testing.T) {
 	auth := NewMockAuthenticator()
 	auth.allow[ACKey{"123456", Target("mock")}] = AuthExpired
 	doorActions := NewMockDoorActions(t)
-	handler := NewAccessHandler(auth, doorActions)
+	handler := NewAccessHandler(NewMockBackends(auth, doorActions))
 	handler.Init(term)
 	handler.clock = MockClock{}
 	PressKeys(handler, "123456#")
@@ -209,7 +217,7 @@ func TestKeypadDoorbell(t *testing.T) {
 	term := NewMockTerminal(t)
 	auth := NewMockAuthenticator()
 	doorActions := NewMockDoorActions(t)
-	handler := NewAccessHandler(auth, doorActions)
+	handler := NewAccessHandler(NewMockBackends(auth, doorActions))
 	handler.Init(term)
 	PressKeys(handler, "#") // Just a single '#' should ring the bell.
 	doorActions.expectDoorbell(true, Target("mock"))
@@ -221,7 +229,7 @@ func TestKeypadTimeout(t *testing.T) {
 	auth := NewMockAuthenticator()
 	auth.allow[ACKey{"123456", Target("mock")}] = AuthOk
 	doorActions := NewMockDoorActions(t)
-	handler := NewAccessHandler(auth, doorActions)
+	handler := NewAccessHandler(NewMockBackends(auth, doorActions))
 	handler.Init(term)
 	mockClock := &MockClock{}
 	handler.clock = mockClock
@@ -240,7 +248,7 @@ func TestRFIDDebounce(t *testing.T) {
 	auth := NewMockAuthenticator()
 	auth.allow[ACKey{"rfid-123", Target("mock")}] = AuthOk
 	doorActions := NewMockDoorActions(t)
-	handler := NewAccessHandler(auth, doorActions)
+	handler := NewAccessHandler(NewMockBackends(auth, doorActions))
 	handler.Init(term)
 	mockClock := &MockClock{}
 	handler.clock = mockClock

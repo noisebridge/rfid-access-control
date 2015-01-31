@@ -22,16 +22,16 @@ import (
 type UIState int
 
 const (
-	StateIdle               = UIState(0) // When there is nothing to do; idle screen.
-	StateDisplayInfoMessage = UIState(1) // Interrupt idle screen and show info message
-	StateWaitMemberCommand  = UIState(2) // Member showed RFID; awaiting instruction
-	StateAddAwaitNewRFID    = UIState(3) // Member adds new user: wait for new user RFID
-	StateUpdateAwaitRFID    = UIState(4) // Member updates user: wait for new user RFID
+	StateIdle               = iota // When there is nothing to do; idle screen.
+	StateDisplayInfoMessage        // Interrupt idle screen and show info message
+	StateWaitMemberCommand         // Member showed RFID; awaiting instruction
+	StateAddAwaitNewRFID           // Member adds new user: wait for new user RFID
+	StateUpdateAwaitRFID           // Member updates user: wait for new user RFID
 )
 
 type UIControlHandler struct {
-	// Backend services
-	auth Authenticator
+	backends *Backends
+	auth     Authenticator // shortcut, copy of the pointer in backends
 
 	t Terminal
 
@@ -43,13 +43,16 @@ type UIControlHandler struct {
 	userCounter int
 }
 
-func NewControlHandler(authenticator Authenticator) *UIControlHandler {
+func NewControlHandler(backends *Backends) *UIControlHandler {
 	return &UIControlHandler{
-		auth:        authenticator,
+		backends:    backends,
+		auth:        backends.authenticator,
 		userCounter: time.Now().Second() % 100, // semi-random start
 	}
 }
 
+// Setting the current state. The state will only last for a while until
+// we fall back to the idleScreen
 func (u *UIControlHandler) setState(state UIState, timeout_in time.Duration) {
 	u.state = state
 	u.stateTimeout = time.Now().Add(timeout_in)
@@ -61,19 +64,13 @@ func (u *UIControlHandler) backToIdle() {
 	u.displayIdleScreen()
 }
 
-func (u *UIControlHandler) displayIdleScreen() {
-	// TODO: do something fancy every now and then, some animation..
-	now := time.Now()
-	u.t.WriteLCD(0, "      Noisebridge")
-	u.t.WriteLCD(1, now.Format("2006-01-02 [Mon] 15:04"))
-}
-
 func (u *UIControlHandler) Init(t Terminal) {
 	u.t = t
 }
+func (u *UIControlHandler) ShutdownHandler() {}
 
 func (u *UIControlHandler) HandleKeypress(key byte) {
-	if key == '*' {
+	if key == '*' { // The '*' key is always 'Esc'-equivalent
 		u.backToIdle()
 		return
 	}
@@ -105,42 +102,10 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 			switch user.UserLevel {
 			case LevelMember:
 				u.authUserCode = rfid
-				u.t.WriteLCD(0, fmt.Sprintf("Howdy %s", user.Name))
-				u.t.WriteLCD(1, "[*]ESC [1]Add [2]Update")
-				u.setState(StateWaitMemberCommand, 5*time.Second)
+				u.presentMemberActions(user)
 
 			case LevelUser:
-				// First line
-				if user.HasContactInfo() {
-					u.t.WriteLCD(0, "Hi "+user.Name)
-				} else {
-					// No contact info; this is a temporary ID that
-					// expires after some time.
-					exp := user.ExpiryDate(time.Now())
-					days_left := exp.Sub(time.Now()) / (24 * time.Hour)
-					if days_left <= 0 {
-						// Already expired; show when that happend.
-						u.t.WriteLCD(0, fmt.Sprintf("Exp %s",
-							exp.Format("2006-01-02 15:04")))
-					} else if days_left < 10 {
-						// When it gets more urgent to renew, show when
-						u.t.WriteLCD(0, fmt.Sprintf("%s (exp %dd)",
-							user.Name, days_left))
-					} else {
-						// Just show (arbitrary generated) name.
-						u.t.WriteLCD(0, user.Name)
-					}
-				}
-
-				// Second line
-				if user.InValidityPeriod(time.Now()) {
-					from, to := user.AccessHours()
-					u.t.WriteLCD(1, fmt.Sprintf("Open doors [%d:00-%d:00)",
-						from, to))
-				} else {
-					u.t.WriteLCD(1, "Ask member to renew.")
-				}
-				u.setState(StateDisplayInfoMessage, 2*time.Second)
+				u.displayUserInfo(user)
 			}
 		}
 
@@ -194,4 +159,58 @@ func (u *UIControlHandler) HandleTick() {
 	if u.state == StateIdle {
 		u.displayIdleScreen()
 	}
+}
+
+// Doorbell UI interface.
+func (u *UIControlHandler) HandleDoorbell(which Target, message string) {
+	// TODO: implement.
+}
+
+func (u *UIControlHandler) displayIdleScreen() {
+	// TODO: do something fancy every now and then, some animation..
+	now := time.Now()
+	u.t.WriteLCD(0, "      Noisebridge")
+	u.t.WriteLCD(1, now.Format("2006-01-02 [Mon] 15:04"))
+}
+
+func (u *UIControlHandler) presentMemberActions(member *User) {
+	u.t.WriteLCD(0, fmt.Sprintf("Howdy %s", member.Name))
+	u.t.WriteLCD(1, "[*]ESC [1]Add [2]Update")
+
+	u.setState(StateWaitMemberCommand, 5*time.Second)
+}
+
+func (u *UIControlHandler) displayUserInfo(user *User) {
+	// First line
+	if user.HasContactInfo() {
+		u.t.WriteLCD(0, "Hi "+user.Name)
+	} else {
+		// No contact info; this is a temporary ID that
+		// expires after some time.
+		exp := user.ExpiryDate(time.Now())
+		days_left := exp.Sub(time.Now()) / (24 * time.Hour)
+		if days_left <= 0 {
+			// Already expired; show when that happend.
+			u.t.WriteLCD(0, fmt.Sprintf("Exp %s",
+				exp.Format("2006-01-02 15:04")))
+		} else if days_left < 10 {
+			// When it gets more urgent to renew, show when
+			u.t.WriteLCD(0, fmt.Sprintf("%s (exp %dd)",
+				user.Name, days_left))
+		} else {
+			// Just show (arbitrary generated) name.
+			u.t.WriteLCD(0, user.Name)
+		}
+	}
+
+	// Second line
+	if user.InValidityPeriod(time.Now()) {
+		from, to := user.AccessHours()
+		u.t.WriteLCD(1, fmt.Sprintf("Open doors [%d:00-%d:00)",
+			from, to))
+	} else {
+		u.t.WriteLCD(1, "Ask member to renew.")
+	}
+
+	u.setState(StateDisplayInfoMessage, 2*time.Second)
 }

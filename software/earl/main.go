@@ -66,6 +66,9 @@ type TerminalEventHandler interface {
 	// actions, such as writing to the LCD display.
 	Init(t Terminal)
 
+	// Called when the connection to this EventHandler is shut down.
+	ShutdownHandler()
+
 	// HandleKeypress receives each character typed on the keypad.
 	// These are ASCII encoded bytes in the range '0'..'9' and '*' and '#'.
 	HandleKeypress(byte)
@@ -79,10 +82,27 @@ type TerminalEventHandler interface {
 	HandleTick()
 }
 
-// Actions as result of the authentication decisions.
-type DoorActions interface {
-	OpenDoor(which Target)     // Open strike for given door
-	RingDoorbell(which Target) // Inside space: ring appropriate bell.
+// Physical actions triggered by earl activity
+type PhysicalActions interface {
+	OpenDoor(which Target) // Open strike for given door
+	RingBell(which Target) // Inside space: generate audible tone.
+}
+
+type DoorbellUI interface {
+	// Handle someone pressing the doorbell button or triggering doorbell
+	// by swiping an RFID outside the user time.
+	HandleDoorbell(which Target, message string)
+}
+
+type SimpleDoorbellUI struct {
+	actions PhysicalActions
+}
+
+// Simplest case of doorbell UI: ring the bell.
+func (d *SimpleDoorbellUI) HandleDoorbell(which Target, message string) {
+	log.Printf("Doorbell %s : %s\n", which, message)
+	// TODO: rate-limiting for noisy ringers.
+	d.actions.RingBell(which)
 }
 
 type TerminalImpl struct {
@@ -315,8 +335,9 @@ func parseArg(arg string) (devicepath string, baudrate int) {
 }
 
 type Backends struct {
-	authenticator Authenticator
-	doorActions   DoorActions
+	authenticator   Authenticator
+	physicalActions PhysicalActions
+	doorbellUI      DoorbellUI
 }
 
 func HandleSerialDevice(devicepath string, baud int, backends *Backends) {
@@ -346,10 +367,10 @@ func HandleSerialDevice(devicepath string, baud int, backends *Backends) {
 		var handler TerminalEventHandler
 		switch Target(t.GetTerminalName()) {
 		case TargetDownstairs, TargetUpstairs, TargetElevator:
-			handler = NewAccessHandler(backends.authenticator, backends.doorActions)
+			handler = NewAccessHandler(backends)
 
 		case TargetControlUI:
-			handler = NewControlHandler(backends.authenticator)
+			handler = NewControlHandler(backends)
 
 		default:
 			log.Printf("%s:%d: Terminal with unrecognized name '%s'",
@@ -362,6 +383,7 @@ func HandleSerialDevice(devicepath string, baud int, backends *Backends) {
 			log.Printf("%s:%d: connected to '%s'",
 				devicepath, baud, t.GetTerminalName())
 			t.runEventLoop(handler)
+			handler.ShutdownHandler()
 		}
 		t.shutdown()
 		t = nil
@@ -392,9 +414,11 @@ func main() {
 
 	log.Println("Starting...")
 
+	actions := NewGPIOActions()
 	backends := &Backends{
-		authenticator: NewFileBasedAuthenticator(*userFileName),
-		doorActions:   NewGPIOActions(),
+		authenticator:   NewFileBasedAuthenticator(*userFileName),
+		physicalActions: actions,
+		doorbellUI:      &SimpleDoorbellUI{actions: actions},
 	}
 
 	// For each serial interface, we run an indepenent loop

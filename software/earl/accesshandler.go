@@ -17,10 +17,8 @@ import (
 )
 
 type AccessHandler struct {
-	// Backend services
-	auth        Authenticator
-	doorActions DoorActions
-	clock       Clock
+	backends *Backends
+	clock    Clock
 
 	t Terminal // Our terminal we can do operations on
 
@@ -36,16 +34,16 @@ const (
 	kKeypadTimeout      = 30 * time.Second       // Timeout: user stopped typing
 )
 
-func NewAccessHandler(a Authenticator, actions DoorActions) *AccessHandler {
+func NewAccessHandler(backends *Backends) *AccessHandler {
 	return &AccessHandler{
-		auth:        a,
-		doorActions: actions,
-		clock:       RealClock{}}
+		backends: backends,
+		clock:    RealClock{}}
 }
 
 func (h *AccessHandler) Init(t Terminal) {
 	h.t = t
 }
+func (h *AccessHandler) ShutdownHandler() {}
 
 func (h *AccessHandler) HandleKeypress(b byte) {
 	h.lastKeypressTime = h.clock.Now()
@@ -57,7 +55,7 @@ func (h *AccessHandler) HandleKeypress(b byte) {
 		} else {
 			// As long as we don't have a 4x4 keypad, we
 			// use the single '#' to be the doorbell.
-			h.doorActions.RingDoorbell(Target(h.t.GetTerminalName()))
+			h.backends.doorbellUI.HandleDoorbell(Target(h.t.GetTerminalName()), "")
 		}
 	case '*':
 		h.currentCode = "" // reset
@@ -112,15 +110,15 @@ func (h *AccessHandler) checkAccess(code string, fyi_origin string) {
 		return
 	}
 	target := Target(h.t.GetTerminalName())
-	user := h.auth.FindUser(code)
-	auth_result, msg := h.auth.AuthUser(code, target)
+	user := h.backends.authenticator.FindUser(code)
+	auth_result, msg := h.backends.authenticator.AuthUser(code, target)
 	if user != nil && auth_result == AuthOk {
 		h.t.ShowColor("G")
 		h.t.BuzzSpeaker("H", 500)
 		// Be sparse, don't log user, but keep track of level.
 		log.Printf("%s: opened. %s Type=%s",
 			target, fyi_origin, user.UserLevel)
-		h.doorActions.OpenDoor(target)
+		h.backends.physicalActions.OpenDoor(target)
 		h.t.ShowColor("")
 	} else {
 		// This is either an invalid RFID (or used outside the
@@ -141,7 +139,7 @@ func (h *AccessHandler) checkAccess(code string, fyi_origin string) {
 			h.t.ShowColor("B")
 			// Trigger doorbell. Usually if
 			// someone is there, they might open the door.
-			h.doorActions.RingDoorbell(target)
+			h.backends.doorbellUI.HandleDoorbell(target, msg)
 		}
 		h.t.BuzzSpeaker("L", 200)
 		time.Sleep(500 * time.Millisecond)

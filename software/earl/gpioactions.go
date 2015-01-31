@@ -42,7 +42,7 @@ func (g *GPIOActions) OpenDoor(which Target) {
 	}
 }
 
-func (g *GPIOActions) RingDoorbell(which Target) {
+func (g *GPIOActions) RingBell(which Target) {
 	log.Printf("Ringing doorbell for %s", which)
 	// Ringing doorbell.
 	// TODO: implement. Maybe play a little wav to /dev/audio ?
