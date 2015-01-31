@@ -32,6 +32,7 @@ case $1 in
 			--background \
 			--make-pidfile \
                         --chuid $RUNASUSER \
+		        --group gpio \
 			--pidfile $PIDFILE \
 			--startas $DAEMON \
 			-- -logfile=$LOGFILE \
