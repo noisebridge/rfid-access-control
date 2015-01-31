@@ -122,7 +122,7 @@ TODOs for future versions; learning from previous board
    - Add space for 754410 to possibly directly drive door-strikes.
    - Add space for extra transistor to amplify speaker output.
    - Add space for little buzzer on-board.
-
+   - Input for a reed switch to detect open doors ?
 
 [pcb]: https://github.com/hzeller/rfid-access-control/raw/master/img/terminal-pcb.png
 [sp3232-spec]: http://www.exar.com/common/content/document.ashx?id=619
