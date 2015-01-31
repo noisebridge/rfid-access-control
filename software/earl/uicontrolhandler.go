@@ -298,9 +298,12 @@ func (u *UIControlHandler) displayDoorbellRequest(req *UIDoorbellRequest) {
 	u.doorbellTarget = req.target
 	to_display := ""
 	if len(req.message) == 0 {
-		to_display = fmt.Sprintf("<<< %s >>>", req.target)
+		to_display = fmt.Sprintf("((( %s )))", req.target)
 	} else {
-		to_display = fmt.Sprintf("< %s: %s >", req.target, req.message)
+		to_display = fmt.Sprintf("( %s@%s )", req.message, req.target)
+		for len(to_display) < 22 {
+			to_display = "(" + to_display + ")"
+		}
 	}
 
 	indent := (24 - len(to_display)) / 2
