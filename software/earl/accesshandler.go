@@ -139,7 +139,7 @@ func (h *AccessHandler) checkAccess(code string, fyi_origin string) {
 			h.t.ShowColor("B")
 			// Trigger doorbell. Usually if
 			// someone is there, they might open the door.
-			h.backends.doorbellUI.HandleDoorbell(target, msg)
+			h.backends.doorbellUI.HandleDoorbell(target, user.Name)
 		}
 		h.t.BuzzSpeaker("L", 200)
 		time.Sleep(500 * time.Millisecond)

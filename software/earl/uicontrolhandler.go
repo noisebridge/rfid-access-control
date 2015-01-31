@@ -37,7 +37,7 @@ const (
 
 	// After some action has been taken (RFID or snooze), this is the time
 	// things are displayed
-	postDoorbellSnoozeDuration = 5 * time.Second
+	postDoorbellSnoozeDuration = 3 * time.Second
 	postDoorbellRFIDDuration   = 15 * time.Second
 
 	defaultDoorbellRatelimit = 3 * time.Second
@@ -62,14 +62,15 @@ type UIControlHandler struct {
 
 	userCounter int // counter to generate new user names.
 
-	// We allow rate-limiting of the doorbell.
-	nextAllowdDoorbell time.Time
-
 	// There might be requests do do something on behalf of handlers running
 	// in different threads. This is to pass over this request to be handled
 	// in the right thread.
 	outOfThreadRequest sync.Mutex
 	doorbellRequest    *UIDoorbellRequest
+
+	// We allow rate-limiting of the doorbell.
+	nextAllowdDoorbell time.Time
+	doorbellTarget     Target
 }
 
 func NewControlHandler(backends *Backends) *UIControlHandler {
@@ -202,6 +203,7 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 		// we assume they are allowed to open the door. TODO: revisit?
 		if u.auth.FindUser(rfid) != nil {
 			u.t.WriteLCD(1, "Opening...")
+			u.backends.physicalActions.OpenDoor(u.doorbellTarget)
 		} else {
 			u.t.WriteLCD(1, "(unknown RFID)")
 		}
@@ -293,6 +295,7 @@ func (u *UIControlHandler) displayUserInfo(user *User) {
 }
 
 func (u *UIControlHandler) displayDoorbellRequest(req *UIDoorbellRequest) {
+	u.doorbellTarget = req.target
 	to_display := ""
 	if len(req.message) == 0 {
 		to_display = fmt.Sprintf("<<< %s >>>", req.target)
@@ -305,5 +308,5 @@ func (u *UIControlHandler) displayDoorbellRequest(req *UIDoorbellRequest) {
 		indent = 0
 	}
 	u.t.WriteLCD(0, fmt.Sprintf("%*s", indent, to_display))
-	u.t.WriteLCD(1, "RFID: open [9]Snooze  [*]")
+	u.t.WriteLCD(1, "RFID: open [9]Snooze [*]")
 }
