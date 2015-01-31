@@ -95,31 +95,44 @@ func (u *UIControlHandler) backToIdle() {
 
 func (u *UIControlHandler) Init(t Terminal) {
 	u.t = t
+	// We sneakily replace the doorbell UI withourself
+	// as we boldy claim to do better than the default.
+	u.backends.doorbellUI = u
 }
-func (u *UIControlHandler) ShutdownHandler() {}
+func (u *UIControlHandler) ShutdownHandler() {
+	// Back to some simple UI handler
+	u.backends.doorbellUI = &SimpleDoorbellUI{
+		actions: u.backends.physicalActions,
+	}
+}
 
 func (u *UIControlHandler) HandleKeypress(key byte) {
 	if key == '*' { // The '*' key is always 'Esc'-equivalent
 		u.backToIdle()
 		return
 	}
-	if u.state == StateWaitMemberCommand && key == '1' {
-		u.t.WriteLCD(0, "Read new user RFID")
-		u.t.WriteLCD(1, "[*] Cancel")
-		u.setState(StateAddAwaitNewRFID, 30*time.Second)
-		return
-	}
-	if u.state == StateWaitMemberCommand && key == '2' {
-		u.t.WriteLCD(0, "Read user RFID to update")
-		u.t.WriteLCD(1, "[*] Cancel")
-		u.setState(StateUpdateAwaitRFID, 30*time.Second)
-		return
-	}
-	if u.state == StateDoorbellRequest && key == '9' {
-		u.nextAllowdDoorbell = time.Now().Add(snoozedDoorbellRatelimit)
-		u.t.WriteLCD(1, fmt.Sprintf("Snoozed for %d sec",
-			snoozedDoorbellRatelimit/time.Second))
-		u.stateTimeout = time.Now().Add(postDoorbellSnoozeDuration)
+
+	switch u.state {
+	case StateWaitMemberCommand:
+		switch key {
+		case '1':
+			u.t.WriteLCD(0, "Read new user RFID")
+			u.t.WriteLCD(1, "[*] Cancel")
+			u.setState(StateAddAwaitNewRFID, 30*time.Second)
+
+		case '2':
+			u.t.WriteLCD(0, "Read user RFID to update")
+			u.t.WriteLCD(1, "[*] Cancel")
+			u.setState(StateUpdateAwaitRFID, 30*time.Second)
+		}
+
+	case StateDoorbellRequest:
+		if key == '9' {
+			u.nextAllowdDoorbell = time.Now().Add(snoozedDoorbellRatelimit)
+			u.t.WriteLCD(1, fmt.Sprintf("Snoozed for %d sec",
+				snoozedDoorbellRatelimit/time.Second))
+			u.stateTimeout = time.Now().Add(postDoorbellSnoozeDuration)
+		}
 	}
 }
 
