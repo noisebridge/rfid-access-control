@@ -27,12 +27,12 @@ case $1 in
 		log_daemon_msg "Starting earl" "earl"
 		touch $PIDFILE $LOGFILE
 		chown $RUNASUSER:root $PIDFILE $LOGFILE
+		# Need to run as root, seems that non-root
+		# has trouble with gpio :/
 		start-stop-daemon \
 			--start --oknodo \
 			--background \
 			--make-pidfile \
-                        --chuid $RUNASUSER \
-		        --group gpio \
 			--pidfile $PIDFILE \
 			--startas $DAEMON \
 			-- -logfile=$LOGFILE \
