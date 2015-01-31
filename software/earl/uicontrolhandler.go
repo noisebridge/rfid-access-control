@@ -202,10 +202,10 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 		// Opening doors is somewhat relaxed; if the person is inside
 		// we assume they are allowed to open the door. TODO: revisit?
 		if u.auth.FindUser(rfid) != nil {
-			u.t.WriteLCD(1, "Opening...")
+			u.t.WriteLCD(1, "      ->Opening<-")
 			u.backends.physicalActions.OpenDoor(u.doorbellTarget)
 		} else {
-			u.t.WriteLCD(1, "(unknown RFID)")
+			u.t.WriteLCD(1, "     (unknown RFID)")
 		}
 		u.stateTimeout = time.Now().Add(postDoorbellRFIDDuration)
 	}
