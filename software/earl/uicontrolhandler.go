@@ -16,6 +16,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -27,7 +28,26 @@ const (
 	StateWaitMemberCommand         // Member showed RFID; awaiting instruction
 	StateAddAwaitNewRFID           // Member adds new user: wait for new user RFID
 	StateUpdateAwaitRFID           // Member updates user: wait for new user RFID
+	StateDoorbellRequest           // Someone just rang
 )
+
+const (
+	// Display doorbell for this amount of time
+	showDoorbellDuration = 45 * time.Second
+
+	// After some action has been taken (RFID or snooze), this is the time
+	// things are displayed
+	postDoorbellSnoozeDuration = 5 * time.Second
+	postDoorbellRFIDDuration   = 15 * time.Second
+
+	defaultDoorbellRatelimit = 3 * time.Second
+	snoozedDoorbellRatelimit = 60 * time.Second // for annoying people
+)
+
+type UIDoorbellRequest struct {
+	target  Target
+	message string
+}
 
 type UIControlHandler struct {
 	backends *Backends
@@ -40,7 +60,16 @@ type UIControlHandler struct {
 	state        UIState   // state of our state machine
 	stateTimeout time.Time // timeout of current state
 
-	userCounter int
+	userCounter int // counter to generate new user names.
+
+	// We allow rate-limiting of the doorbell.
+	nextAllowdDoorbell time.Time
+
+	// There might be requests do do something on behalf of handlers running
+	// in different threads. This is to pass over this request to be handled
+	// in the right thread.
+	outOfThreadRequest sync.Mutex
+	doorbellRequest    *UIDoorbellRequest
 }
 
 func NewControlHandler(backends *Backends) *UIControlHandler {
@@ -85,6 +114,12 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 		u.t.WriteLCD(1, "[*] Cancel")
 		u.setState(StateUpdateAwaitRFID, 30*time.Second)
 		return
+	}
+	if u.state == StateDoorbellRequest && key == '9' {
+		u.nextAllowdDoorbell = time.Now().Add(snoozedDoorbellRatelimit)
+		u.t.WriteLCD(1, fmt.Sprintf("Snoozed for %d sec",
+			snoozedDoorbellRatelimit/time.Second))
+		u.stateTimeout = time.Now().Add(postDoorbellSnoozeDuration)
 	}
 }
 
@@ -148,22 +183,51 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 		}
 		u.t.WriteLCD(1, "[*] Done [2] Update More")
 		u.setState(StateWaitMemberCommand, 5*time.Second)
-	}
 
+	case StateDoorbellRequest:
+		// Opening doors is somewhat relaxed; if the person is inside
+		// we assume they are allowed to open the door. TODO: revisit?
+		if u.auth.FindUser(rfid) != nil {
+			u.t.WriteLCD(1, "Opening...")
+		} else {
+			u.t.WriteLCD(1, "(unknown RFID)")
+		}
+		u.stateTimeout = time.Now().Add(postDoorbellRFIDDuration)
+	}
 }
 
+// We switch back to idle after some time, handled in this tick. Also, if we
+// pick up request from other sub-systems and we are done with whatever we are
+// doing
 func (u *UIControlHandler) HandleTick() {
 	if u.state != StateIdle && time.Now().After(u.stateTimeout) {
 		u.backToIdle()
 	}
-	if u.state == StateIdle {
+
+	u.outOfThreadRequest.Lock()
+	defer u.outOfThreadRequest.Unlock()
+	doorbellRequest := u.doorbellRequest
+
+	if u.state == StateIdle && doorbellRequest != nil {
+		u.setState(StateDoorbellRequest, showDoorbellDuration)
+		u.doorbellRequest = nil
+		u.displayDoorbellRequest(doorbellRequest)
+	} else if u.state == StateIdle {
 		u.displayIdleScreen()
 	}
 }
 
 // Doorbell UI interface.
 func (u *UIControlHandler) HandleDoorbell(which Target, message string) {
-	// TODO: implement.
+	if time.Now().After(u.nextAllowdDoorbell) {
+		u.backends.physicalActions.RingBell(which)
+		u.nextAllowdDoorbell = time.Now().Add(defaultDoorbellRatelimit)
+	}
+
+	// Now trigger the UI request
+	u.outOfThreadRequest.Lock()
+	u.doorbellRequest = &UIDoorbellRequest{target: which, message: message}
+	u.outOfThreadRequest.Unlock()
 }
 
 func (u *UIControlHandler) displayIdleScreen() {
@@ -213,4 +277,20 @@ func (u *UIControlHandler) displayUserInfo(user *User) {
 	}
 
 	u.setState(StateDisplayInfoMessage, 2*time.Second)
+}
+
+func (u *UIControlHandler) displayDoorbellRequest(req *UIDoorbellRequest) {
+	to_display := ""
+	if len(req.message) == 0 {
+		to_display = fmt.Sprintf("<<< %s >>>", req.target)
+	} else {
+		to_display = fmt.Sprintf("< %s: %s >", req.target, req.message)
+	}
+
+	indent := (24 - len(to_display)) / 2
+	if indent < 0 {
+		indent = 0
+	}
+	u.t.WriteLCD(0, fmt.Sprintf("%*s", indent, to_display))
+	u.t.WriteLCD(1, "RFID: open [9]Snooze  [*]")
 }
