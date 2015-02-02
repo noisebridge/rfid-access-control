@@ -3,10 +3,10 @@
 // (TODO(Henner): now that we know how it should look like: simplify)
 // --
 $fn=32;
-case_fn=512;       // Resolution of the case. Also funky with lo-res 8
+case_fn=320;       // Resolution of the case. Also funky with lo-res 8
 border_roundness=6;
 
-case_height=17.5;    // More precisely: the inner height. Outer is + top_thick.
+case_height=19;    // More precisely: the inner height. Outer is + top_thick.
 
 // Various cable outlets. Negative number to switch off that hole.
 cable_to_back_r  = 5;   // radius for cable out the backplane or < 0 for not
@@ -29,7 +29,11 @@ rfid_board_register_height=rfid_board_rest_height + 2; // case_height;
 top_thick  = 1.2;  // Thickness of the top shell.
 base_thick = 1.2;    // Thickness of the base-plate, mounted to the wall.
 clearance  = 0.8;  // clearance between moving parts. Depends on printer-Q.
-logo_imprint=0.3;  // depth of the logo imprint.
+logo_imprint=0.4;  // depth of the logo imprint.
+
+// Screw block below and LED block above
+//block_height=case_height/2;
+block_height=17.5/2;
 
 oval_ratio=rfid_w/rfid_h;
 
@@ -98,8 +102,15 @@ module drywall_screw() {
     countersunk_screw(h=45,r=4.2/2,head_r=8.4/2,head_depth=4);
 }
 
-module positioned_mount_screw(r=3.2/2) {
-    translate([0,-base_radius-top_thick,slope_start_fraction*case_height/2]) rotate([-90,0,0]) countersunk_screw(r=r,h=17);
+module positioned_mount_screw(r=3.3/2) {
+    translate([0,-base_radius-top_thick,slope_start_fraction*block_height]) rotate([-90,0,0]) union() {
+        countersunk_screw(r=r,h=17);
+        // Cutout for the M3
+        rotate([0,0,90]) translate([0,0,11]) {
+            cylinder(r=6.3/2,h=2.6, $fn=6);
+            translate([0,-5.6/2,0]) cube([15,5.6,2.6]);
+        }
+    }
 }
 
 module base_plate() {
@@ -123,11 +134,16 @@ module case_outer_volume() {
 }
 
 // top case, hollowed out volume
-module top_case() {
-    difference() {
-	case_outer_volume();
-	case_inner_volume();
-	translate([0,0,case_height+top_thick - logo_imprint]) logo();
+module top_case(just_logo=false) {
+    // Just printing the logo. Can be used for multi-color print
+    if (just_logo) {
+        translate([0,0,case_height+top_thick - logo_imprint]) logo();
+    } else {
+        difference() {
+	    case_outer_volume();
+	    case_inner_volume();
+	    translate([0,0,case_height+top_thick - logo_imprint]) logo();
+        }
     }
 }
 
@@ -147,7 +163,7 @@ module inner_cleat_volume(w=cleat_volume_width,
 	translate([0,-h/2,0]) rotate([-cleat_angle,0,0]) translate([-w/2-epsilon,-b,-25]) cube([w + 2*epsilon, b, depth+50]);
 
 	// aligned to the top plane
-	translate([0,h/2,depth]) rotate([-cleat_angle,0,0]) translate([-w/2-epsilon,0,-25]) cube([w + 2*epsilon, b, depth+50]);
+	translate([0,h/2,depth]) rotate([-cleat_angle,0,0]) translate([-w/2-epsilon,0,-40]) cube([w + 2*epsilon, b, depth+50]);
     }
 }
 
@@ -167,6 +183,7 @@ module inner_cleat_frame() {
     }
 }
 
+// inner cleat volume + inner cleat wall + clearance
 module clearance_cleat_volume() {
     padded_cleat_volume(p=[2*cleat_wall_thick + 2*clearance,2*cleat_wall_thick+2*clearance,epsilon]);
 }
@@ -218,7 +235,7 @@ module cable_drills(cutout=0, widening=0) {
        cable_duct(xoffset=18,cable_to_right_top_r + widening, cutout=cutout);
 }
 
-module screw_block(w=19,left=1,padding=0,h=slope_start_fraction * case_height) {
+module screw_block(w=19,left=1,padding=0,h=slope_start_fraction * 2*block_height) {
     color("gray") translate([0,-screw_block_offset,0]) diagonal_split_block(b=[w + 2 * padding,base_radius,h + padding], left=left);
 }
 
@@ -226,11 +243,13 @@ module led() {
     cylinder(r=3, h=15,$fn=8);
 }
 
-module light_block(w=25,padding=0) {
+module light_block(w=25,padding=0,with_led=true) {
     color("white") translate([-w/2-padding, 40, -epsilon]) union() {
         difference() {
-            cube([w+2*padding, 20, case_height/2+padding]);
-            translate([w,0,case_height/4]) rotate([-90,0,60]) led();
+            cube([w+2*padding, 20, block_height+padding]);
+            if (with_led) {
+                translate([w,0,block_height/2]) rotate([-90,0,60]) led();
+            }
         }
     }
 }
@@ -319,7 +338,7 @@ module top_assembly() {
 	top_case();
 	screw_block(left=1, padding=clearance);
 	cable_drills(cutout=case_height);
-        light_block(padding=clearance);
+        light_block(padding=clearance,with_led=false);
     }
 }
 
@@ -344,7 +363,7 @@ module xray() {
 }
 
 // The printable form: flat surfaces on the print-bed
-module print(print_base=true, print_cover=true) {
+module print(print_base=true, print_cover=true,print_logo=false) {
     // This should be printed in transparent
     if (print_base) {
         translate([-oval_ratio * base_radius,0,0]) base_assembly();
@@ -355,8 +374,16 @@ module print(print_base=true, print_cover=true) {
     if (print_cover) {
         translate([oval_ratio * base_radius,0,0]) rotate([0,180,0]) translate([0,0,-case_height - top_thick]) top_assembly();
     }
+    if (print_logo) {
+        translate([oval_ratio * base_radius,0,0]) rotate([0,180,0]) translate([0,0,-case_height - top_thick]) top_case(just_logo=true);
+    }
 }
 
-//show();
+show();
 //xray();
-print(print_base=true, print_cover=true);
+
+// Note
+//   - print base in transparent
+//   - cover: your choice of color
+//   - logo: print separately to merge for multi-color imprint.
+//print(print_base=true, print_cover=true, print_logo=false);
