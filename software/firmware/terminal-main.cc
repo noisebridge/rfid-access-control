@@ -402,10 +402,15 @@ int main() {
   PrintTerminalName(&comm);
 
   LineBuffer lineBuffer;
-  MFRC522::Uid current_uid;
+  MFRC522::Uid last_sent_uid;
 
-  int rate_limit = 0;
   unsigned short commands_seen_stat = 0;
+  enum RfidState {
+    RFID_IDLE,
+    RFID_FIRST_SEEN,
+    RFID_REPEAT_1,
+    RFID_REPEAT_2,
+  } state = RFID_IDLE;
   for (;;) {
     // See if there is a command incoming.
     char line_len;
@@ -420,7 +425,7 @@ int main() {
       case 'R':
         card_reader.PCD_Reset();
         card_reader.PCD_Init();
-        current_uid.size = 0;
+        last_sent_uid.size = 0;
         println(&comm, _P("Reset RFID reader."));
         break;
 #if FEATURE_LCD
@@ -490,22 +495,48 @@ int main() {
     if (comm.read_available())
       continue;
 
+    // --
+    // Alright, here is the section where we send stuff unsolicited to the
+    // host. Any pressed key or RFID we encounter.
+    // --
+
     SendKeypadCharIfAvailable(keypad.ReadKeypad(), &comm);
 
-    // ... or some new card found.
-    if (!card_reader.PICC_IsNewCardPresent())
-      continue;
-    if (!card_reader.PICC_ReadCardSerial()) {
-      current_uid.size = 0;
-      continue;
+    // We only want to send the RFID once when it is brought up to the reader,
+    // no repeat. However, if it is removed and brought back to the reader, we
+    // want to send the ID again (once). So it is not as simple as just
+    // remembering if we just saw the same ID that we sent last time.
+    //
+    // The RFID reader, while the card is present, will say is-new-card-present,
+    // then allows to read the serial number, then will say in the next call
+    // that the card is _not_ present. After that, this repeats.
+    // So present, !present, present, !present ..
+    //
+    // We want to get rid of the repeat. Because it alternates, we can't
+    // simply count, but need to keep track of this in a little state-machine.
+    //  - RFID_IDLE is the idle state,
+    //  - RFID_FIRST_SEEN is the interesting one,
+    //  - RFID_REPEAT_{1,2} eat the repetition.
+    bool cp = card_reader.PICC_IsNewCardPresent();
+    bool is_same = true;
+    if (cp) {
+      if (card_reader.PICC_ReadCardSerial()) {
+        is_same = (last_sent_uid.size == card_reader.uid.size
+                   && memcmp(last_sent_uid.uidByte, card_reader.uid.uidByte,
+                             last_sent_uid.size) == 0);
+      } else {
+        cp = false;
+      }
     }
-    if (--rate_limit > 0
-        && current_uid.size == card_reader.uid.size
-        && memcmp(current_uid.uidByte, card_reader.uid.uidByte,
-                  current_uid.size) == 0)
-      continue;
-    rate_limit = 10;
-    current_uid = card_reader.uid;
-    SendUid(current_uid, &comm);
+    switch (state) {
+    case RFID_IDLE:       state = cp ? RFID_FIRST_SEEN : RFID_IDLE; break;
+    case RFID_FIRST_SEEN: state = cp ? RFID_FIRST_SEEN : RFID_REPEAT_1; break;
+    case RFID_REPEAT_1:   state = cp ? RFID_REPEAT_2 : RFID_IDLE; break;
+    case RFID_REPEAT_2:   state = cp ? RFID_FIRST_SEEN : RFID_REPEAT_1; break;
+    }
+    if (!is_same || state == RFID_FIRST_SEEN) {
+      SendUid(card_reader.uid, &comm);
+      last_sent_uid = card_reader.uid;
+    }
   }
 }
