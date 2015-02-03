@@ -533,6 +533,7 @@ int main() {
     case RFID_FIRST_SEEN: state = cp ? RFID_FIRST_SEEN : RFID_REPEAT_1; break;
     case RFID_REPEAT_1:   state = cp ? RFID_REPEAT_2 : RFID_IDLE; break;
     case RFID_REPEAT_2:   state = cp ? RFID_FIRST_SEEN : RFID_REPEAT_1; break;
+    default: state = RFID_IDLE;  // should never happen.
     }
     if (!is_same || state == RFID_FIRST_SEEN) {
       SendUid(card_reader.uid, &comm);
