@@ -38,10 +38,14 @@ const (
 	// After some action has been taken (RFID or snooze), this is the time
 	// things are displayed
 	postDoorbellSnoozeDuration = 3 * time.Second
-	postDoorbellRFIDDuration   = 15 * time.Second
+	postDoorbellRFIDDuration   = 3 * time.Second
 
+	// Don't ring more often than this.
 	defaultDoorbellRatelimit = 3 * time.Second
-	snoozedDoorbellRatelimit = 60 * time.Second // for annoying people
+
+	// for annoying people
+	provideSnoozeWhenRepeatedRingsUnder = 10 * time.Second
+	snoozedDoorbellRatelimit            = 60 * time.Second
 )
 
 type UIDoorbellRequest struct {
@@ -69,8 +73,9 @@ type UIControlHandler struct {
 	doorbellRequest    *UIDoorbellRequest
 
 	// We allow rate-limiting of the doorbell.
-	nextAllowdDoorbell time.Time
-	doorbellTarget     Target
+	lastDoorbellRequest time.Time
+	nextAllowdDoorbell  time.Time
+	doorbellTarget      Target
 }
 
 func NewControlHandler(backends *Backends) *UIControlHandler {
@@ -219,15 +224,18 @@ func (u *UIControlHandler) HandleTick() {
 		u.backToIdle()
 	}
 
+	// Let's see if we need to switch to some externally
+	// triggered state. We do that in HandleTick() so that
+	// it is executed in the right thread.
 	u.outOfThreadRequest.Lock()
 	defer u.outOfThreadRequest.Unlock()
-	doorbellRequest := u.doorbellRequest
 
-	if u.state == StateIdle && doorbellRequest != nil {
-		u.setState(StateDoorbellRequest, showDoorbellDuration)
+	if u.state == StateIdle && u.doorbellRequest != nil {
+		u.startDoorbellRequest(u.doorbellRequest)
 		u.doorbellRequest = nil
-		u.displayDoorbellRequest(doorbellRequest)
-	} else if u.state == StateIdle {
+	}
+
+	if u.state == StateIdle {
 		u.displayIdleScreen()
 	}
 }
@@ -294,7 +302,8 @@ func (u *UIControlHandler) displayUserInfo(user *User) {
 	u.setState(StateDisplayInfoMessage, 2*time.Second)
 }
 
-func (u *UIControlHandler) displayDoorbellRequest(req *UIDoorbellRequest) {
+func (u *UIControlHandler) startDoorbellRequest(req *UIDoorbellRequest) {
+	u.setState(StateDoorbellRequest, showDoorbellDuration)
 	u.doorbellTarget = req.target
 	to_display := ""
 	if len(req.message) == 0 {
@@ -311,5 +320,15 @@ func (u *UIControlHandler) displayDoorbellRequest(req *UIDoorbellRequest) {
 		indent = 0
 	}
 	u.t.WriteLCD(0, fmt.Sprintf("%*s", indent, to_display))
-	u.t.WriteLCD(1, "RFID: open [9]Snooze [*]")
+
+	now := time.Now()
+	// The snooze option always works, but we only show it when there is
+	// some repeated annoyance going on to keep UI simple in the simple case
+	if now.Sub(u.lastDoorbellRequest) < provideSnoozeWhenRepeatedRingsUnder {
+		u.t.WriteLCD(1, "RFID to open | [9]Snooze")
+	} else {
+		u.t.WriteLCD(1, "RFID to open | [*] ESC")
+	}
+
+	u.lastDoorbellRequest = time.Now()
 }
