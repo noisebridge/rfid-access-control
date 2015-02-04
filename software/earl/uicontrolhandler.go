@@ -15,7 +15,6 @@ package main
 //  - make this state-machine more readable.
 import (
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 )
@@ -143,9 +142,6 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 }
 
 func (u *UIControlHandler) HandleRFID(rfid string) {
-	// The ID comes as "<length> <code>". Get the code.
-	rfid = strings.TrimSpace(strings.Split(rfid, " ")[1])
-
 	switch u.state {
 	case StateIdle:
 		user := u.auth.FindUser(rfid)

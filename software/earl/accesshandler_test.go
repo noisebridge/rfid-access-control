@@ -253,17 +253,17 @@ func TestRFIDDebounce(t *testing.T) {
 	mockClock := &MockClock{}
 	handler.clock = mockClock
 
-	handler.HandleRFID("8 rfid-123")
+	handler.HandleRFID("rfid-123")
 	doorActions.expectOpenState(true, Target("mock"))
 	doorActions.resetDoors()
 
 	// A quickly coming same RFID should not open the door again
-	handler.HandleRFID("8 rfid-123")
+	handler.HandleRFID("rfid-123")
 	doorActions.expectOpenState(false, Target("mock"))
 
 	// .. but after some de-bounce time, this should work again.
 	mockClock.now = mockClock.now.Add(10 * time.Second)
-	handler.HandleRFID("8 rfid-123")
+	handler.HandleRFID("rfid-123")
 	doorActions.expectOpenState(true, Target("mock"))
 }
 

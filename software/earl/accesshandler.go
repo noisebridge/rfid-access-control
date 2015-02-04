@@ -12,7 +12,6 @@ import (
 	"encoding/hex"
 	"io"
 	"log"
-	"strings"
 	"time"
 )
 
@@ -65,13 +64,6 @@ func (h *AccessHandler) HandleKeypress(b byte) {
 }
 
 func (h *AccessHandler) HandleRFID(rfid string) {
-	// The ID comes as "<length> <code>". Get the code.
-	rfid_elements := strings.Split(rfid, " ")
-	if len(rfid_elements) != 2 {
-		return
-	}
-	rfid = strings.TrimSpace(rfid_elements[1])
-
 	// The reader might send IDs faster than we can checkAccess()
 	// which is problematic, as checkAccess() blocks the event thread.
 	// If we get the same ID again, ignore until nextRFIDActionTime

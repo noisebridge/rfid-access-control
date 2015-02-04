@@ -186,8 +186,13 @@ func (t *TerminalImpl) inputScanLoop() {
 		case '#', 0:
 			// ignore comment lines and obvious garbage.
 		case 'I', 'K':
+			// These are events sent asynchronously from the
+			// terminal to signify incoming key-presses or RFID
+			// reads
 			t.eventChannel <- line
 		default:
+			// Everything else coming from the terminal is in
+			// response to something we requested.
 			t.responseChannel <- line
 		}
 	}
@@ -257,7 +262,9 @@ func (t *TerminalImpl) runEventLoop(handler TerminalEventHandler) {
 		case line := <-t.eventChannel:
 			switch {
 			case line[0] == 'I':
-				handler.HandleRFID(line[1:])
+				if rfid, ok := t.parseRFIDResponse(line); ok {
+					handler.HandleRFID(rfid)
+				}
 			case line[0] == 'K':
 				handler.HandleKeypress(line[1])
 			default:
@@ -272,6 +279,21 @@ func (t *TerminalImpl) runEventLoop(handler TerminalEventHandler) {
 				return
 			}
 		}
+	}
+}
+
+func (t *TerminalImpl) parseRFIDResponse(from_terminal string) (string, bool) {
+	// The ID comes as "<length> <code>". Get the code.
+	rfid_elements := strings.Split(from_terminal, " ")
+	if len(rfid_elements) != 2 {
+		return "", false
+	}
+	got_len, _ := strconv.Atoi(rfid_elements[0]) // number of bytes
+	rfid := strings.TrimSpace(rfid_elements[1])  // bytes as hex
+	if len(rfid) > 0 && len(rfid) == 2*got_len {
+		return rfid, true
+	} else {
+		return "", false
 	}
 }
 
