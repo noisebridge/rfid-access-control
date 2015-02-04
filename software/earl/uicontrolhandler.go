@@ -104,7 +104,7 @@ func (u *UIControlHandler) Init(t Terminal) {
 	// as we boldy claim to do better than the default.
 	u.backends.doorbellUI = u
 }
-func (u *UIControlHandler) ShutdownHandler() {
+func (u *UIControlHandler) HandleShutdown() {
 	// Back to some simple UI handler
 	u.backends.doorbellUI = &SimpleDoorbellUI{
 		actions: u.backends.physicalActions,

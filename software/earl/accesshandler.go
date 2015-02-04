@@ -42,7 +42,7 @@ func NewAccessHandler(backends *Backends) *AccessHandler {
 func (h *AccessHandler) Init(t Terminal) {
 	h.t = t
 }
-func (h *AccessHandler) ShutdownHandler() {}
+func (h *AccessHandler) HandleShutdown() {}
 
 func (h *AccessHandler) HandleKeypress(b byte) {
 	h.lastKeypressTime = h.clock.Now()

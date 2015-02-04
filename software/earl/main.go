@@ -33,55 +33,6 @@ const (
 	idleTickTime                = 500 * time.Millisecond
 )
 
-// The API to interact with the Terminal.
-// Note, the terminal also sends asynchronous information,
-// reflected in the 'TerminalEventHandler' interface below.
-type Terminal interface {
-	// Get the name of the terminal.
-	GetTerminalName() string
-
-	// Show the LED color. String contains a string with a combination of
-	// characters 'R', 'G', 'B'. So ShowColor("RG") would show yellow for
-	// instance. Empty string: LEDs off.
-	ShowColor(colors string)
-
-	// Buzz the speaker. Tone code can be 'H' or 'L' for high or low
-	// frequency (TODO: that should probably be some enum);
-	// "duration" does this for the given duration.
-	BuzzSpeaker(toneCode string, duration time.Duration)
-
-	// Write to the LCD. The "row" is the row to write to (starting with
-	// 0). The "text" is the line to be written.
-	WriteLCD(row int, text string)
-}
-
-// Callback interface to be implemented to receive events generated
-// by terminals. This is the interface that code should implement
-// to interact with a terminal - the Init() function gives you the API.
-// Each method call should return quickly; if you need to do something
-// dependent on time, implement HandleTick()
-type TerminalEventHandler interface {
-	// Initialize. This is called once in the beginning and gets the
-	// TerminalStub connected to the terminal. This allows to trigger
-	// actions, such as writing to the LCD display.
-	Init(t Terminal)
-
-	// Called when the connection to this EventHandler is shut down.
-	ShutdownHandler()
-
-	// HandleKeypress receives each character typed on the keypad.
-	// These are ASCII encoded bytes in the range '0'..'9' and '*' and '#'.
-	HandleKeypress(byte)
-
-	// HandleRFID receives the ID of an RFID card presented to the
-	// terminal. While the card is held in front of the terminal, this
-	// repeats every couple of 100ms.
-	HandleRFID(string)
-
-	// HandleTick is called roughly every 500ms when idle.
-	HandleTick()
-}
-
 // Physical actions triggered by earl activity
 type PhysicalActions interface {
 	OpenDoor(which Target) // Open strike for given door
@@ -405,7 +356,7 @@ func HandleSerialDevice(devicepath string, baud int, backends *Backends) {
 			log.Printf("%s:%d: connected to '%s'",
 				devicepath, baud, t.GetTerminalName())
 			t.runEventLoop(handler)
-			handler.ShutdownHandler()
+			handler.HandleShutdown()
 		}
 		t.shutdown()
 		t = nil
