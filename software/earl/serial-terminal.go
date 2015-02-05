@@ -194,7 +194,7 @@ func (t *SerialTerminal) discardInitialInput() {
 
 func (t *SerialTerminal) parseRFIDResponse(from_terminal string) (string, bool) {
 	// The ID comes as "<length> <code>". Get the code.
-	rfid_elements := strings.Split(from_terminal, " ")
+	rfid_elements := strings.Split(from_terminal[1:], " ")
 	if len(rfid_elements) != 2 {
 		return "", false
 	}

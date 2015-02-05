@@ -12,7 +12,7 @@ type GPIOActions struct {
 }
 
 func NewGPIOActions() *GPIOActions {
-	result := new(GPIOActions)
+	result := &GPIOActions{}
 	result.init()
 	return result
 }

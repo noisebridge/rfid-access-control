@@ -145,10 +145,15 @@ func main() {
 	log.Println("Starting...")
 
 	actions := NewGPIOActions()
+	authenticator := NewFileBasedAuthenticator(*userFileName)
 	backends := &Backends{
-		authenticator:   NewFileBasedAuthenticator(*userFileName),
+		authenticator:   authenticator,
 		physicalActions: actions,
 		doorbellUI:      &SimpleDoorbellUI{actions: actions},
+	}
+
+	if authenticator == nil {
+		log.Fatal("Can't continue without authenticator.")
 	}
 
 	// For each serial interface, we run an indepenent loop
