@@ -43,7 +43,7 @@ const (
 	defaultDoorbellRatelimit = 3 * time.Second
 
 	// For annoying people...
-	offerSnoozeWhenRepeatedRingsUnder = 10 * time.Second
+	offerSnoozeWhenRepeatedRingsUnder = 5 * time.Second
 	snoozedDoorbellRatelimit          = 60 * time.Second
 )
 
@@ -77,9 +77,10 @@ type UIControlHandler struct {
 	doorbellRequest    *UIDoorbellRequest
 
 	// We allow rate-limiting of the doorbell.
-	lastDoorbellRequest time.Time
-	nextAllowdDoorbell  time.Time
-	doorbellTarget      Target
+	lastDoorbellRequest   time.Time
+	nextAllowdDoorbell    time.Time
+	doorbellTarget        Target
+	doorWhileSnoozedCount int
 }
 
 func NewControlHandler(backends *Backends) *UIControlHandler {
@@ -209,7 +210,7 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 		// Opening doors is somewhat relaxed; if the person is inside
 		// we assume they are allowed to open the door. TODO: revisit?
 		if u.auth.FindUser(rfid) != nil {
-			u.t.WriteLCD(1, "      -> Opening <-")
+			u.t.WriteLCD(1, "     -> Opening <-")
 			u.backends.physicalActions.OpenDoor(u.doorbellTarget)
 		} else {
 			u.t.WriteLCD(1, "     (unknown RFID)")
@@ -247,6 +248,9 @@ func (u *UIControlHandler) HandleDoorbell(which Target, message string) {
 	if time.Now().After(u.nextAllowdDoorbell) {
 		u.backends.physicalActions.RingBell(which)
 		u.nextAllowdDoorbell = time.Now().Add(defaultDoorbellRatelimit)
+		u.doorWhileSnoozedCount = 0
+	} else {
+		u.doorWhileSnoozedCount++ // Count snoozed counts
 	}
 
 	// Now trigger the UI request
@@ -321,6 +325,11 @@ func (u *UIControlHandler) startDoorbellRequest(req *UIDoorbellRequest) {
 			DoorBellCharacter)
 	}
 
+	// If someone is ringing like crazy, display that
+	if u.doorWhileSnoozedCount > 0 {
+		to_display += fmt.Sprintf("(%d)", u.doorWhileSnoozedCount)
+	}
+
 	fmt_len := int((24-len(to_display))/2) + len(to_display)
 	if fmt_len > 24 {
 		fmt_len = 24
@@ -336,5 +345,5 @@ func (u *UIControlHandler) startDoorbellRequest(req *UIDoorbellRequest) {
 		u.t.WriteLCD(1, "RFID => open | [*] ESC")
 	}
 
-	u.lastDoorbellRequest = time.Now()
+	u.lastDoorbellRequest = now
 }
