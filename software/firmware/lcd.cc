@@ -15,6 +15,17 @@
 #define BIT_RS     0x10
 #define BIT_ENABLE 0x20
 
+// Doorbell symbol. Left aligned 5x8 font.
+static const unsigned char kDoorbellChar[] = {
+  0b00000000,
+  0b00100000,
+  0b01110000,
+  0b01110000,
+  0b01110000,
+  0b11111000,
+  0b00100000,
+};
+
 // According to datasheet, common operations take up to ~37usec
 #define LCD_DISPLAY_OPERATION_WAIT_USEC 50
 
@@ -28,6 +39,13 @@ static void WriteByte(bool is_command, unsigned char b) {
   WriteNibble(is_command, (b >> 4) & 0xf);
   WriteNibble(is_command, b & 0xf);
   _delay_us(LCD_DISPLAY_OPERATION_WAIT_USEC);
+}
+
+static void RegisterFont(uint8_t num, const uint8_t bitmap[8]) {
+  WriteByte(true, 0x40 + (num << 3));
+  for (uint8_t i = 0; i < 8; ++i) {
+    WriteByte(false, bitmap[i] >> 3);  // font is left aligned in data.
+  }
 }
 
 LcdDisplay::LcdDisplay(int width) : width_(width) {
@@ -52,6 +70,10 @@ LcdDisplay::LcdDisplay(int width) : width_(width) {
 
   WriteByte(true, 0x01);  // Clear display
   _delay_us(2000);        // ... which takes up to 1.6ms
+
+  // Some special characters we might want to use. They show up as ascii 0..7.
+  // But we can't use 0 as this is used as end-of-string character.
+  RegisterFont(1, kDoorbellChar);
 }
 
 void LcdDisplay::print(unsigned char row, const char *str) {

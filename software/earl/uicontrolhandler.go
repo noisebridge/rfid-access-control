@@ -47,6 +47,11 @@ const (
 	snoozedDoorbellRatelimit          = 60 * time.Second
 )
 
+const (
+	// We programmed the LCD to show a doorbell pictogram
+	DoorBellCharacter = "\001"
+)
+
 type UIDoorbellRequest struct {
 	target  Target
 	message string
@@ -104,6 +109,7 @@ func (u *UIControlHandler) Init(t Terminal) {
 	// as we boldy claim to do better than the default.
 	u.backends.doorbellUI = u
 }
+
 func (u *UIControlHandler) HandleShutdown() {
 	// Back to some simple UI handler
 	u.backends.doorbellUI = &SimpleDoorbellUI{
@@ -307,27 +313,27 @@ func (u *UIControlHandler) startDoorbellRequest(req *UIDoorbellRequest) {
 	u.doorbellTarget = req.target
 	to_display := ""
 	if len(req.message) == 0 {
-		to_display = fmt.Sprintf("((( %s )))", req.target)
+		to_display = fmt.Sprintf("%s %s %s",
+			DoorBellCharacter, req.target, DoorBellCharacter)
 	} else {
-		to_display = fmt.Sprintf("( %s@%s )", req.message, req.target)
-		for len(to_display) < 22 {
-			to_display = "(" + to_display + ")"
-		}
+		to_display = fmt.Sprintf("%s %s %s %s",
+			DoorBellCharacter, req.message, req.target,
+			DoorBellCharacter)
 	}
 
-	indent := (24 - len(to_display)) / 2
-	if indent < 0 {
-		indent = 0
+	fmt_len := int((24-len(to_display))/2) + len(to_display)
+	if fmt_len > 24 {
+		fmt_len = 24
 	}
-	u.t.WriteLCD(0, fmt.Sprintf("%*s", indent, to_display))
+	u.t.WriteLCD(0, fmt.Sprintf("%*s", fmt_len, to_display))
 
 	now := time.Now()
 	// The snooze option always works, but we only show it when there is
 	// some repeated annoyance going on to keep UI simple in the simple case
 	if now.Sub(u.lastDoorbellRequest) < offerSnoozeWhenRepeatedRingsUnder {
-		u.t.WriteLCD(1, "RFID to open | [9]Snooze")
+		u.t.WriteLCD(1, "RFID => open | [9]Snooze")
 	} else {
-		u.t.WriteLCD(1, "RFID to open | [*] ESC")
+		u.t.WriteLCD(1, "RFID => open | [*] ESC")
 	}
 
 	u.lastDoorbellRequest = time.Now()
