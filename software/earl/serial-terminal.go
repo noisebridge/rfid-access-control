@@ -202,9 +202,8 @@ func (t *SerialTerminal) parseRFIDResponse(from_terminal string) (string, bool) 
 	rfid := strings.TrimSpace(rfid_elements[1])  // bytes as hex
 	if len(rfid) > 0 && len(rfid) == 2*got_len {
 		return rfid, true
-	} else {
-		return "", false
 	}
+	return "", false
 }
 
 // Regularly confirm that we are still connected to same terminal
