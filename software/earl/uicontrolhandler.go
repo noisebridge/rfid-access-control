@@ -233,7 +233,8 @@ func (u *UIControlHandler) HandleTick() {
 	u.outOfThreadRequest.Lock()
 	defer u.outOfThreadRequest.Unlock()
 
-	if u.state == StateIdle && u.doorbellRequest != nil {
+	if (u.state == StateIdle || u.state == StateDoorbellRequest) &&
+		u.doorbellRequest != nil {
 		u.startDoorbellRequest(u.doorbellRequest)
 		u.doorbellRequest = nil
 	}
