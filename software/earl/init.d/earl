@@ -36,6 +36,7 @@ case $1 in
 			--pidfile $PIDFILE \
 			--startas $DAEMON \
 			-- -logfile=$LOGFILE \
+                        -belldir=/home/pi/doorbell-sounds \
 		        $SERIAL_INTERFACES
 		status=$?
 		log_end_msg $status
