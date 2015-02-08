@@ -145,6 +145,15 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 				snoozedDoorbellRatelimit/time.Second))
 			u.stateTimeout = time.Now().Add(postDoorbellSnoozeDuration)
 		}
+		if key == '5' {
+			// For now, we allow opening just with a keypress. We
+			// might consider tighten that down with requiring RFID
+			// (which also works).
+			// but let's wait until everyone actually has one.
+			// In that case, just remove this if and change the
+			// display string in startDoorbellRequest()
+			u.openDoorAndShow(u.doorbellTarget)
+		}
 	}
 }
 
@@ -209,9 +218,11 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 	case StateDoorbellRequest:
 		// Opening doors is somewhat relaxed; if the person is inside
 		// we assume they are allowed to open the door. TODO: revisit?
+		//
+		// Right now, we also open entirely insecure to open with
+		// pressing [5] as not many people have a RFID yet.
 		if u.auth.FindUser(rfid) != nil {
-			u.t.WriteLCD(1, "     -> Opening <-")
-			u.backends.physicalActions.OpenDoor(u.doorbellTarget)
+			u.openDoorAndShow(u.doorbellTarget)
 		} else {
 			u.t.WriteLCD(1, "     (unknown RFID)")
 		}
@@ -340,11 +351,18 @@ func (u *UIControlHandler) startDoorbellRequest(req *UIDoorbellRequest) {
 	now := time.Now()
 	// The snooze option always works, but we only show it when there is
 	// some repeated annoyance going on to keep UI simple in the simple case
+	// TODO: "[5] Open" should become "RFID => Open"
 	if now.Sub(u.lastDoorbellRequest) < offerSnoozeWhenRepeatedRingsUnder {
-		u.t.WriteLCD(1, "RFID => open | [9]Snooze")
+		u.t.WriteLCD(1, "[5] Open | [9]Snooze")
 	} else {
-		u.t.WriteLCD(1, "RFID => open | [*] ESC")
+		u.t.WriteLCD(1, "[5] Open | [*] ESC")
 	}
 
 	u.lastDoorbellRequest = now
+}
+
+func (u *UIControlHandler) openDoorAndShow(where Target) {
+	u.t.WriteLCD(1, "     -> Opening <-")
+	u.backends.physicalActions.OpenDoor(where)
+	u.stateTimeout = time.Now().Add(postDoorbellRFIDDuration)
 }
