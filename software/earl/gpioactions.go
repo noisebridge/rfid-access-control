@@ -4,22 +4,24 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"time"
+)
+
+const (
+	WavPlayer = "/usr/bin/aplay"
 )
 
 // An implementation of the DoorActions interface
 type GPIOActions struct {
+	doorbellDirectory string
 }
 
-func NewGPIOActions() *GPIOActions {
-	result := &GPIOActions{}
-	result.init()
+func NewGPIOActions(wavDir string) *GPIOActions {
+	result := &GPIOActions{doorbellDirectory: wavDir}
+	result.initGPIO(7)
+	result.initGPIO(8)
 	return result
-}
-
-func (g *GPIOActions) init() {
-	g.initGPIO(7)
-	g.initGPIO(8)
 }
 
 func (g *GPIOActions) OpenDoor(which Target) {
@@ -43,14 +45,19 @@ func (g *GPIOActions) OpenDoor(which Target) {
 }
 
 func (g *GPIOActions) RingBell(which Target) {
-	log.Printf("Ringing doorbell for %s", which)
-	// Ringing doorbell.
-	// TODO: implement. Maybe play a little wav to /dev/audio ?
+	filename := g.doorbellDirectory + "/" + string(which) + ".wav"
+	_, err := os.Stat(filename)
+	msg := ""
+	if err == nil {
+		go exec.Command(WavPlayer, filename).Run()
+	} else {
+		msg = ": [ugh, file not found!]"
+	}
+	log.Printf("Ringing doorbell for %s (%s%s)", which, filename, msg)
 }
 
 func (g *GPIOActions) initGPIO(gpio_pin int) {
 	// Initialize the GPIO stuffs
-
 	// Create gpio_pin if it doesn't exist
 	f, err := os.OpenFile("/sys/class/gpio/export", os.O_WRONLY, 0444)
 	if err != nil {

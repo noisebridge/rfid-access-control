@@ -123,6 +123,8 @@ func HandleSerialDevice(devicepath string, baud int, backends *Backends) {
 func main() {
 	userFileName := flag.String("users", "/var/access/users.csv", "User Authentication file.")
 	logFileName := flag.String("logfile", "", "The log file, default = stdout")
+	doorbellDir := flag.String("belldir", "", "Directory that contains upstairs.wav, gate.wav etc. Wav needs to be named like")
+
 	flag.Parse()
 
 	if len(flag.Args()) < 1 {
@@ -144,7 +146,7 @@ func main() {
 
 	log.Println("Starting...")
 
-	actions := NewGPIOActions()
+	actions := NewGPIOActions(*doorbellDir)
 	authenticator := NewFileBasedAuthenticator(*userFileName)
 	backends := &Backends{
 		authenticator:   authenticator,
