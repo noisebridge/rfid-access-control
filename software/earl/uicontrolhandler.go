@@ -246,13 +246,19 @@ func (u *UIControlHandler) HandleAppEvent(event *AppEvent) {
 }
 
 // Create a string from the observed door status. Only mention open
-// doors, as these are important.
+// doors, as these are important. "gate, upstairs : open"
 func (u *UIControlHandler) getDoorStatusString() string {
 	result := ""
 	for key, value := range u.observedDoorOpenStatus {
 		if value > 0 {
-			result += string(key) + ":open "
+			if len(result) > 0 {
+				result += ", "
+			}
+			result += string(key)
 		}
+	}
+	if len(result) > 0 {
+		result += " : open"
 	}
 	return result
 }
