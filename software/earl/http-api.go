@@ -16,21 +16,23 @@ type ApiServer struct {
 // Similar to AppEvent, but json serialization hints and timestamp being
 // a pointer to be able to omit it.
 type JsonAppEvent struct {
-	Ev      AppEventType `json:"ev"`
-	Target  Target       `json:"target"`
-	Source  string       `json:"source"`
-	Msg     string       `json:"msg"`
-	Value   int          `json:"value,omitempty"`
-	Timeout *time.Time   `json:"timeout,omitempty"`
+	Timestamp time.Time    `json:"timestamp"`
+	Ev        AppEventType `json:"type"`
+	Target    Target       `json:"target"`
+	Source    string       `json:"source"`
+	Msg       string       `json:"msg"`
+	Value     int          `json:"value,omitempty"`
+	Timeout   *time.Time   `json:"timeout,omitempty"`
 }
 
 func JsonEventFromAppEvent(event *AppEvent) JsonAppEvent {
 	jev := JsonAppEvent{
-		Ev:     event.Ev,
-		Target: event.Target,
-		Source: event.Source,
-		Msg:    event.Msg,
-		Value:  event.Value,
+		Timestamp: event.Timestamp,
+		Ev:        event.Ev,
+		Target:    event.Target,
+		Source:    event.Source,
+		Msg:       event.Msg,
+		Value:     event.Value,
 	}
 	if !event.Timeout.IsZero() {
 		jev.Timeout = &event.Timeout

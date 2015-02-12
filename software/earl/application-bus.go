@@ -37,7 +37,9 @@ const (
 // enumeration, and optional parameters are passed alongside.
 type AppEvent struct {
 	// Required parameters
-	Ev     AppEventType
+	Timestamp time.Time // Automatically set on Post if not set.
+	Ev        AppEventType
+
 	Target Target // The target for which this event is meant.
 	Source string // Mostly FYI: what subsystem generated it
 	Msg    string // FYI, good to display to a human user
@@ -65,6 +67,9 @@ func NewApplicationBus() *ApplicationBus {
 }
 
 func (b *ApplicationBus) Post(event *AppEvent) {
+	if event.Timestamp.IsZero() {
+		event.Timestamp = time.Now()
+	}
 	b.syncedOperations <- func() {
 		for channel, _ := range b.receivers {
 			if event.Ev != applicationBusInternalFlush {
