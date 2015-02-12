@@ -14,6 +14,11 @@ import (
 
 const (
 	WavPlayer = "/usr/bin/aplay"
+
+	// Length of time to open the door and minimum time between.
+	defaultDoorOpenTime      = 2 * time.Second
+	defaultDoorOpenRateLimit = 500 * time.Millisecond
+
 	// Don't allow to ring more often than this.
 	defaultDoorbellRatelimit = 3 * time.Second
 )
@@ -21,12 +26,14 @@ const (
 // An implementation of the DoorActions interface
 type GPIOActions struct {
 	doorbellDirectory   string
+	nextAllowedOpenTime map[Target]time.Time
 	nextAllowedRingTime map[Target]time.Time
 }
 
 func NewGPIOActions(wavDir string) *GPIOActions {
 	result := &GPIOActions{
 		doorbellDirectory:   wavDir,
+		nextAllowedOpenTime: make(map[Target]time.Time),
 		nextAllowedRingTime: make(map[Target]time.Time),
 	}
 	result.initGPIO(7)
@@ -53,6 +60,12 @@ func (g *GPIOActions) EventLoop(bus *ApplicationBus) {
 }
 
 func (g *GPIOActions) openDoor(which Target) {
+	if time.Now().Before(g.nextAllowedOpenTime[which]) {
+		// We don't want to interfere with ourself currently opening.
+		return
+	}
+	g.nextAllowedOpenTime[which] = time.Now().Add(defaultDoorOpenTime + defaultDoorOpenRateLimit)
+
 	gpio_pin := -1
 	switch which {
 	case TargetDownstairs:
@@ -69,7 +82,7 @@ func (g *GPIOActions) openDoor(which Target) {
 	if gpio_pin > 0 {
 		go func() {
 			g.switchRelay(true, gpio_pin)
-			time.Sleep(2 * time.Second)
+			time.Sleep(defaultDoorOpenTime)
 			g.switchRelay(false, gpio_pin)
 		}()
 	}
@@ -122,7 +135,7 @@ func (g *GPIOActions) switchRelay(switch_on bool, gpio_pin int) {
 	gpioFile := fmt.Sprintf("/sys/class/gpio/gpio%d/value", gpio_pin)
 	f, err := os.OpenFile(gpioFile, os.O_WRONLY, 0444)
 	if err != nil {
-		log.Print("Error! Could not activate relay: ", err)
+		log.Printf("Error! Could not activate relay (%t): %s", switch_on, err)
 		return
 	}
 	if switch_on {

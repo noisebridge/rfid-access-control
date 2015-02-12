@@ -134,7 +134,7 @@ func (h *AccessHandler) checkAccess(code string, fyi_origin string) {
 	if user != nil && auth_result == AuthOk {
 		h.t.BuzzSpeaker("H", 500)
 		// Be sparse, don't log user, but keep track of level.
-		log.Printf("%s: opened. %s Type=%s",
+		log.Printf("%s: granted. %s Type=%s",
 			target, fyi_origin, user.UserLevel)
 		h.backends.appEventBus.Post(&AppEvent{
 			ev:     AppOpenRequest,
