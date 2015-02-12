@@ -30,6 +30,10 @@ type TerminalEventHandler interface {
 	// repeats every couple of 100ms.
 	HandleRFID(string)
 
+	// Handle event coming from the event bus. Receiver can decide to
+	// do something sensible with it.
+	HandleAppEvent(event *AppEvent)
+
 	// HandleTick is called roughly every 500ms when idle.
 	HandleTick()
 }

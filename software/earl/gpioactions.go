@@ -1,3 +1,7 @@
+// These are actions wired to GPIO ports of the Raspberry Pi.
+// The EventLoop listens for incoming requests on the ApplicationBus, but
+// also can send events to the ApplicationBus from input-GPIO pins, e.g.
+// reed contacts or independent doorbell buttons.
 package main
 
 import (
@@ -10,21 +14,45 @@ import (
 
 const (
 	WavPlayer = "/usr/bin/aplay"
+	// Don't allow to ring more often than this.
+	defaultDoorbellRatelimit = 3 * time.Second
 )
 
 // An implementation of the DoorActions interface
 type GPIOActions struct {
-	doorbellDirectory string
+	doorbellDirectory   string
+	nextAllowedRingTime map[Target]time.Time
 }
 
 func NewGPIOActions(wavDir string) *GPIOActions {
-	result := &GPIOActions{doorbellDirectory: wavDir}
+	result := &GPIOActions{
+		doorbellDirectory:   wavDir,
+		nextAllowedRingTime: make(map[Target]time.Time),
+	}
 	result.initGPIO(7)
 	result.initGPIO(8)
 	return result
 }
 
-func (g *GPIOActions) OpenDoor(which Target) {
+// Receive events from the bus and act on it.
+// (later: if we read reed contacts, send AppDoorSensorEvents)
+func (g *GPIOActions) EventLoop(bus *ApplicationBus) {
+	appEvents := make(AppEventChannel, 2)
+	bus.Subscribe(appEvents)
+	for {
+		event := <-appEvents
+		switch event.ev {
+		case AppOpenRequest:
+			g.openDoor(event.target)
+		case AppDoorbellTriggerEvent:
+			g.ringBell(event.target)
+		case AppSnoozeBellRequest:
+			g.nextAllowedRingTime[event.target] = event.timeout
+		}
+	}
+}
+
+func (g *GPIOActions) openDoor(which Target) {
 	gpio_pin := -1
 	switch which {
 	case TargetDownstairs:
@@ -36,15 +64,22 @@ func (g *GPIOActions) OpenDoor(which Target) {
 	default:
 		log.Printf("DoorAction: Don't know how to open '%s'", which)
 	}
+	// Maybe when we see a door-open event for this target, fall back
+	// to non-buzzing immediately after ?
 	if gpio_pin > 0 {
-		//log.Printf("DoorAction: Open '%s'; gpio=%d", which, gpio_pin)
-		g.switchRelay(true, gpio_pin)
-		time.Sleep(2 * time.Second)
-		g.switchRelay(false, gpio_pin)
+		go func() {
+			g.switchRelay(true, gpio_pin)
+			time.Sleep(2 * time.Second)
+			g.switchRelay(false, gpio_pin)
+		}()
 	}
 }
 
-func (g *GPIOActions) RingBell(which Target) {
+func (g *GPIOActions) ringBell(which Target) {
+	if time.Now().Before(g.nextAllowedRingTime[which]) {
+		// Snoozed.
+		return
+	}
 	filename := g.doorbellDirectory + "/" + string(which) + ".wav"
 	_, err := os.Stat(filename)
 	msg := ""
@@ -54,6 +89,7 @@ func (g *GPIOActions) RingBell(which Target) {
 		msg = ": [ugh, file not found!]"
 	}
 	log.Printf("Ringing doorbell for %s (%s%s)", which, filename, msg)
+	g.nextAllowedRingTime[which] = time.Now().Add(defaultDoorbellRatelimit)
 }
 
 func (g *GPIOActions) initGPIO(gpio_pin int) {

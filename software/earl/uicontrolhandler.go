@@ -15,7 +15,6 @@ package main
 //  - make this state-machine more readable.
 import (
 	"fmt"
-	"sync"
 	"time"
 )
 
@@ -34,14 +33,6 @@ const (
 	// Display doorbell for this amount of time
 	showDoorbellDuration = 45 * time.Second
 
-	// After some action has been taken (RFID or snooze), this is the time
-	// things remain displayed before going back to idle.
-	postDoorbellSnoozeDuration = 3 * time.Second
-	postDoorbellRFIDDuration   = 3 * time.Second
-
-	// Don't allow to ring more often than this.
-	defaultDoorbellRatelimit = 3 * time.Second
-
 	// For annoying people...
 	offerSnoozeWhenRepeatedRingsUnder = 5 * time.Second
 	snoozedDoorbellRatelimit          = 60 * time.Second
@@ -51,11 +42,6 @@ const (
 	// We programmed the LCD to show a doorbell pictogram
 	DoorBellCharacter = "\001"
 )
-
-type UIDoorbellRequest struct {
-	target  Target
-	message string
-}
 
 type UIControlHandler struct {
 	backends *Backends
@@ -70,24 +56,25 @@ type UIControlHandler struct {
 
 	userCounter int // counter to generate new user names.
 
-	// There might be requests do do something on behalf of handlers running
-	// in different threads. This is to pass over this request to be handled
-	// in the right thread.
-	outOfThreadRequest sync.Mutex
-	doorbellRequest    *UIDoorbellRequest
-
 	// We allow rate-limiting of the doorbell.
-	lastDoorbellRequest   time.Time
-	nextAllowdDoorbell    time.Time
+	lastDoorbellRequest   time.Time // To know when to offer snooze.
 	doorbellTarget        Target
 	doorWhileSnoozedCount int
+
+	// Stuff collected from events we see, mostly to
+	// display on our idle screen.
+	snoozedDoorbellTimeout time.Time      // Received from event.
+	observedDoorOpenStatus map[Target]int // watching events fly by.
+	actionMessage          string
+	actionMessageTimeout   time.Time
 }
 
 func NewControlHandler(backends *Backends) *UIControlHandler {
 	return &UIControlHandler{
-		backends:    backends,
-		auth:        backends.authenticator,
-		userCounter: time.Now().Second() % 100, // semi-random start
+		backends:               backends,
+		auth:                   backends.authenticator,
+		userCounter:            time.Now().Second() % 100, // semi-random start
+		observedDoorOpenStatus: make(map[Target]int),
 	}
 }
 
@@ -106,17 +93,9 @@ func (u *UIControlHandler) backToIdle() {
 
 func (u *UIControlHandler) Init(t Terminal) {
 	u.t = t
-	// We sneakily replace the doorbell UI withourself
-	// as we boldy claim to do better than the default.
-	u.backends.doorbellUI = u
 }
 
-func (u *UIControlHandler) HandleShutdown() {
-	// Back to some simple UI handler
-	u.backends.doorbellUI = &SimpleDoorbellUI{
-		actions: u.backends.physicalActions,
-	}
-}
+func (u *UIControlHandler) HandleShutdown() {}
 
 func (u *UIControlHandler) HandleKeypress(key byte) {
 	if key == '*' { // The '*' key is always 'Esc'-equivalent
@@ -140,10 +119,14 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 
 	case StateDoorbellRequest:
 		if key == '9' {
-			u.nextAllowdDoorbell = time.Now().Add(snoozedDoorbellRatelimit)
-			u.t.WriteLCD(1, fmt.Sprintf("Snoozed for %d sec",
-				snoozedDoorbellRatelimit/time.Second))
-			u.stateTimeout = time.Now().Add(postDoorbellSnoozeDuration)
+			u.backends.appEventBus.Post(&AppEvent{
+				ev:      AppSnoozeBellRequest,
+				target:  u.doorbellTarget,
+				source:  u.t.GetTerminalName(),
+				msg:     "Snooze pressed on control-terminal",
+				timeout: time.Now().Add(snoozedDoorbellRatelimit),
+			})
+			u.backToIdle()
 		}
 		if key == '5' {
 			// For now, we allow opening just with a keypress. We
@@ -152,7 +135,7 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 			// but let's wait until everyone actually has one.
 			// In that case, just remove this if and change the
 			// display string in startDoorbellRequest()
-			u.openDoorAndShow(u.doorbellTarget)
+			u.openDoorAndShow(u.doorbellTarget, "Key [5] at control")
 		}
 	}
 }
@@ -222,11 +205,9 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 		// Right now, we also open entirely insecure to open with
 		// pressing [5] as not many people have a RFID yet.
 		if u.auth.FindUser(rfid) != nil {
-			u.openDoorAndShow(u.doorbellTarget)
-		} else {
-			u.t.WriteLCD(1, "     (unknown RFID)")
+			u.openDoorAndShow(u.doorbellTarget, "via RFID on control")
+			u.backToIdle()
 		}
-		u.stateTimeout = time.Now().Add(postDoorbellRFIDDuration)
 	}
 }
 
@@ -238,48 +219,66 @@ func (u *UIControlHandler) HandleTick() {
 		u.backToIdle()
 	}
 
-	// Let's see if we need to switch to some externally
-	// triggered state. We do that in HandleTick() so that
-	// it is executed in the right thread.
-	u.outOfThreadRequest.Lock()
-	defer u.outOfThreadRequest.Unlock()
-
-	if (u.state == StateIdle || u.state == StateDoorbellRequest) &&
-		u.doorbellRequest != nil {
-		u.startDoorbellRequest(u.doorbellRequest)
-		u.doorbellRequest = nil
-	}
-
 	if u.state == StateIdle {
 		u.displayIdleScreen()
 	}
 }
 
-// Doorbell UI interface.
-func (u *UIControlHandler) HandleDoorbell(which Target, message string) {
-	if time.Now().After(u.nextAllowdDoorbell) {
-		u.backends.physicalActions.RingBell(which)
-		u.nextAllowdDoorbell = time.Now().Add(defaultDoorbellRatelimit)
-		u.doorWhileSnoozedCount = 0
-	} else {
-		u.doorWhileSnoozedCount++ // Count snoozed counts
+// We hook into a number of app events as we want to display the status,
+// or even offer to deal with it, such as the doorbell.
+func (u *UIControlHandler) HandleAppEvent(event *AppEvent) {
+	switch event.ev {
+	case AppDoorbellTriggerEvent:
+		// We interrupt whatever we are doing now, as this is
+		// more important:
+		u.startDoorOpenUI(event.target, event.msg)
+	case AppOpenRequest:
+		u.actionMessage = "Opening " + string(event.target)
+		u.actionMessageTimeout = time.Now().Add(2 * time.Second)
+	case AppSnoozeBellRequest:
+		u.snoozedDoorbellTimeout = event.timeout
+	case AppDoorSensorEvent:
+		u.observedDoorOpenStatus[event.target] = event.value
+		if event.value == 1 {
+			u.actionMessage = "" // No need to show 'Open' anymore
+		}
 	}
+}
 
-	// Now trigger the UI request
-	// TODO: this is icky. We are possibly running in different thread
-	// context thus need do do some locking dance.
-	// Maybe we should tie together cross-handler requests with channels
-	// of some sort ?
-	u.outOfThreadRequest.Lock()
-	u.doorbellRequest = &UIDoorbellRequest{target: which, message: message}
-	u.outOfThreadRequest.Unlock()
+// Create a string from the observed door status. Only mention open
+// doors, as these are important.
+func (u *UIControlHandler) getDoorStatusString() string {
+	result := ""
+	for key, value := range u.observedDoorOpenStatus {
+		if value > 0 {
+			result += string(key) + ":open "
+		}
+	}
+	return result
 }
 
 func (u *UIControlHandler) displayIdleScreen() {
-	// TODO: do something fancy every now and then, some animation..
 	now := time.Now()
-	u.t.WriteLCD(0, "      Noisebridge")
-	u.t.WriteLCD(1, now.Format("2006-01-02 [Mon] 15:04"))
+
+	// -- Status message line
+	// Let's see if there is anything interesting to display in
+	// the status screen, otherwise fall back to 'Noisebridge'
+	if u.snoozedDoorbellTimeout.After(now) {
+		remaining := u.snoozedDoorbellTimeout.Sub(now) / time.Second
+		u.t.WriteLCD(0, fmt.Sprintf("Bell snoozed for %dsec", remaining))
+	} else if doorStatus := u.getDoorStatusString(); doorStatus != "" {
+		u.t.WriteLCD(0, doorStatus)
+	} else {
+		// Default, nothing else to display
+		u.t.WriteLCD(0, "      Noisebridge")
+	}
+
+	// -- Action message line
+	if u.actionMessage != "" && u.actionMessageTimeout.Before(now) {
+		u.t.WriteLCD(1, u.actionMessage)
+	} else {
+		u.t.WriteLCD(1, now.Format("2006-01-02 [Mon] 15:04"))
+	}
 }
 
 func (u *UIControlHandler) presentMemberActions(member *User) {
@@ -324,22 +323,27 @@ func (u *UIControlHandler) displayUserInfo(user *User) {
 	u.setState(StateDisplayInfoMessage, 2*time.Second)
 }
 
-func (u *UIControlHandler) startDoorbellRequest(req *UIDoorbellRequest) {
+func (u *UIControlHandler) startDoorOpenUI(target Target, message string) {
+	now := time.Now()
+
 	u.setState(StateDoorbellRequest, showDoorbellDuration)
-	u.doorbellTarget = req.target
+	u.doorbellTarget = target
 	to_display := ""
-	if len(req.message) == 0 {
+	if len(message) == 0 {
 		to_display = fmt.Sprintf("%s %s %s",
-			DoorBellCharacter, req.target, DoorBellCharacter)
+			DoorBellCharacter, target, DoorBellCharacter)
 	} else {
 		to_display = fmt.Sprintf("%s %s %s %s",
-			DoorBellCharacter, req.message, req.target,
-			DoorBellCharacter)
+			DoorBellCharacter, message, target, DoorBellCharacter)
 	}
 
-	// If someone is ringing like crazy, display that
-	if u.doorWhileSnoozedCount > 0 {
-		to_display += fmt.Sprintf("(%d)", u.doorWhileSnoozedCount)
+	// If someone is ringing like crazy, show the count ...
+	if now.Before(u.snoozedDoorbellTimeout) {
+		u.doorWhileSnoozedCount++
+		to_display += fmt.Sprintf("(%d snoozed)",
+			u.doorWhileSnoozedCount)
+	} else {
+		u.doorWhileSnoozedCount = 0
 	}
 
 	fmt_len := int((24-len(to_display))/2) + len(to_display)
@@ -348,7 +352,6 @@ func (u *UIControlHandler) startDoorbellRequest(req *UIDoorbellRequest) {
 	}
 	u.t.WriteLCD(0, fmt.Sprintf("%*s", fmt_len, to_display))
 
-	now := time.Now()
 	// The snooze option always works, but we only show it when there is
 	// some repeated annoyance going on to keep UI simple in the simple case
 	// TODO: "[5] Open" should become "RFID => Open"
@@ -361,8 +364,15 @@ func (u *UIControlHandler) startDoorbellRequest(req *UIDoorbellRequest) {
 	u.lastDoorbellRequest = now
 }
 
-func (u *UIControlHandler) openDoorAndShow(where Target) {
-	u.t.WriteLCD(1, "     -> Opening <-")
-	u.backends.physicalActions.OpenDoor(where)
-	u.stateTimeout = time.Now().Add(postDoorbellRFIDDuration)
+func (u *UIControlHandler) openDoorAndShow(where Target, msg string) {
+	u.backends.appEventBus.Post(&AppEvent{
+		ev:     AppOpenRequest,
+		target: where,
+		source: u.t.GetTerminalName(),
+		msg:    msg,
+	})
+	// Note: We will receive this request for opening ourself and will
+	// update the LCD. Why not here directly ? Because we want to also
+	// show door opening actions triggered externally.
+	u.backToIdle()
 }

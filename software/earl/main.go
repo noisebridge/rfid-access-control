@@ -29,29 +29,6 @@ const (
 	idleTickTime                = 500 * time.Millisecond
 )
 
-// Physical actions triggered by earl activity
-type PhysicalActions interface {
-	OpenDoor(which Target) // Open strike for given door
-	RingBell(which Target) // Inside space: generate audible tone.
-}
-
-type DoorbellUI interface {
-	// Handle someone pressing the doorbell button or triggering doorbell
-	// by swiping an RFID outside the user time.
-	HandleDoorbell(which Target, message string)
-}
-
-type SimpleDoorbellUI struct {
-	actions PhysicalActions
-}
-
-// Simplest case of doorbell UI: ring the bell.
-func (d *SimpleDoorbellUI) HandleDoorbell(which Target, message string) {
-	log.Printf("Doorbell %s : %s\n", which, message)
-	// TODO: rate-limiting for noisy ringers.
-	d.actions.RingBell(which)
-}
-
 func parseArg(arg string) (devicepath string, baudrate int) {
 	split := strings.Split(arg, ":")
 	devicepath = split[0]
@@ -66,12 +43,11 @@ func parseArg(arg string) (devicepath string, baudrate int) {
 }
 
 type Backends struct {
-	authenticator   Authenticator
-	physicalActions PhysicalActions
-	doorbellUI      DoorbellUI
+	authenticator Authenticator
+	appEventBus   *ApplicationBus
 }
 
-func HandleSerialDevice(devicepath string, baud int, backends *Backends) {
+func handleSerialDevice(devicepath string, baud int, backends *Backends) {
 	var t *SerialTerminal
 	connect_successful := true
 	retry_time := initialReconnectOnErrorTime
@@ -113,7 +89,7 @@ func HandleSerialDevice(devicepath string, baud int, backends *Backends) {
 			retry_time = initialReconnectOnErrorTime
 			log.Printf("%s:%d: connected to '%s'",
 				devicepath, baud, t.GetTerminalName())
-			t.RunEventLoop(handler)
+			t.RunEventLoop(handler, backends.appEventBus)
 		}
 		t.shutdown()
 		t = nil
@@ -146,12 +122,14 @@ func main() {
 
 	log.Println("Starting...")
 
+	appEventBus := NewApplicationBus()
 	actions := NewGPIOActions(*doorbellDir)
+	go actions.EventLoop(appEventBus)
+
 	authenticator := NewFileBasedAuthenticator(*userFileName)
 	backends := &Backends{
-		authenticator:   authenticator,
-		physicalActions: actions,
-		doorbellUI:      &SimpleDoorbellUI{actions: actions},
+		authenticator: authenticator,
+		appEventBus:   appEventBus,
 	}
 
 	if authenticator == nil {
@@ -162,7 +140,7 @@ func main() {
 	// making sure we are constantly connected.
 	for _, arg := range flag.Args() {
 		devicepath, baudrate := parseArg(arg)
-		go HandleSerialDevice(devicepath, baudrate, backends)
+		go handleSerialDevice(devicepath, baudrate, backends)
 	}
 
 	var block_forever chan bool

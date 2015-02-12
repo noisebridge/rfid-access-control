@@ -101,58 +101,83 @@ func (term *MockTerminal) expectBuzz(buzz Buzz) {
 	}
 }
 
-type MockDoorActions struct {
-	t        *testing.T
-	opened   map[Target]bool
-	doorbell map[Target]bool
+type TestFixture struct {
+	tester             *testing.T
+	mockauth           *MockAuthenticator
+	mockterm           *MockTerminal
+	expectEventChannel AppEventChannel
+	termEventChannel   AppEventChannel
+	mockbackends       *Backends
+
+	handlerUnderTest *AccessHandler
 }
 
-func NewMockDoorActions(t *testing.T) *MockDoorActions {
-	return &MockDoorActions{
-		t:        t,
-		opened:   make(map[Target]bool),
-		doorbell: make(map[Target]bool),
+func NewTestFixture(t *testing.T) *TestFixture {
+	appBus := NewApplicationBus()
+	// events sent to the terminal.
+	termEventChannel := make(AppEventChannel, 10)
+	appBus.Subscribe(termEventChannel)
+
+	// events also recorded to match against expectations.
+	expectEventChannel := make(AppEventChannel, 10)
+	appBus.Subscribe(expectEventChannel)
+
+	auth := NewMockAuthenticator()
+	term := NewMockTerminal(t)
+	backends := &Backends{
+		authenticator: auth,
+		appEventBus:   appBus,
+	}
+
+	testHandler := NewAccessHandler(backends)
+	testHandler.Init(term)
+
+	return &TestFixture{
+		tester:             t,
+		mockauth:           auth,
+		mockterm:           term,
+		termEventChannel:   termEventChannel,
+		expectEventChannel: expectEventChannel,
+		mockbackends:       backends,
+		handlerUnderTest:   testHandler,
 	}
 }
 
-func (doorActions *MockDoorActions) OpenDoor(target Target) {
-	doorActions.opened[target] = true
-}
-
-func (doorActions *MockDoorActions) RingBell(target Target) {
-	doorActions.doorbell[target] = true
-}
-
-func (doorActions *MockDoorActions) openedAnyDoor() bool {
-	return len(doorActions.opened) != 0
-}
-
-func (doorActions *MockDoorActions) expectOpenState(expected bool, target Target) {
-	// Both the existence an value in doorActions are to be like expected
-	opened, has := doorActions.opened[target]
-	if !(has == expected && opened == expected) {
-		doorActions.t.Errorf("Expected %v to be open=%v", target, expected)
+func (f *TestFixture) FlushAllAppEvents() {
+	f.mockbackends.appEventBus.Flush()
+	for {
+		select {
+		// Events accumulated for the term: give it to handle
+		case event := <-f.termEventChannel:
+			f.handlerUnderTest.HandleAppEvent(event)
+		case <-time.After(0):
+			return // done.
+		}
 	}
 }
 
-func (doorActions *MockDoorActions) expectDoorbell(expected bool, target Target) {
-	// Both the existence an value in doorActions are to be like expected
-	opened, has := doorActions.doorbell[target]
-	if !(has == expected && opened == expected) {
-		doorActions.t.Errorf("Expected %v to be ring=%v", target, expected)
+func (f *TestFixture) ExpectEvent(ev AppEventType, target Target) {
+	f.FlushAllAppEvents()
+	select {
+	case event := <-f.expectEventChannel:
+		if event.ev != ev || event.target != target {
+			f.tester.Errorf("Expecting event %d:%s, but got %d:%s\n",
+				ev, target, event.ev, event.target)
+		}
+	case <-time.After(0):
+		f.tester.Errorf("Expecting event %d:%s, but nothing in queue\n",
+			ev, target)
 	}
 }
 
-func (doorActions *MockDoorActions) resetDoors() {
-	doorActions.opened = make(map[Target]bool)
-	doorActions.doorbell = make(map[Target]bool)
-}
-
-func NewMockBackends(auth Authenticator, actions PhysicalActions) *Backends {
-	return &Backends{
-		authenticator:   auth,
-		physicalActions: actions,
-		doorbellUI:      &SimpleDoorbellUI{actions: actions},
+func (f *TestFixture) ExpectNoMoreEvents() {
+	f.FlushAllAppEvents()
+	select {
+	case event := <-f.expectEventChannel:
+		f.tester.Errorf("Didn't expect event but got %d:%s\n",
+			event.ev, event.target)
+	case <-time.After(0):
+		// Good.
 	}
 }
 
@@ -163,108 +188,84 @@ func PressKeys(h *AccessHandler, keys string) {
 }
 
 func TestValidAccessCode(t *testing.T) {
-	term := NewMockTerminal(t)
-	auth := NewMockAuthenticator()
-	auth.allow[ACKey{"123456", Target("mock")}] = AuthOk
-	doorActions := NewMockDoorActions(t)
-	handler := NewAccessHandler(NewMockBackends(auth, doorActions))
-	handler.Init(term)
-	handler.clock = MockClock{}
-	PressKeys(handler, "123456#")
-	term.expectColor("G")
-	term.expectBuzz(Buzz{"H", 500})
-	doorActions.expectOpenState(true, Target("mock"))
-	doorActions.expectDoorbell(false, Target("mock"))
+	testFixture := NewTestFixture(t)
+	testFixture.mockauth.allow[ACKey{"123456", Target("mock")}] = AuthOk
+	PressKeys(testFixture.handlerUnderTest, "123456#")
+	testFixture.FlushAllAppEvents()
+
+	testFixture.mockterm.expectColor("G")
+	testFixture.mockterm.expectBuzz(Buzz{"H", 500})
+	testFixture.ExpectEvent(AppOpenRequest, Target("mock"))
+	testFixture.ExpectNoMoreEvents()
 }
 
 func TestInvalidAccessCode(t *testing.T) {
-	term := NewMockTerminal(t)
-	auth := NewMockAuthenticator()
-	auth.allow[ACKey{"123456", Target("mock")}] = AuthOk
-	doorActions := NewMockDoorActions(t)
-	handler := NewAccessHandler(NewMockBackends(auth, doorActions))
-	handler.Init(term)
-	handler.clock = MockClock{}
-	PressKeys(handler, "654321#")
-	term.expectColor("R")
-	term.expectBuzz(Buzz{"L", 200})
-	doorActions.expectOpenState(false, Target("mock"))
-	doorActions.expectDoorbell(false, Target("mock"))
-	if doorActions.openedAnyDoor() {
-		t.Errorf("There are doors opened, but shouldn't")
-	}
+	testFixture := NewTestFixture(t)
+	testFixture.mockauth.allow[ACKey{"123456", Target("mock")}] = AuthOk
+	PressKeys(testFixture.handlerUnderTest, "654321#")
+	testFixture.FlushAllAppEvents()
+
+	testFixture.mockterm.expectColor("R")
+	testFixture.mockterm.expectBuzz(Buzz{"L", 200})
+	testFixture.ExpectNoMoreEvents()
 }
 
 func TestExpiredAccessCode(t *testing.T) {
-	term := NewMockTerminal(t)
-	auth := NewMockAuthenticator()
-	auth.allow[ACKey{"123456", Target("mock")}] = AuthExpired
-	doorActions := NewMockDoorActions(t)
-	handler := NewAccessHandler(NewMockBackends(auth, doorActions))
-	handler.Init(term)
-	handler.clock = MockClock{}
-	PressKeys(handler, "123456#")
-	term.expectColor("B") // Blue indicator
-	term.expectBuzz(Buzz{"L", 200})
-	doorActions.expectOpenState(false, Target("mock"))
-	doorActions.expectDoorbell(true, Target("mock"))
-	if doorActions.openedAnyDoor() {
-		t.Errorf("There are doors opened, but shouldn't")
-	}
+	testFixture := NewTestFixture(t)
+	testFixture.mockauth.allow[ACKey{"123456", Target("mock")}] = AuthExpired
+	PressKeys(testFixture.handlerUnderTest, "123456#")
+	testFixture.FlushAllAppEvents()
+
+	testFixture.mockterm.expectColor("B") // 'nighttime'
+	testFixture.mockterm.expectBuzz(Buzz{"L", 200})
+	testFixture.ExpectEvent(AppDoorbellTriggerEvent, Target("mock"))
+	testFixture.ExpectNoMoreEvents()
 }
 
 func TestKeypadDoorbell(t *testing.T) {
-	term := NewMockTerminal(t)
-	auth := NewMockAuthenticator()
-	doorActions := NewMockDoorActions(t)
-	handler := NewAccessHandler(NewMockBackends(auth, doorActions))
-	handler.Init(term)
-	PressKeys(handler, "#") // Just a single '#' should ring the bell.
-	doorActions.expectDoorbell(true, Target("mock"))
-	doorActions.expectOpenState(false, Target("mock"))
+	testFixture := NewTestFixture(t)
+	// Just a single '#' should ring the bell.
+	PressKeys(testFixture.handlerUnderTest, "#")
+	testFixture.FlushAllAppEvents()
+
+	testFixture.ExpectEvent(AppDoorbellTriggerEvent, Target("mock"))
+	testFixture.ExpectNoMoreEvents()
 }
 
 func TestKeypadTimeout(t *testing.T) {
-	term := NewMockTerminal(t)
-	auth := NewMockAuthenticator()
-	auth.allow[ACKey{"123456", Target("mock")}] = AuthOk
-	doorActions := NewMockDoorActions(t)
-	handler := NewAccessHandler(NewMockBackends(auth, doorActions))
-	handler.Init(term)
+	testFixture := NewTestFixture(t)
+	testFixture.mockauth.allow[ACKey{"123456", Target("mock")}] = AuthOk
 	mockClock := &MockClock{}
-	handler.clock = mockClock
+	testFixture.handlerUnderTest.clock = mockClock
 
-	PressKeys(handler, "123456")                        // missing #
+	PressKeys(testFixture.handlerUnderTest, "123456")   // missing #
 	mockClock.now = mockClock.now.Add(60 * time.Second) // >> keypad timeout
-	handler.HandleTick()
-	term.expectBuzz(Buzz{"L", 500}) // timeout buzz
-	if doorActions.openedAnyDoor() {
-		t.Errorf("There are doors opened, but shouldn't")
-	}
+	testFixture.handlerUnderTest.HandleTick()
+	testFixture.FlushAllAppEvents()
+
+	testFixture.mockterm.expectBuzz(Buzz{"L", 500}) // timeout buzz
+	testFixture.ExpectNoMoreEvents()
 }
 
 func TestRFIDDebounce(t *testing.T) {
-	term := NewMockTerminal(t)
-	auth := NewMockAuthenticator()
-	auth.allow[ACKey{"rfid-123", Target("mock")}] = AuthOk
-	doorActions := NewMockDoorActions(t)
-	handler := NewAccessHandler(NewMockBackends(auth, doorActions))
-	handler.Init(term)
+	testFixture := NewTestFixture(t)
+	testFixture.mockauth.allow[ACKey{"rfid-123", Target("mock")}] = AuthOk
 	mockClock := &MockClock{}
-	handler.clock = mockClock
+	testFixture.handlerUnderTest.clock = mockClock
 
-	handler.HandleRFID("rfid-123")
-	doorActions.expectOpenState(true, Target("mock"))
-	doorActions.resetDoors()
+	testFixture.handlerUnderTest.HandleRFID("rfid-123")
+	testFixture.FlushAllAppEvents()
+	testFixture.ExpectEvent(AppOpenRequest, Target("mock"))
 
 	// A quickly coming same RFID should not open the door again
-	handler.HandleRFID("rfid-123")
-	doorActions.expectOpenState(false, Target("mock"))
+	testFixture.handlerUnderTest.HandleRFID("rfid-123")
+	testFixture.FlushAllAppEvents()
+	testFixture.ExpectNoMoreEvents()
 
 	// .. but after some de-bounce time, this should work again.
 	mockClock.now = mockClock.now.Add(10 * time.Second)
-	handler.HandleRFID("rfid-123")
-	doorActions.expectOpenState(true, Target("mock"))
+	testFixture.handlerUnderTest.HandleRFID("rfid-123")
+	testFixture.ExpectEvent(AppOpenRequest, Target("mock"))
 }
 
 // test ideas:

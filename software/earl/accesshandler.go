@@ -26,6 +26,9 @@ type AccessHandler struct {
 	lastKeypressTime   time.Time // Last touch of key to reset
 	currentRFID        string    // Current RFID we received
 	nextRFIDActionTime time.Time // Time we have seen the current RFID
+
+	colorShown   bool
+	colorOffTime time.Time
 }
 
 const (
@@ -54,7 +57,12 @@ func (h *AccessHandler) HandleKeypress(b byte) {
 		} else {
 			// As long as we don't have a 4x4 keypad, we
 			// use the single '#' to be the doorbell.
-			h.backends.doorbellUI.HandleDoorbell(Target(h.t.GetTerminalName()), "")
+			h.backends.appEventBus.Post(&AppEvent{
+				ev:     AppDoorbellTriggerEvent,
+				target: Target(h.t.GetTerminalName()),
+				source: h.t.GetTerminalName(),
+				msg:    "Terminal keypad button.",
+			})
 		}
 	case '*':
 		h.currentCode = "" // reset
@@ -76,12 +84,27 @@ func (h *AccessHandler) HandleRFID(rfid string) {
 	h.nextRFIDActionTime = h.clock.Now().Add(kRFIDRepeatDebounce)
 }
 
+func (h *AccessHandler) HandleAppEvent(event *AppEvent) {
+	switch event.ev {
+	case AppOpenRequest:
+		// This happens either because we triggered it ourselves,
+		// or has been triggered elsewhere, e.g. someone triggered
+		// the gate-buzzer button - in that case, we also show green
+		// on the respective terminal, making it a round experience.
+		h.setColorForTime("G", 2000*time.Millisecond)
+	}
+}
+
 func (h *AccessHandler) HandleTick() {
 	// Keypad got a partial code, but never finished with '#'
 	if h.clock.Now().Sub(h.lastKeypressTime) > kKeypadTimeout &&
 		h.currentCode != "" {
 		h.currentCode = ""
 		h.t.BuzzSpeaker("L", 500) // indicate timeout
+	}
+	if h.colorShown && h.colorOffTime.After(h.clock.Now()) {
+		h.t.ShowColor("")
+		h.colorShown = false
 	}
 }
 
@@ -93,8 +116,12 @@ func scrubLogValue(in string) string {
 	return hex.EncodeToString(hashgen.Sum(nil))[0:6]
 }
 
-// TODO(hzeller): this guy blocks on OpenDoor() but shouldn't as this
-// backlogs our event queue.
+func (h *AccessHandler) setColorForTime(color string, duration time.Duration) {
+	h.t.ShowColor(color)
+	h.colorShown = true
+	h.colorOffTime = h.clock.Now().Add(duration)
+}
+
 func (h *AccessHandler) checkAccess(code string, fyi_origin string) {
 	// Don't bother with too short codes. In particular, don't buzz
 	// or flash lights to not to seem overly interactive.
@@ -105,13 +132,18 @@ func (h *AccessHandler) checkAccess(code string, fyi_origin string) {
 	user := h.backends.authenticator.FindUser(code)
 	auth_result, msg := h.backends.authenticator.AuthUser(code, target)
 	if user != nil && auth_result == AuthOk {
-		h.t.ShowColor("G")
 		h.t.BuzzSpeaker("H", 500)
 		// Be sparse, don't log user, but keep track of level.
 		log.Printf("%s: opened. %s Type=%s",
 			target, fyi_origin, user.UserLevel)
-		h.backends.physicalActions.OpenDoor(target)
-		h.t.ShowColor("")
+		h.backends.appEventBus.Post(&AppEvent{
+			ev:     AppOpenRequest,
+			target: target,
+			source: h.t.GetTerminalName(),
+			msg:    "Opening for " + string(user.UserLevel),
+		})
+		// Note, this will automatically trigger the green LED as
+		// we subsequently receive the AppOpenRequest ourselves.
 	} else {
 		// This is either an invalid RFID (or used outside the
 		// validity), or a PIN-code, which is not valid for user
@@ -123,18 +155,21 @@ func (h *AccessHandler) checkAccess(code string, fyi_origin string) {
 		log.Printf("%s: denied. %s | %s (%s)",
 			target, msg, fyi_origin, scrubLogValue(code))
 		if auth_result == AuthFail {
-			h.t.ShowColor("R")
+			h.setColorForTime("R", 500*time.Millisecond)
 		} else {
 			// Show blue (='nighttime') for authentication that is
 			// just failing due to be outside daytime (or expired).
 			// Better than otherwise confusing 'red' feeback.
-			h.t.ShowColor("B")
-			// Trigger doorbell. Usually if
-			// someone is there, they might open the door.
-			h.backends.doorbellUI.HandleDoorbell(target, user.Name)
+			h.setColorForTime("B", 1000*time.Millisecond)
+			// Trigger doorbell artificially. Usually if
+			// someone is in the space, they might open the door.
+			h.backends.appEventBus.Post(&AppEvent{
+				ev:     AppDoorbellTriggerEvent,
+				target: target,
+				source: h.t.GetTerminalName(),
+				msg:    "@night:" + user.Name,
+			})
 		}
 		h.t.BuzzSpeaker("L", 200)
-		time.Sleep(500 * time.Millisecond)
-		h.t.ShowColor("")
 	}
 }

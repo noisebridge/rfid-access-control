@@ -24,8 +24,10 @@ type SerialTerminal struct {
 
 func NewSerialTerminal(port string, baudrate int) (*SerialTerminal, error) {
 	t := &SerialTerminal{
-		errorState: false,
-		logPrefix:  fmt.Sprintf("%s:%d", port, baudrate),
+		errorState:      false,
+		eventChannel:    make(chan string, 10),
+		responseChannel: make(chan string, 10),
+		logPrefix:       fmt.Sprintf("%s:%d", port, baudrate),
 	}
 	c := &serial.Config{Name: port, Baud: baudrate}
 	var err error
@@ -33,8 +35,6 @@ func NewSerialTerminal(port string, baudrate int) (*SerialTerminal, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.eventChannel = make(chan string, 10)
-	t.responseChannel = make(chan string, 10)
 	go t.inputScanLoop()
 	t.discardInitialInput()
 	t.name = t.requestName()
@@ -49,11 +49,15 @@ func NewSerialTerminal(port string, baudrate int) (*SerialTerminal, error) {
 // Run until we encounter an IO problem or we can't verify to be
 // connected anymore. So the only reason for this loop exiting would be
 // an error condition.
-func (t *SerialTerminal) RunEventLoop(handler TerminalEventHandler) {
+func (t *SerialTerminal) RunEventLoop(handler TerminalEventHandler,
+	appEventBus *ApplicationBus) {
 	var tick_count uint32
 	lastTickTime := time.Now()
 	handler.Init(t)
 	defer handler.HandleShutdown()
+	appEvents := make(AppEventChannel, 2)
+	appEventBus.Subscribe(appEvents)
+	defer appEventBus.Unsubscribe(appEvents)
 	for !t.errorState {
 		// If the events come in very quickly, the idle tick might
 		// be starved. So make sure to inject some.
@@ -73,6 +77,9 @@ func (t *SerialTerminal) RunEventLoop(handler TerminalEventHandler) {
 			default:
 				log.Printf("%s: Unexpected input '%s'", t.logPrefix, line)
 			}
+
+		case event := <-appEvents:
+			handler.HandleAppEvent(event)
 
 		case <-time.After(idleTickTime):
 			handler.HandleTick()
