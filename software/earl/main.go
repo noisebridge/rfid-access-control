@@ -100,6 +100,7 @@ func main() {
 	userFileName := flag.String("users", "/var/access/users.csv", "User Authentication file.")
 	logFileName := flag.String("logfile", "", "The log file, default = stdout")
 	doorbellDir := flag.String("belldir", "", "Directory that contains upstairs.wav, gate.wav etc. Wav needs to be named like")
+	httpPort := flag.Int("httpport", -1, "Port to listen HTTP requests on")
 
 	flag.Parse()
 
@@ -143,6 +144,10 @@ func main() {
 		go handleSerialDevice(devicepath, baudrate, backends)
 	}
 
+	if *httpPort > 0 && *httpPort < 65535 {
+		apiServer := NewApiServer(appEventBus, *httpPort)
+		go apiServer.Run()
+	}
 	var block_forever chan bool
 	<-block_forever
 }

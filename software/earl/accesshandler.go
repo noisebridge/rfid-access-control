@@ -58,10 +58,10 @@ func (h *AccessHandler) HandleKeypress(b byte) {
 			// As long as we don't have a 4x4 keypad, we
 			// use the single '#' to be the doorbell.
 			h.backends.appEventBus.Post(&AppEvent{
-				ev:     AppDoorbellTriggerEvent,
-				target: Target(h.t.GetTerminalName()),
-				source: h.t.GetTerminalName(),
-				msg:    "Terminal keypad button.",
+				Ev:     AppDoorbellTriggerEvent,
+				Target: Target(h.t.GetTerminalName()),
+				Source: h.t.GetTerminalName(),
+				Msg:    "Terminal keypad button.",
 			})
 		}
 	case '*':
@@ -85,7 +85,7 @@ func (h *AccessHandler) HandleRFID(rfid string) {
 }
 
 func (h *AccessHandler) HandleAppEvent(event *AppEvent) {
-	switch event.ev {
+	switch event.Ev {
 	case AppOpenRequest:
 		// This happens either because we triggered it ourselves,
 		// or has been triggered elsewhere, e.g. someone triggered
@@ -137,10 +137,10 @@ func (h *AccessHandler) checkAccess(code string, fyi_origin string) {
 		log.Printf("%s: granted. %s Type=%s",
 			target, fyi_origin, user.UserLevel)
 		h.backends.appEventBus.Post(&AppEvent{
-			ev:     AppOpenRequest,
-			target: target,
-			source: h.t.GetTerminalName(),
-			msg:    "Opening for " + string(user.UserLevel),
+			Ev:     AppOpenRequest,
+			Target: target,
+			Source: h.t.GetTerminalName(),
+			Msg:    "Opening for " + string(user.UserLevel),
 		})
 		// Note, this will automatically trigger the green LED as
 		// we subsequently receive the AppOpenRequest ourselves.
@@ -164,10 +164,10 @@ func (h *AccessHandler) checkAccess(code string, fyi_origin string) {
 			// Trigger doorbell artificially. Usually if
 			// someone is in the space, they might open the door.
 			h.backends.appEventBus.Post(&AppEvent{
-				ev:     AppDoorbellTriggerEvent,
-				target: target,
-				source: h.t.GetTerminalName(),
-				msg:    "@night:" + user.Name,
+				Ev:     AppDoorbellTriggerEvent,
+				Target: target,
+				Source: h.t.GetTerminalName(),
+				Msg:    "@night:" + user.Name,
 			})
 		}
 		h.t.BuzzSpeaker("L", 200)

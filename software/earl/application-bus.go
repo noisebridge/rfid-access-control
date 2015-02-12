@@ -21,29 +21,30 @@ import (
 	"time"
 )
 
-type AppEventType int
+type AppEventType string
 
 const (
 	// Events
-	AppDoorbellTriggerEvent     = iota // Doorbell triggered for target
-	AppDoorSensorEvent                 // Target door opened/closed
-	AppOpenRequest                     // Request to open door for target.
-	AppSnoozeBellRequest               // Request to snooze bell until given timeout
-	applicationBusInternalFlush        // used internally. Never delivered
+	AppDoorbellTriggerEvent = AppEventType("trigger-bell") // Doorbell triggered for target
+	AppDoorSensorEvent      = AppEventType("door-sensor")  // Target door opened/closed
+	AppOpenRequest          = AppEventType("open")         // Request to open door for target.
+	AppSnoozeBellRequest    = AppEventType("snooze-bell")  // Request to snooze bell until given timeout
+
+	applicationBusInternalFlush = AppEventType("internal-flush")
 )
 
 // We keep it simple and somewhat un-typed: an event is identified by an
 // enumeration, and optional parameters are passed alongside.
 type AppEvent struct {
 	// Required parameters
-	ev     AppEventType
-	target Target // The target for which this event is meant.
-	source string // Mostly FYI: what subsystem generated it
-	msg    string // FYI, good to display to a human user
+	Ev     AppEventType
+	Target Target // The target for which this event is meant.
+	Source string // Mostly FYI: what subsystem generated it
+	Msg    string // FYI, good to display to a human user
 
 	// Optional paramters, depending on context.
-	timeout time.Time
-	value   int
+	Value   int
+	Timeout time.Time
 }
 
 type AppEventChannel chan *AppEvent
@@ -66,7 +67,7 @@ func NewApplicationBus() *ApplicationBus {
 func (b *ApplicationBus) Post(event *AppEvent) {
 	b.syncedOperations <- func() {
 		for channel, _ := range b.receivers {
-			if event.ev != applicationBusInternalFlush {
+			if event.Ev != applicationBusInternalFlush {
 				channel <- event
 			}
 		}
@@ -76,7 +77,7 @@ func (b *ApplicationBus) Post(event *AppEvent) {
 func (b *ApplicationBus) Flush() {
 	// Since we have a syncedOperations channel of length 1, this will
 	// make sure that we wait until the previous operation is through.
-	b.Post(&AppEvent{ev: applicationBusInternalFlush})
+	b.Post(&AppEvent{Ev: applicationBusInternalFlush})
 }
 
 func (b *ApplicationBus) Subscribe(channel AppEventChannel) {

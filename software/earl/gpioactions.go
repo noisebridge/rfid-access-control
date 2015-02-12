@@ -48,13 +48,13 @@ func (g *GPIOActions) EventLoop(bus *ApplicationBus) {
 	bus.Subscribe(appEvents)
 	for {
 		event := <-appEvents
-		switch event.ev {
+		switch event.Ev {
 		case AppOpenRequest:
-			g.openDoor(event.target)
+			g.openDoor(event.Target)
 		case AppDoorbellTriggerEvent:
-			g.ringBell(event.target)
+			g.ringBell(event.Target)
 		case AppSnoozeBellRequest:
-			g.nextAllowedRingTime[event.target] = event.timeout
+			g.nextAllowedRingTime[event.Target] = event.Timeout
 		}
 	}
 }

@@ -120,11 +120,11 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 	case StateDoorbellRequest:
 		if key == '9' {
 			u.backends.appEventBus.Post(&AppEvent{
-				ev:      AppSnoozeBellRequest,
-				target:  u.doorbellTarget,
-				source:  u.t.GetTerminalName(),
-				msg:     "Snooze pressed on control-terminal",
-				timeout: time.Now().Add(snoozedDoorbellRatelimit),
+				Ev:      AppSnoozeBellRequest,
+				Target:  u.doorbellTarget,
+				Source:  u.t.GetTerminalName(),
+				Msg:     "Snooze pressed on control-terminal",
+				Timeout: time.Now().Add(snoozedDoorbellRatelimit),
 			})
 			u.backToIdle()
 		}
@@ -227,19 +227,19 @@ func (u *UIControlHandler) HandleTick() {
 // We hook into a number of app events as we want to display the status,
 // or even offer to deal with it, such as the doorbell.
 func (u *UIControlHandler) HandleAppEvent(event *AppEvent) {
-	switch event.ev {
+	switch event.Ev {
 	case AppDoorbellTriggerEvent:
 		// We interrupt whatever we are doing now, as this is
 		// more important:
-		u.startDoorOpenUI(event.target, event.msg)
+		u.startDoorOpenUI(event.Target, event.Msg)
 	case AppOpenRequest:
-		u.actionMessage = "Opening " + string(event.target)
+		u.actionMessage = "Opening " + string(event.Target)
 		u.actionMessageTimeout = time.Now().Add(2 * time.Second)
 	case AppSnoozeBellRequest:
-		u.snoozedDoorbellTimeout = event.timeout
+		u.snoozedDoorbellTimeout = event.Timeout
 	case AppDoorSensorEvent:
-		u.observedDoorOpenStatus[event.target] = event.value
-		if event.value == 1 {
+		u.observedDoorOpenStatus[event.Target] = event.Value
+		if event.Value == 1 {
 			u.actionMessage = "" // No need to show 'Open' anymore
 		}
 	}
@@ -366,10 +366,10 @@ func (u *UIControlHandler) startDoorOpenUI(target Target, message string) {
 
 func (u *UIControlHandler) openDoorAndShow(where Target, msg string) {
 	u.backends.appEventBus.Post(&AppEvent{
-		ev:     AppOpenRequest,
-		target: where,
-		source: u.t.GetTerminalName(),
-		msg:    msg,
+		Ev:     AppOpenRequest,
+		Target: where,
+		Source: u.t.GetTerminalName(),
+		Msg:    msg,
 	})
 	// Note: We will receive this request for opening ourself and will
 	// update the LCD. Why not here directly ? Because we want to also
