@@ -91,7 +91,9 @@ func (h *AccessHandler) HandleAppEvent(event *AppEvent) {
 		// or has been triggered elsewhere, e.g. someone triggered
 		// the gate-buzzer button - in that case, we also show green
 		// on the respective terminal, making it a round experience.
-		h.setColorForTime("G", 2000*time.Millisecond)
+		if event.Target == Target(h.t.GetTerminalName()) {
+			h.setColorForTime("G", 2000*time.Millisecond)
+		}
 	}
 }
 
