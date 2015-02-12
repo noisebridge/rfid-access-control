@@ -102,7 +102,7 @@ func (h *AccessHandler) HandleTick() {
 		h.currentCode = ""
 		h.t.BuzzSpeaker("L", 500) // indicate timeout
 	}
-	if h.colorShown && h.colorOffTime.After(h.clock.Now()) {
+	if h.colorShown && h.clock.Now().After(h.colorOffTime) {
 		h.t.ShowColor("")
 		h.colorShown = false
 	}
