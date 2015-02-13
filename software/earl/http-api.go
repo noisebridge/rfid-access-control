@@ -74,7 +74,7 @@ func (a *ApiServer) ServeHTTP(out http.ResponseWriter, req *http.Request) {
 	}
 
 	req.ParseForm()
-	cb := req.Form.Get("jsonp")
+	cb := req.Form.Get("callback")
 	if cb == "" {
 		out.Header()["Content-Type"] = []string{"application/json"}
 	} else {
@@ -83,7 +83,7 @@ func (a *ApiServer) ServeHTTP(out http.ResponseWriter, req *http.Request) {
 
 	out.Write(
 		[]byte("// Welcome to the Earl event API\n" +
-			"// Plain /api/events for JSON, add ?jsonp=MyCallbackName for JSONP.\n"))
+			"// Plain /api/events for JSON, add ?callback=MyCallbackName for JSONP.\n"))
 	flushResponse(out)
 
 	appEvents := make(AppEventChannel, 3)

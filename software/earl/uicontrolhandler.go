@@ -271,7 +271,7 @@ func (u *UIControlHandler) displayIdleScreen() {
 	// the status screen, otherwise fall back to 'Noisebridge'
 	if u.snoozedDoorbellTimeout.After(now) {
 		remaining := u.snoozedDoorbellTimeout.Sub(now) / time.Second
-		u.t.WriteLCD(0, fmt.Sprintf("Bell snoozed for %dsec", remaining))
+		u.t.WriteLCD(0, fmt.Sprintf("Bell snoozing for %dsec", remaining))
 	} else if doorStatus := u.getDoorStatusString(); doorStatus != "" {
 		u.t.WriteLCD(0, doorStatus)
 	} else {
@@ -280,7 +280,7 @@ func (u *UIControlHandler) displayIdleScreen() {
 	}
 
 	// -- Action message line
-	if u.actionMessage != "" && u.actionMessageTimeout.Before(now) {
+	if u.actionMessage != "" && now.Before(u.actionMessageTimeout) {
 		u.t.WriteLCD(1, u.actionMessage)
 	} else {
 		u.t.WriteLCD(1, now.Format("2006-01-02 [Mon] 15:04"))

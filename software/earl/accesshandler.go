@@ -98,13 +98,13 @@ func (h *AccessHandler) HandleAppEvent(event *AppEvent) {
 }
 
 func (h *AccessHandler) HandleTick() {
+	now := h.clock.Now()
 	// Keypad got a partial code, but never finished with '#'
-	if h.clock.Now().Sub(h.lastKeypressTime) > kKeypadTimeout &&
-		h.currentCode != "" {
+	if now.Sub(h.lastKeypressTime) > kKeypadTimeout && h.currentCode != "" {
 		h.currentCode = ""
 		h.t.BuzzSpeaker("L", 500) // indicate timeout
 	}
-	if h.colorShown && h.clock.Now().After(h.colorOffTime) {
+	if h.colorShown && now.After(h.colorOffTime) {
 		h.t.ShowColor("")
 		h.colorShown = false
 	}
