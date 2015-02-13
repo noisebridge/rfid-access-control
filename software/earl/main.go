@@ -144,10 +144,11 @@ func main() {
 		go handleSerialDevice(devicepath, baudrate, backends)
 	}
 
-	if *httpPort > 0 && *httpPort < 65535 {
+	if *httpPort > 0 && *httpPort <= 65535 {
 		apiServer := NewApiServer(appEventBus, *httpPort)
 		go apiServer.Run()
 	}
+
 	var block_forever chan bool
 	<-block_forever
 }
