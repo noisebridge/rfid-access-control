@@ -61,7 +61,7 @@ func (h *AccessHandler) HandleKeypress(b byte) {
 				Ev:     AppDoorbellTriggerEvent,
 				Target: Target(h.t.GetTerminalName()),
 				Source: h.t.GetTerminalName(),
-				Msg:    "Terminal keypad button.",
+				Msg:    h.t.GetTerminalName() + " button.",
 			})
 		}
 	case '*':
@@ -169,7 +169,7 @@ func (h *AccessHandler) checkAccess(code string, fyi_origin string) {
 				Ev:     AppDoorbellTriggerEvent,
 				Target: target,
 				Source: h.t.GetTerminalName(),
-				Msg:    "@night:" + user.Name,
+				Msg:    "Nightbell for " + user.Name,
 			})
 		}
 		h.t.BuzzSpeaker("L", 200)
