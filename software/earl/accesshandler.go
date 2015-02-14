@@ -61,7 +61,7 @@ func (h *AccessHandler) HandleKeypress(b byte) {
 				Ev:     AppDoorbellTriggerEvent,
 				Target: Target(h.t.GetTerminalName()),
 				Source: h.t.GetTerminalName(),
-				Msg:    "Doorbell.",
+				Msg:    "doorbell",
 			})
 		}
 	case '*':

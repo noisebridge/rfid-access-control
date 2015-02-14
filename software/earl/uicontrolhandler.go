@@ -57,9 +57,8 @@ type UIControlHandler struct {
 	userCounter int // counter to generate new user names.
 
 	// We allow rate-limiting of the doorbell.
-	lastDoorbellRequest   time.Time // To know when to offer snooze.
-	doorbellTarget        Target
-	doorWhileSnoozedCount int
+	lastDoorbellRequest time.Time // To know when to offer snooze.
+	doorbellTarget      Target
 
 	// Stuff collected from events we see, mostly to
 	// display on our idle screen.
@@ -341,15 +340,6 @@ func (u *UIControlHandler) startDoorOpenUI(target Target, message string) {
 	} else {
 		to_display = fmt.Sprintf("%s %s %s %s",
 			DoorBellCharacter, target, message, DoorBellCharacter)
-	}
-
-	// If someone is ringing like crazy, show the count ...
-	if now.Before(u.snoozedDoorbellTimeout) {
-		u.doorWhileSnoozedCount++
-		to_display += fmt.Sprintf("(%d snoozed)",
-			u.doorWhileSnoozedCount)
-	} else {
-		u.doorWhileSnoozedCount = 0
 	}
 
 	fmt_len := int((24-len(to_display))/2) + len(to_display)
