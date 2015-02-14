@@ -81,6 +81,9 @@ func (a *ApiServer) ServeHTTP(out http.ResponseWriter, req *http.Request) {
 		out.Header()["Content-Type"] = []string{"application/javascript"}
 	}
 
+	// Make browsers happy.
+	out.Header()["Access-Control-Allow-Origin"] = []string{"*"}
+
 	out.Write(
 		[]byte("// Welcome to the Earl event API\n" +
 			"// Plain /api/events for JSON, add ?callback=MyCallbackName for JSONP.\n"))
