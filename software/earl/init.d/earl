@@ -37,6 +37,7 @@ case $1 in
 			--startas $DAEMON \
 			-- -logfile=$LOGFILE \
                         -belldir=/home/pi/doorbell-sounds \
+		        -httpport=1212 \
 		        $SERIAL_INTERFACES
 		status=$?
 		log_end_msg $status
