@@ -53,7 +53,7 @@ func (g *GPIOActions) EventLoop(bus *ApplicationBus) {
 			g.openDoor(event.Target)
 		case AppDoorbellTriggerEvent:
 			g.ringBell(event.Target)
-		case AppSnoozeBellRequest:
+		case AppHushBellRequest:
 			g.nextAllowedRingTime[event.Target] = event.Timeout
 		}
 	}
@@ -90,8 +90,7 @@ func (g *GPIOActions) openDoor(which Target) {
 
 func (g *GPIOActions) ringBell(which Target) {
 	if time.Now().Before(g.nextAllowedRingTime[which]) {
-		// Snoozed.
-		return
+		return // Hushed.
 	}
 	filename := g.doorbellDirectory + "/" + string(which) + ".wav"
 	_, err := os.Stat(filename)

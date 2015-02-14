@@ -34,8 +34,8 @@ const (
 	showDoorbellDuration = 45 * time.Second
 
 	// For annoying people...
-	offerSnoozeWhenRepeatedRingsUnder = 5 * time.Second
-	snoozedDoorbellRatelimit          = 60 * time.Second
+	offerHushWhenRepeatedRingsUnder = 5 * time.Second
+	hushDoorbellRatelimit           = 60 * time.Second
 )
 
 const (
@@ -57,12 +57,12 @@ type UIControlHandler struct {
 	userCounter int // counter to generate new user names.
 
 	// We allow rate-limiting of the doorbell.
-	lastDoorbellRequest time.Time // To know when to offer snooze.
+	lastDoorbellRequest time.Time // To know when to offer hush.
 	doorbellTarget      Target
 
 	// Stuff collected from events we see, mostly to
 	// display on our idle screen.
-	snoozedDoorbellTimeout time.Time      // Received from event.
+	hushedDoorbellTimeout  time.Time      // Received from event.
 	observedDoorOpenStatus map[Target]int // watching events fly by.
 	actionMessage          string
 	actionMessageTimeout   time.Time
@@ -119,11 +119,11 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 	case StateDoorbellRequest:
 		if key == '9' {
 			u.backends.appEventBus.Post(&AppEvent{
-				Ev:      AppSnoozeBellRequest,
+				Ev:      AppHushBellRequest,
 				Target:  u.doorbellTarget,
 				Source:  u.t.GetTerminalName(),
-				Msg:     "Snooze pressed on control-terminal",
-				Timeout: time.Now().Add(snoozedDoorbellRatelimit),
+				Msg:     "Hush pressed on control-terminal",
+				Timeout: time.Now().Add(hushDoorbellRatelimit),
 			})
 			u.backToIdle()
 		}
@@ -234,8 +234,8 @@ func (u *UIControlHandler) HandleAppEvent(event *AppEvent) {
 	case AppOpenRequest:
 		u.actionMessage = "Opening " + string(event.Target)
 		u.actionMessageTimeout = time.Now().Add(2 * time.Second)
-	case AppSnoozeBellRequest:
-		u.snoozedDoorbellTimeout = event.Timeout
+	case AppHushBellRequest:
+		u.hushedDoorbellTimeout = event.Timeout
 	case AppDoorSensorEvent:
 		u.observedDoorOpenStatus[event.Target] = event.Value
 		if event.Value == 1 {
@@ -268,9 +268,9 @@ func (u *UIControlHandler) displayIdleScreen() {
 	// -- Status message line
 	// Let's see if there is anything interesting to display in
 	// the status screen, otherwise fall back to 'Noisebridge'
-	if u.snoozedDoorbellTimeout.After(now) {
-		remaining := u.snoozedDoorbellTimeout.Sub(now) / time.Second
-		u.t.WriteLCD(0, fmt.Sprintf("Bell snoozing for %dsec", remaining))
+	if u.hushedDoorbellTimeout.After(now) {
+		remaining := u.hushedDoorbellTimeout.Sub(now) / time.Second
+		u.t.WriteLCD(0, fmt.Sprintf("Bell silenced for %dsec", remaining))
 	} else if doorStatus := u.getDoorStatusString(); doorStatus != "" {
 		u.t.WriteLCD(0, doorStatus)
 	} else {
@@ -348,11 +348,11 @@ func (u *UIControlHandler) startDoorOpenUI(target Target, message string) {
 	}
 	u.t.WriteLCD(0, fmt.Sprintf("%*s", fmt_len, to_display))
 
-	// The snooze option always works, but we only show it when there is
+	// The hush option always works, but we only show it when there is
 	// some repeated annoyance going on to keep UI simple in the simple case
 	// TODO: "[5] Open" should become "RFID => Open"
-	if now.Sub(u.lastDoorbellRequest) < offerSnoozeWhenRepeatedRingsUnder {
-		u.t.WriteLCD(1, "[5] Open | [9]Snooze")
+	if now.Sub(u.lastDoorbellRequest) < offerHushWhenRepeatedRingsUnder {
+		u.t.WriteLCD(1, "[5] Open | [9] Silence!")
 	} else {
 		u.t.WriteLCD(1, "[5] Open | [*] ESC")
 	}

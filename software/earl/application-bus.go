@@ -28,7 +28,7 @@ const (
 	AppDoorbellTriggerEvent = AppEventType("trigger-bell") // Doorbell triggered for target
 	AppDoorSensorEvent      = AppEventType("door-sensor")  // Target door opened/closed
 	AppOpenRequest          = AppEventType("open")         // Request to open door for target.
-	AppSnoozeBellRequest    = AppEventType("snooze-bell")  // Request to snooze bell until given timeout
+	AppHushBellRequest      = AppEventType("hush-bell")    // Request to snooze bell until given timeout
 
 	applicationBusInternalFlush = AppEventType("internal-flush")
 )
