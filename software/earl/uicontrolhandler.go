@@ -340,7 +340,7 @@ func (u *UIControlHandler) startDoorOpenUI(target Target, message string) {
 			DoorBellCharacter, target, DoorBellCharacter)
 	} else {
 		to_display = fmt.Sprintf("%s %s %s %s",
-			DoorBellCharacter, message, target, DoorBellCharacter)
+			DoorBellCharacter, target, message, DoorBellCharacter)
 	}
 
 	// If someone is ringing like crazy, show the count ...
