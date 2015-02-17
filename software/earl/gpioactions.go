@@ -23,13 +23,13 @@ const (
 	defaultDoorbellRatelimit = 3 * time.Second
 )
 
-// An implementation of the DoorActions interface
 type GPIOActions struct {
 	doorbellDirectory   string
 	nextAllowedOpenTime map[Target]time.Time
 	nextAllowedRingTime map[Target]time.Time
 }
 
+// Create this, then call EventLoop() to hook into system.
 func NewGPIOActions(wavDir string) *GPIOActions {
 	result := &GPIOActions{
 		doorbellDirectory:   wavDir,

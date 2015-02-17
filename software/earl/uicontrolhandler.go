@@ -34,8 +34,8 @@ const (
 	showDoorbellDuration = 45 * time.Second
 
 	// For annoying people...
-	offerHushWhenRepeatedRingsUnder = 5 * time.Second
-	hushDoorbellRatelimit           = 60 * time.Second
+	offerSilenceWhenRepeatedRingsUnder = 8 * time.Second
+	silenceDoorbellRatelimit           = 60 * time.Second
 )
 
 const (
@@ -123,7 +123,7 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 				Target:  u.doorbellTarget,
 				Source:  u.t.GetTerminalName(),
 				Msg:     "Hush pressed on control-terminal",
-				Timeout: time.Now().Add(hushDoorbellRatelimit),
+				Timeout: time.Now().Add(silenceDoorbellRatelimit),
 			})
 			u.backToIdle()
 		}
@@ -242,6 +242,7 @@ func (u *UIControlHandler) HandleAppEvent(event *AppEvent) {
 			u.actionMessage = "" // No need to show 'Open' anymore
 		}
 	}
+	u.HandleTick() // If we're in idle, update status right away.
 }
 
 // Create a string from the observed door status. Only mention open
@@ -351,7 +352,7 @@ func (u *UIControlHandler) startDoorOpenUI(target Target, message string) {
 	// The hush option always works, but we only show it when there is
 	// some repeated annoyance going on to keep UI simple in the simple case
 	// TODO: "[5] Open" should become "RFID => Open"
-	if now.Sub(u.lastDoorbellRequest) < offerHushWhenRepeatedRingsUnder {
+	if now.Sub(u.lastDoorbellRequest) < offerSilenceWhenRepeatedRingsUnder {
 		u.t.WriteLCD(1, "[5] Open | [9] Silence!")
 	} else {
 		u.t.WriteLCD(1, "[5] Open | [*] ESC")

@@ -1,8 +1,8 @@
 // AccessHandler.
 //
 // A TerminalEventHandler that deals with the terminal mounted to an entrance,
-// receiving PIN and RFID events and triggering opening gates and doors (through
-// an implementation of interface DoorActions) if appropriate.
+// receiving PIN and RFID events and triggering opening gates and doors if
+// appropriate (by sending events to the subsytems that do that).
 // Also user-feedback with LEDs and feedback tones.
 // Each entrance has its own independent instance running.
 package main
