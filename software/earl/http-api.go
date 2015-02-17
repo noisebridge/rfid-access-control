@@ -70,6 +70,8 @@ func (a *ApiServer) ServeHTTP(out http.ResponseWriter, req *http.Request) {
 	}
 	if req.URL.Path != "/api/events" {
 		out.WriteHeader(http.StatusNotFound)
+		out.Write([]byte("Nothing to see here. " +
+			"The cool stuff is happening at /api/events"))
 		return
 	}
 
