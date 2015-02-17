@@ -24,11 +24,16 @@ import (
 type AppEventType string
 
 const (
-	// Events
+	// Entrance handling events.
 	AppDoorbellTriggerEvent = AppEventType("trigger-bell") // Doorbell triggered for target
 	AppDoorSensorEvent      = AppEventType("door-sensor")  // Target door opened/closed
 	AppOpenRequest          = AppEventType("open")         // Request to open door for target.
 	AppHushBellRequest      = AppEventType("hush-bell")    // Request to snooze bell until given timeout
+
+	// User management events.
+	AppUserAdded   = AppEventType("user-added")
+	AppUserUpdated = AppEventType("user-updated")
+	AppUserDeleted = AppEventType("user-deleted")
 
 	applicationBusInternalFlush = AppEventType("internal-flush")
 )

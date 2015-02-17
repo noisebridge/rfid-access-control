@@ -72,7 +72,7 @@ func CreateSimpleFileAuth(authFile *os.File, clock Clock) Authenticator {
 	rootUser.WriteCSV(writer)
 	writer.Flush()
 	authFile.Close()
-	auth := NewFileBasedAuthenticator(authFile.Name())
+	auth := NewFileBasedAuthenticator(authFile.Name(), NewApplicationBus())
 	auth.clock = clock
 	return auth
 }
@@ -128,7 +128,7 @@ func TestAddUser(t *testing.T) {
 
 	// Ok, now let's see if an new authenticator can make sense of the
 	// file we appended to.
-	auth = NewFileBasedAuthenticator(authFile.Name())
+	auth = NewFileBasedAuthenticator(authFile.Name(), NewApplicationBus())
 	ExpectTrue(t, auth.FindUser("root123") != nil, "Finding root123")
 	ExpectTrue(t, auth.FindUser("doe123") != nil, "Finding doe123")
 	ExpectTrue(t, auth.FindUser("other123") != nil, "Finding other123")
@@ -173,7 +173,7 @@ func TestUpdateUser(t *testing.T) {
 	ExpectTrue(t, auth.FindUser("unchanged123") != nil, "Unchanged User")
 
 	// Now let's see if everything is properly persisted
-	auth = NewFileBasedAuthenticator(authFile.Name())
+	auth = NewFileBasedAuthenticator(authFile.Name(), NewApplicationBus())
 	ExpectTrue(t, auth.FindUser("root123") != nil, "Reread: Finding root123")
 	ExpectTrue(t, auth.FindUser("unchanged123") != nil, "Reread: Finding unchanged123")
 	ExpectTrue(t, auth.FindUser("newdoe123") != nil, "Reread: Finding newdoe123")
@@ -208,7 +208,7 @@ func TestDeleteUser(t *testing.T) {
 	// This guy should still be there and found.
 	ExpectTrue(t, auth.FindUser("unchanged123") != nil, "Unchanged User")
 
-	auth = NewFileBasedAuthenticator(authFile.Name())
+	auth = NewFileBasedAuthenticator(authFile.Name(), NewApplicationBus())
 	ExpectTrue(t, auth.FindUser("root123") != nil, "Reread: Finding root123")
 	ExpectTrue(t, auth.FindUser("unchanged123") != nil, "Reread: Finding unchanged")
 	ExpectFalse(t, auth.FindUser("doe123") != nil, "Reread: Finding doe123")

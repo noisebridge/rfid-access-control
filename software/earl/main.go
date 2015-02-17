@@ -127,7 +127,8 @@ func main() {
 	actions := NewGPIOActions(*doorbellDir)
 	go actions.EventLoop(appEventBus)
 
-	authenticator := NewFileBasedAuthenticator(*userFileName)
+	authenticator := NewFileBasedAuthenticator(*userFileName,
+		appEventBus)
 	backends := &Backends{
 		authenticator: authenticator,
 		appEventBus:   appEventBus,

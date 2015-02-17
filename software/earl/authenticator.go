@@ -77,16 +77,19 @@ type FileBasedAuthenticator struct {
 	code2user  map[string]*User // access-code to user
 	revision   int              // counter for optimistic locking.
 
-	clock Clock // Our source of time. Useful for simulated clock in tests
+	eventBus *ApplicationBus
+	clock    Clock // Our source of time. Useful for simulated clock in tests
 }
 
-func NewFileBasedAuthenticator(userFilename string) *FileBasedAuthenticator {
+func NewFileBasedAuthenticator(userFilename string,
+	bus *ApplicationBus) *FileBasedAuthenticator {
 	a := &FileBasedAuthenticator{
 		userFilename: userFilename,
 		userList:     make([]*User, 0, 10),
 		user2index:   make(map[*User]int),
 		code2user:    make(map[string]*User),
 		revision:     0,
+		eventBus:     bus,
 		clock:        RealClock{},
 	}
 
@@ -142,6 +145,8 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 		return false, "Duplicate codes while adding user"
 	}
 
+	a.postUserEvent(AppUserAdded, &user)
+
 	return a.appendDatabaseSingleEntry(&user)
 }
 
@@ -167,6 +172,8 @@ func (a *FileBasedAuthenticator) UpdateUser(authentication_code string,
 		return false, "Changed while editing."
 	}
 
+	a.postUserEvent(AppUserUpdated, &modification_copy)
+
 	return a.writeDatabase()
 }
 
@@ -181,6 +188,8 @@ func (a *FileBasedAuthenticator) DeleteUser(
 	if !a.deleteUserSynchronized(revision, user) {
 		return false, "Delete failed"
 	}
+
+	a.postUserEvent(AppUserDeleted, user)
 
 	return a.writeDatabase()
 }
@@ -357,7 +366,7 @@ func (a *FileBasedAuthenticator) reloadIfChanged() {
 	// a new authenticator and steal the result.
 	// If we allow to modify users in-memory, we need to make
 	// sure that we don't replace contents while that is happening.
-	newAuth := NewFileBasedAuthenticator(a.userFilename)
+	newAuth := NewFileBasedAuthenticator(a.userFilename, a.eventBus)
 	if newAuth == nil {
 		return
 	}
@@ -496,4 +505,14 @@ func (a *FileBasedAuthenticator) userHasAccess(user *User, target Target) (AuthR
 		return AuthFail, "On Hiatus"
 	}
 	return AuthFail, ""
+}
+
+func (a *FileBasedAuthenticator) postUserEvent(ev AppEventType, user *User) {
+	a.eventBus.Post(&AppEvent{
+		Ev:     ev,
+		Source: "authenticator",
+		Msg:    "user:" + user.Name,
+		// 'Timeout' of the user is when token expires
+		Timeout: user.ExpiryDate(time.Now()),
+	})
 }
