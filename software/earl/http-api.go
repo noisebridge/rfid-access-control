@@ -5,12 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
+	"sync"
 	"time"
 )
 
 type ApiServer struct {
 	bus    *ApplicationBus
 	server *http.Server
+
+	// Remember the last event for each type.
+	lastEvents     map[AppEventType]*AppEvent
+	lastEventsLock sync.Mutex
 }
 
 // Similar to AppEvent, but json serialization hints and timestamp being
@@ -48,19 +54,74 @@ func NewApiServer(bus *ApplicationBus, port int) *ApiServer {
 			// JSON events listeners should be kept open for a while
 			WriteTimeout: 3600 * time.Second,
 		},
+		lastEvents: make(map[AppEventType]*AppEvent),
 	}
 	newObject.server.Handler = newObject
 	return newObject
 }
 
 func (a *ApiServer) Run() {
+	go a.collectLastEvents()
 	a.server.ListenAndServe()
+}
+
+func (a *ApiServer) collectLastEvents() {
+	appEvents := make(AppEventChannel, 3)
+	a.bus.Subscribe(appEvents)
+	for {
+		ev := <-appEvents
+		// Remember the last event of each type.
+		a.lastEventsLock.Lock()
+		a.lastEvents[ev.Ev] = ev
+		a.lastEventsLock.Unlock()
+	}
+	a.bus.Unsubscribe(appEvents)
+}
+
+type EventList []*AppEvent
+
+func (el EventList) Len() int { return len(el) }
+func (el EventList) Less(i, j int) bool {
+	return el[i].Timestamp.Before(el[j].Timestamp)
+}
+func (el EventList) Swap(i, j int) { el[i], el[j] = el[j], el[i] }
+
+func (a *ApiServer) getHistory() []*AppEvent {
+	result := EventList{}
+	a.lastEventsLock.Lock()
+	for _, ev := range a.lastEvents {
+		result = append(result, ev)
+	}
+	a.lastEventsLock.Unlock()
+	sort.Sort(result) // Show old events first
+	return result
 }
 
 func flushResponse(out http.ResponseWriter) {
 	if f, ok := out.(http.Flusher); ok {
 		f.Flush()
 	}
+}
+
+func writeJSONEvent(out http.ResponseWriter, callback string, event *AppEvent) bool {
+	json, err := json.Marshal(JsonEventFromAppEvent(event))
+	if err != nil {
+		// Funny event, let's just ignore.
+		return true
+	}
+	if callback != "" {
+		out.Write([]byte(callback + "("))
+	}
+	_, err = out.Write(json)
+	if err != nil {
+		return false
+	}
+	if callback != "" {
+		out.Write([]byte(");"))
+	}
+	out.Write([]byte("\n"))
+	flushResponse(out)
+	return true
 }
 
 func (a *ApiServer) ServeHTTP(out http.ResponseWriter, req *http.Request) {
@@ -86,32 +147,23 @@ func (a *ApiServer) ServeHTTP(out http.ResponseWriter, req *http.Request) {
 	// Make browsers happy.
 	out.Header()["Access-Control-Allow-Origin"] = []string{"*"}
 
-	out.Write(
-		[]byte("// Welcome to the Earl event API\n" +
-			"// Plain /api/events for JSON, add ?callback=MyCallbackName for JSONP.\n"))
-	flushResponse(out)
-
-	appEvents := make(AppEventChannel, 3)
-	a.bus.Subscribe(appEvents)
-	defer a.bus.Unsubscribe(appEvents)
-
-	for {
-		event := <-appEvents
-		json, err := json.Marshal(JsonEventFromAppEvent(event))
-		if err != nil {
-			continue
-		}
-		if cb != "" {
-			out.Write([]byte(cb + "("))
-		}
-		_, err = out.Write(json)
-		if err != nil {
+	for _, event := range a.getHistory() {
+		if !writeJSONEvent(out, cb, event) {
 			return
 		}
-		if cb != "" {
-			out.Write([]byte(");"))
-		}
-		out.Write([]byte("\n"))
-		flushResponse(out)
 	}
+	flushResponse(out)
+
+	// TODO: for JSONP, do we essentially have to close the connection after
+	// we emit an event, otherwise the browser never knows when things
+	// finish ?
+	appEvents := make(AppEventChannel, 3)
+	a.bus.Subscribe(appEvents)
+	for {
+		event := <-appEvents
+		if !writeJSONEvent(out, cb, event) {
+			break
+		}
+	}
+	a.bus.Unsubscribe(appEvents)
 }

@@ -6,6 +6,7 @@
 // physical doorbell tone-generator). Or the reverse: opening a door due to
 // some separate event should be reflected in the terminals' green light as well.
 //
+// The http-api provides these events via JSON for interested listeners.
 // Also it is possible to trigger these events artificially, e.g. through
 // some web-service.
 //
@@ -34,6 +35,10 @@ const (
 	AppUserAdded   = AppEventType("user-added")
 	AppUserUpdated = AppEventType("user-updated")
 	AppUserDeleted = AppEventType("user-deleted")
+
+	// terminal handling
+	AppTerminalConnect    = AppEventType("terminal-connect")
+	AppTerminalDisconnect = AppEventType("terminal-disconnect")
 
 	applicationBusInternalFlush = AppEventType("internal-flush")
 )

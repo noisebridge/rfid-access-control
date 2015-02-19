@@ -89,7 +89,19 @@ func handleSerialDevice(devicepath string, baud int, backends *Backends) {
 			retry_time = initialReconnectOnErrorTime
 			log.Printf("%s:%d: connected to '%s'",
 				devicepath, baud, t.GetTerminalName())
+			backends.appEventBus.Post(&AppEvent{
+				Ev:     AppTerminalConnect,
+				Target: Target(t.GetTerminalName()),
+				Msg:    fmt.Sprintf("%s:%d", devicepath, baud),
+				Source: "serialdevice",
+			})
 			t.RunEventLoop(handler, backends.appEventBus)
+			backends.appEventBus.Post(&AppEvent{
+				Ev:     AppTerminalDisconnect,
+				Target: Target(t.GetTerminalName()),
+				Msg:    fmt.Sprintf("%s:%d", devicepath, baud),
+				Source: "serialdevice",
+			})
 		}
 		t.shutdown()
 		t = nil
