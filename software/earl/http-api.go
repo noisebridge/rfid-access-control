@@ -145,7 +145,11 @@ func (a *ApiServer) ServeHTTP(out http.ResponseWriter, req *http.Request) {
 	}
 
 	// Make browsers happy.
-	out.Header()["Access-Control-Allow-Origin"] = []string{"*"}
+	allowOrigin := req.Header.Get("Origin")
+	if allowOrigin == "" {
+		allowOrigin = "*"
+	}
+	out.Header()["Access-Control-Allow-Origin"] = []string{allowOrigin}
 
 	for _, event := range a.getHistory() {
 		if !writeJSONEvent(out, cb, event) {
