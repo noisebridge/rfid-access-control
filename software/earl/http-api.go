@@ -14,14 +14,19 @@ type ApiServer struct {
 	bus    *ApplicationBus
 	server *http.Server
 
-	// Remember the last event for each type.
-	lastEvents     map[AppEventType]*AppEvent
+	// Remember the last event for each type. Already JSON prepared
+	eventChannel   AppEventChannel
+	lastEvents     map[AppEventType]*JsonAppEvent
 	lastEventsLock sync.Mutex
 }
 
 // Similar to AppEvent, but json serialization hints and timestamp being
 // a pointer to be able to omit it.
 type JsonAppEvent struct {
+	// An event is historic, if it had been recorded prior to the API
+	// conneect
+	IsHistoricEvent bool `json:,omitempty"`
+
 	Timestamp time.Time    `json:"timestamp"`
 	Ev        AppEventType `json:"type"`
 	Target    Target       `json:"target"`
@@ -31,8 +36,8 @@ type JsonAppEvent struct {
 	Timeout   *time.Time   `json:"timeout,omitempty"`
 }
 
-func JsonEventFromAppEvent(event *AppEvent) JsonAppEvent {
-	jev := JsonAppEvent{
+func JsonEventFromAppEvent(event *AppEvent) *JsonAppEvent {
+	jev := &JsonAppEvent{
 		Timestamp: event.Timestamp,
 		Ev:        event.Ev,
 		Target:    event.Target,
@@ -54,31 +59,32 @@ func NewApiServer(bus *ApplicationBus, port int) *ApiServer {
 			// JSON events listeners should be kept open for a while
 			WriteTimeout: 3600 * time.Second,
 		},
-		lastEvents: make(map[AppEventType]*AppEvent),
+		eventChannel: make(AppEventChannel),
+		lastEvents:   make(map[AppEventType]*JsonAppEvent),
 	}
 	newObject.server.Handler = newObject
+	bus.Subscribe(newObject.eventChannel)
+	go newObject.collectLastEvents()
 	return newObject
 }
 
 func (a *ApiServer) Run() {
-	go a.collectLastEvents()
 	a.server.ListenAndServe()
 }
 
 func (a *ApiServer) collectLastEvents() {
-	appEvents := make(AppEventChannel, 3)
-	a.bus.Subscribe(appEvents)
 	for {
-		ev := <-appEvents
+		ev := <-a.eventChannel
 		// Remember the last event of each type.
 		a.lastEventsLock.Lock()
-		a.lastEvents[ev.Ev] = ev
+		jsonified := JsonEventFromAppEvent(ev)
+		jsonified.IsHistoricEvent = true
+		a.lastEvents[ev.Ev] = jsonified
 		a.lastEventsLock.Unlock()
 	}
-	a.bus.Unsubscribe(appEvents)
 }
 
-type EventList []*AppEvent
+type EventList []*JsonAppEvent
 
 func (el EventList) Len() int { return len(el) }
 func (el EventList) Less(i, j int) bool {
@@ -86,7 +92,7 @@ func (el EventList) Less(i, j int) bool {
 }
 func (el EventList) Swap(i, j int) { el[i], el[j] = el[j], el[i] }
 
-func (a *ApiServer) getHistory() []*AppEvent {
+func (a *ApiServer) getHistory() []*JsonAppEvent {
 	result := EventList{}
 	a.lastEventsLock.Lock()
 	for _, ev := range a.lastEvents {
@@ -103,20 +109,20 @@ func flushResponse(out http.ResponseWriter) {
 	}
 }
 
-func writeJSONEvent(out http.ResponseWriter, callback string, event *AppEvent) bool {
-	json, err := json.Marshal(JsonEventFromAppEvent(event))
+func (event *JsonAppEvent) writeJSONEvent(out http.ResponseWriter, jsonp_callback string) bool {
+	json, err := json.Marshal(event)
 	if err != nil {
 		// Funny event, let's just ignore.
 		return true
 	}
-	if callback != "" {
-		out.Write([]byte(callback + "("))
+	if jsonp_callback != "" {
+		out.Write([]byte(jsonp_callback + "("))
 	}
 	_, err = out.Write(json)
 	if err != nil {
 		return false
 	}
-	if callback != "" {
+	if jsonp_callback != "" {
 		out.Write([]byte(");"))
 	}
 	out.Write([]byte("\n"))
@@ -152,8 +158,8 @@ func (a *ApiServer) ServeHTTP(out http.ResponseWriter, req *http.Request) {
 	out.Header()["Access-Control-Allow-Origin"] = []string{allowOrigin}
 
 	for _, event := range a.getHistory() {
-		if !writeJSONEvent(out, cb, event) {
-			return
+		if !event.writeJSONEvent(out, cb) {
+			break
 		}
 	}
 	flushResponse(out)
@@ -165,7 +171,7 @@ func (a *ApiServer) ServeHTTP(out http.ResponseWriter, req *http.Request) {
 	a.bus.Subscribe(appEvents)
 	for {
 		event := <-appEvents
-		if !writeJSONEvent(out, cb, event) {
+		if !JsonEventFromAppEvent(event).writeJSONEvent(out, cb) {
 			break
 		}
 	}

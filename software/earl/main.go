@@ -162,6 +162,13 @@ func main() {
 		go apiServer.Run()
 	}
 
+	log.Println("Ready.")
+	backends.appEventBus.Post(&AppEvent{
+		Ev:     AppEarlStarted,
+		Msg:    "Ready to serve.",
+		Source: "main",
+	})
+
 	var block_forever chan bool
 	<-block_forever
 }

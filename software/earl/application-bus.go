@@ -36,7 +36,8 @@ const (
 	AppUserUpdated = AppEventType("user-updated")
 	AppUserDeleted = AppEventType("user-deleted")
 
-	// terminal handling
+	// terminal/lifetime handling
+	AppEarlStarted        = AppEventType("earl-started")
 	AppTerminalConnect    = AppEventType("terminal-connect")
 	AppTerminalDisconnect = AppEventType("terminal-disconnect")
 
