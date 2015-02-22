@@ -32,9 +32,10 @@ const (
 	AppHushBellRequest      = AppEventType("hush-bell")    // Request to snooze bell until given timeout
 
 	// User management events.
-	AppUserAdded   = AppEventType("user-added")
-	AppUserUpdated = AppEventType("user-updated")
-	AppUserDeleted = AppEventType("user-deleted")
+	AppUserAdded        = AppEventType("user-added")
+	AppUserUpdated      = AppEventType("user-updated")
+	AppUserDeleted      = AppEventType("user-deleted")
+	AppUserFileReloaded = AppEventType("user-file-reloaded")
 
 	// terminal/lifetime handling
 	AppEarlStarted        = AppEventType("earl-started")
