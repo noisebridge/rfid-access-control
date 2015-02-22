@@ -357,10 +357,11 @@ func (a *FileBasedAuthenticator) reloadIfChanged() {
 	if a.fileTimestamp == fileinfo.ModTime() {
 		return // nothing to do.
 	}
-	log.Printf("Refreshing changed %s (%s -> %s)\n",
+	msg := fmt.Sprintf("Refreshing changed %s (%s -> %s)\n",
 		a.userFilename,
 		a.fileTimestamp.Format("2006-01-02 15:04:05"),
 		fileinfo.ModTime().Format("2006-01-02 15:04:05"))
+	log.Println(msg)
 
 	// For now, we are doing it simple: just create
 	// a new authenticator and steal the result.
@@ -377,6 +378,11 @@ func (a *FileBasedAuthenticator) reloadIfChanged() {
 	a.userList = newAuth.userList
 	a.user2index = newAuth.user2index
 	a.code2user = newAuth.code2user
+	a.eventBus.Post(&AppEvent{
+		Ev:     AppUserFileReloaded,
+		Source: "authenticator",
+		Msg:    msg,
+	})
 }
 
 // Full dump of database.
