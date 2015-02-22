@@ -25,7 +25,7 @@ type ApiServer struct {
 type JsonAppEvent struct {
 	// An event is historic, if it had been recorded prior to the API
 	// conneect
-	IsHistoricEvent bool `json:,omitempty"`
+	IsHistoricEvent bool `json:",omitempty"`
 
 	Timestamp time.Time    `json:"timestamp"`
 	Ev        AppEventType `json:"type"`
