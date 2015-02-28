@@ -163,6 +163,15 @@ func main() {
 
 	log.Println("Starting...")
 
+	if len(flag.Args()) < 1 && !*list_users {
+		fmt.Fprintf(os.Stderr,
+			"Expected list of serial ports."+
+				"usage: %s [options] <serial-device>[:baudrate] [<serial-device>[:baudrate]...]\nOptions\n",
+			os.Args[0])
+		flag.PrintDefaults()
+		return
+	}
+
 	appEventBus := NewApplicationBus()
 	authenticator := NewFileBasedAuthenticator(*userFileName,
 		appEventBus)
@@ -178,15 +187,6 @@ func main() {
 	// If we just requested to list users, do this and exit.
 	if *list_users {
 		printUserList(authenticator)
-		return
-	}
-
-	if len(flag.Args()) < 1 {
-		fmt.Fprintf(os.Stderr,
-			"Expected list of serial ports."+
-				"usage: %s [options] <serial-device>[:baudrate] [<serial-device>[:baudrate]...]\nOptions\n",
-			os.Args[0])
-		flag.PrintDefaults()
 		return
 	}
 
