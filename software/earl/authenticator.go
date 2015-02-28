@@ -108,6 +108,13 @@ func (a *FileBasedAuthenticator) FindUser(plain_code string) *User {
 	return &retval
 }
 
+// Iterate through users. The users are a copy, you can't modify them.
+func (a *FileBasedAuthenticator) IterateUsers(callback func(user User)) {
+	for _, user := range a.userList {
+		callback(*user)
+	}
+}
+
 // Check if access for a given code is granted to a given Target
 func (a *FileBasedAuthenticator) AuthUser(code string, target Target) (AuthResult, string) {
 	if !hasMinimalCodeRequirements(code) {

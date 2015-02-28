@@ -47,6 +47,40 @@ type Backends struct {
 	appEventBus   *ApplicationBus
 }
 
+func printUserList(auth *FileBasedAuthenticator) {
+	longest_name := 1
+	longest_contact := 1
+	auth.IterateUsers(func(user User) {
+		if len(user.Name) > longest_name {
+			longest_name = len(user.Name)
+		}
+		if len(user.ContactInfo) > longest_contact {
+			longest_contact = len(user.ContactInfo)
+		}
+	})
+
+	auth.IterateUsers(func(user User) {
+		fmt.Printf("%*s %*s %-12s ",
+			-longest_name, user.Name,
+			-longest_contact, user.ContactInfo, user.UserLevel)
+		timeFrom, timeTo := user.AccessHours()
+		fmt.Printf("\u231a %02d:00..%02d:00 ", timeFrom, timeTo)
+
+		exp := user.ExpiryDate(time.Now())
+		validityPeriod := user.InValidityPeriod(time.Now())
+		if !exp.IsZero() {
+			if !validityPeriod {
+				fmt.Printf("\033[1;31mExpired ")
+			} else {
+				fmt.Printf("\033[1;32mExpires ")
+			}
+			fmt.Print(exp.Format("2006-01-02 15:04"))
+			fmt.Printf("\033[0m")
+		}
+		fmt.Println()
+	})
+}
+
 func handleSerialDevice(devicepath string, baud int, backends *Backends) {
 	var t *SerialTerminal
 	connect_successful := true
@@ -113,16 +147,9 @@ func main() {
 	logFileName := flag.String("logfile", "", "The log file, default = stdout")
 	doorbellDir := flag.String("belldir", "", "Directory that contains upstairs.wav, gate.wav etc. Wav needs to be named like")
 	httpPort := flag.Int("httpport", -1, "Port to listen HTTP requests on")
+	list_users := flag.Bool("list-users", false, "List users and exit")
 
 	flag.Parse()
-
-	if len(flag.Args()) < 1 {
-		fmt.Fprintf(os.Stderr,
-			"usage: %s [options] <serial-device>[:baudrate] [<serial-device>[:baudrate]...]\nOptions\n",
-			os.Args[0])
-		flag.PrintDefaults()
-		return
-	}
 
 	if *logFileName != "" {
 		logfile, err := os.OpenFile(*logFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -136,9 +163,6 @@ func main() {
 	log.Println("Starting...")
 
 	appEventBus := NewApplicationBus()
-	actions := NewGPIOActions(*doorbellDir)
-	go actions.EventLoop(appEventBus)
-
 	authenticator := NewFileBasedAuthenticator(*userFileName,
 		appEventBus)
 	backends := &Backends{
@@ -149,6 +173,24 @@ func main() {
 	if authenticator == nil {
 		log.Fatal("Can't continue without authenticator.")
 	}
+
+	// If we just requested to list users, do this and exit.
+	if *list_users {
+		printUserList(authenticator)
+		return
+	}
+
+	if len(flag.Args()) < 1 {
+		fmt.Fprintf(os.Stderr,
+			"Expected list of serial ports."+
+				"usage: %s [options] <serial-device>[:baudrate] [<serial-device>[:baudrate]...]\nOptions\n",
+			os.Args[0])
+		flag.PrintDefaults()
+		return
+	}
+
+	actions := NewGPIOActions(*doorbellDir)
+	go actions.EventLoop(appEventBus)
 
 	// For each serial interface, we run an indepenent loop
 	// making sure we are constantly connected.
