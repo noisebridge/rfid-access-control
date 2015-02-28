@@ -112,7 +112,8 @@ func main() {
 	userFileName := flag.String("users", "/var/access/users.csv", "User Authentication file.")
 	logFileName := flag.String("logfile", "", "The log file, default = stdout")
 	doorbellDir := flag.String("belldir", "", "Directory that contains upstairs.wav, gate.wav etc. Wav needs to be named like")
-	httpPort := flag.Int("httpport", -1, "Port to listen HTTP requests on")
+	httpPort := flag.Int("httpport", -1, "Port to listen for HTTP requests on")
+	tcpPort := flag.Int("tcpport", -1, "Port to listen for TCP requests on")
 
 	flag.Parse()
 
@@ -160,6 +161,11 @@ func main() {
 	if *httpPort > 0 && *httpPort <= 65535 {
 		apiServer := NewApiServer(appEventBus, *httpPort)
 		go apiServer.Run()
+	}
+
+	if *tcpPort > 0 && *tcpPort <= 65535 {
+		tcpServer := NewTcpServer(appEventBus, *tcpPort)
+		go tcpServer.Run()
 	}
 
 	log.Println("Ready.")
