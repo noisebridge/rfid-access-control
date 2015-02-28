@@ -79,10 +79,15 @@ module raspi(h=rpi_standoff_height) {
     translate([0, 12, 0]) sd_holder();
 }
 
+module screw_terminal(w=38,d=10,h=8) {
+    cube([w,d,h]);
+}
+
 module print_all() {
     relay();
     full_terminal();
     translate([-30, -35, 0]) raspi();
 }
 
-print_all();
+//print_all();
+screw_terminal();
