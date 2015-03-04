@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+// Inserted later w/ a linker flag.
+// Check the Makefile for details.
 var VERSION string
 
 // Each access point has their own name. The terminals can identify
@@ -51,7 +53,7 @@ type Backends struct {
 }
 
 func printVersionInfo() {
-	fmt.Println(fmt.Sprintf("Version: %s", VERSION))
+	fmt.Printf("Version: %s", VERSION)
 }
 
 func printUserList(auth *FileBasedAuthenticator) {
