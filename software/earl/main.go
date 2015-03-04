@@ -176,7 +176,7 @@ func main() {
 		log.SetOutput(logfile)
 	}
 
-	log.Println("Starting...")
+	log.Printf("Starting... version: %s\n", VERSION)
 
 	if len(flag.Args()) < 1 && !*list_users {
 		fmt.Fprintf(os.Stderr,
