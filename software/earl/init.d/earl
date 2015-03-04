@@ -38,6 +38,8 @@ case $1 in
 			-- -logfile=$LOGFILE \
                         -belldir=/home/pi/doorbell-sounds \
 		        -httpport=1212 \
+                -users=/var/access/users.csv \
+                -tcpport=1213 \
 		        $SERIAL_INTERFACES
 		status=$?
 		log_end_msg $status

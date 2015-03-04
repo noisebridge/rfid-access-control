@@ -5,7 +5,7 @@
 all : earl test
 
 earl: *.go
-	go build
+	go build -ldflags "-X main.VERSION '`git log --date=short --pretty=format:'[%h] @ %cd' -n 1`'"
 
 test:
 	go test
