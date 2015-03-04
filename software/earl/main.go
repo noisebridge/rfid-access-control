@@ -10,8 +10,13 @@ import (
 	"time"
 )
 
+// Inserted later w/ a linker flag.
+// Check the Makefile for details.
+var VERSION string
+
 // Each access point has their own name. The terminals can identify
 // by that name.
+
 type Target string // TODO: find better name for this type
 const (
 	TargetDownstairs = Target("gate")
@@ -45,6 +50,10 @@ func parseArg(arg string) (devicepath string, baudrate int) {
 type Backends struct {
 	authenticator Authenticator
 	appEventBus   *ApplicationBus
+}
+
+func printVersionInfo() {
+	fmt.Printf("Version: %s", VERSION)
 }
 
 func printUserList(auth *FileBasedAuthenticator) {
@@ -143,14 +152,20 @@ func handleSerialDevice(devicepath string, baud int, backends *Backends) {
 }
 
 func main() {
-	userFileName := flag.String("users", "/var/access/users.csv", "User Authentication file.")
+	userFileName := flag.String("users", "", "User Authentication file.")
 	logFileName := flag.String("logfile", "", "The log file, default = stdout")
 	doorbellDir := flag.String("belldir", "", "Directory that contains upstairs.wav, gate.wav etc. Wav needs to be named like")
 	httpPort := flag.Int("httpport", -1, "Port to listen HTTP requests on")
 	tcpPort := flag.Int("tcpport", -1, "Port to listen for TCP requests on")
 	list_users := flag.Bool("list-users", false, "List users and exit")
+	show_version := flag.Bool("version", false, "Print version info")
 
 	flag.Parse()
+
+	if *show_version {
+		printVersionInfo()
+		return
+	}
 
 	if *logFileName != "" {
 		logfile, err := os.OpenFile(*logFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -162,6 +177,15 @@ func main() {
 	}
 
 	log.Println("Starting...")
+
+	if len(flag.Args()) < 1 && !*list_users {
+		fmt.Fprintf(os.Stderr,
+			"Expected list of serial ports."+
+				"usage: %s [options] <serial-device>[:baudrate] [<serial-device>[:baudrate]...]\nOptions\n",
+			os.Args[0])
+		flag.PrintDefaults()
+		return
+	}
 
 	appEventBus := NewApplicationBus()
 	authenticator := NewFileBasedAuthenticator(*userFileName,
@@ -178,15 +202,6 @@ func main() {
 	// If we just requested to list users, do this and exit.
 	if *list_users {
 		printUserList(authenticator)
-		return
-	}
-
-	if len(flag.Args()) < 1 {
-		fmt.Fprintf(os.Stderr,
-			"Expected list of serial ports."+
-				"usage: %s [options] <serial-device>[:baudrate] [<serial-device>[:baudrate]...]\nOptions\n",
-			os.Args[0])
-		flag.PrintDefaults()
 		return
 	}
 
