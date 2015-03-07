@@ -228,7 +228,7 @@ func main() {
 	log.Println("Ready.")
 	backends.appEventBus.Post(&AppEvent{
 		Ev:     AppEarlStarted,
-		Msg:    "Ready to serve.",
+		Msg:    "Earl version " + VERSION + " started. Ready to serve.",
 		Source: "main",
 	})
 
