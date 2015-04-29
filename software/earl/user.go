@@ -9,10 +9,10 @@ package main
 
 import (
 	"encoding/csv"
+	"github.com/cpucycle/astrotime"
 	"log"
 	"strings"
 	"time"
-	"astrotime"
 )
 
 type Level string
@@ -169,21 +169,30 @@ func (user *User) ExpiryDate(now time.Time) time.Time {
 
 // Returns the interval in hours this user may open doors. Includes from,
 // excludes to [from...to). So (7, 22) means >= 7:00 && < 22
-func (user *User) AccessHours() (from int, to int) {
+func (user *User) AccessHours() (from, to time.Time) {
 	sunrise := astrotime.CalcSunrise(time.Now(), LATITUDE, LONGITUDE)
+	loc, err := time.LoadLocation("Local")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	now := time.Now()
+	zeroHour := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	midnight := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, loc)
+	twentyTwoHour := time.Date(now.Year(), now.Month(), now.Day(), 22, 0, 0, 0, loc)
+
 	switch user.UserLevel {
 	case LevelMember:
-		return 0, 24 // all access
+		return zeroHour, midnight // all access
 	case LevelFulltimeUser:
-		return 7, 24 // 7:00 .. 23:59
-		return fmt.Printf("%d:%02d", sunrise.Hour(), sunrise.Minute()), 24 // sunrise .. 23:59
+		return sunrise, midnight // sunrise .. 23:59
 	case LevelUser:
-		return 11, 22 // 11:00 .. 21:59
+		return sunrise, twentyTwoHour // 11:00 .. 21:59
 	}
 	// TODO: for time-restricted users such as users for classes,
 	// we can have custom hours here.
 
-	return 0, 0 // no access.
+	return zeroHour, zeroHour // no access.
 }
 
 // Set the auth code to some value (should probably be add-auth-code)
