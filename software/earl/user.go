@@ -12,6 +12,7 @@ import (
 	"log"
 	"strings"
 	"time"
+	"astrotime"
 )
 
 type Level string
@@ -35,6 +36,12 @@ const (
 	// absence, or blocked otherwise) - any code should be inactive.
 	// This allows absent users to be kept in the file.
 	LevelHiatus = Level("hiatus")
+)
+
+const (
+	//Geographical coordinates of Noisebridge
+	LATITUDE  = float64(37.762384)
+	LONGITUDE = float64(122.419188)
 )
 
 const (
@@ -163,11 +170,13 @@ func (user *User) ExpiryDate(now time.Time) time.Time {
 // Returns the interval in hours this user may open doors. Includes from,
 // excludes to [from...to). So (7, 22) means >= 7:00 && < 22
 func (user *User) AccessHours() (from int, to int) {
+	sunrise := astrotime.CalcSunrise(time.Now(), LATITUDE, LONGITUDE)
 	switch user.UserLevel {
 	case LevelMember:
 		return 0, 24 // all access
 	case LevelFulltimeUser:
 		return 7, 24 // 7:00 .. 23:59
+		return fmt.Printf("%d:%02d", sunrise.Hour(), sunrise.Minute()), 24 // sunrise .. 23:59
 	case LevelUser:
 		return 11, 22 // 11:00 .. 21:59
 	}
