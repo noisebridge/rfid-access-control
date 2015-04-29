@@ -490,10 +490,10 @@ func (a *FileBasedAuthenticator) userHasAccess(user *User, target Target) (AuthR
 	// open.
 	space_open_to_public := false
 
-	hour_from, hour_to := user.AccessHours()
-	current_hour := a.clock.Now().Hour()
+	time_from, time_to := user.AccessHours()
+	current_time := a.clock.Now()
 	isday := space_open_to_public ||
-		(current_hour >= hour_from && current_hour < hour_to)
+		(current_time.After(time_from) && current_time.Before(time_to))
 	switch user.UserLevel {
 	case LevelMember:
 		return AuthOk, "" // Members always have access.
@@ -502,7 +502,7 @@ func (a *FileBasedAuthenticator) userHasAccess(user *User, target Target) (AuthR
 		if !isday {
 			return AuthOkButOutsideTime,
 				fmt.Sprintf("Fulltime user outside %d:00..%d:00",
-					hour_from, hour_to)
+					time_from, time_to)
 		}
 		return AuthOk, ""
 
@@ -510,7 +510,7 @@ func (a *FileBasedAuthenticator) userHasAccess(user *User, target Target) (AuthR
 		if !isday {
 			return AuthOkButOutsideTime,
 				fmt.Sprintf("Regular user outside %d:00..%d:00",
-					hour_from, hour_to)
+					time_from, time_to)
 		}
 		return AuthOk, ""
 
