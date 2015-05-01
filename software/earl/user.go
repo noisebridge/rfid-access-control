@@ -169,7 +169,7 @@ func (user *User) ExpiryDate(now time.Time) time.Time {
 
 // Returns the interval in hours this user may open doors. Includes from,
 // excludes to [from...to). So (7, 22) means >= 7:00 && < 22
-func (user *User) AccessHours() (from time.Time, to time.Time) {
+func (user *User) AccessHours() (from, to time.Time) {
 	sunrise := astrotime.CalcSunrise(time.Now(), LATITUDE, LONGITUDE)
 	loc, err := time.LoadLocation("Local")
 	if err != nil {
