@@ -25,11 +25,11 @@ const (
 	LevelMember = Level("member")
 
 	// A user has time limited access to the space at
-	// 'daytime', 11:00..21:59
+	// 'daytime', sunrise+3..21:59
 	LevelUser = Level("user")
 
 	// A fulltime user is like a regular user with less strict daytime
-	// constraints: 07:00..23:59
+	// constraints: sunrise..23:59
 	LevelFulltimeUser = Level("fulltimeuser")
 
 	// User that is not active currently (either because of leave of
@@ -187,7 +187,7 @@ func (user *User) AccessHours() (from, to time.Time) {
 	case LevelFulltimeUser:
 		return sunrise, midnight // sunrise .. 23:59
 	case LevelUser:
-		return sunrise, twentyTwoHour // 11:00 .. 21:59
+		return sunrise.Add(3 * time.Hour()), twentyTwoHour // sunrise+3 .. 21:59
 	}
 	// TODO: for time-restricted users such as users for classes,
 	// we can have custom hours here.
