@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"github.com/cpucycle/astrotime"
 	"io/ioutil"
 	"log"
 	"os"
@@ -222,12 +223,17 @@ func TestTimeLimits(t *testing.T) {
 		defer syscall.Unlink(authFile.Name())
 	}
 
-	someMidnight, _ := time.Parse("2006-01-02", "2014-10-10") // midnight
-	nightTime_3h := someMidnight.Add(3 * time.Hour)           // 03:00
-	earlyMorning_7h := someMidnight.Add(7 * time.Hour)        // 09:00
-	hackerDaytime_13h := someMidnight.Add(13 * time.Hour)     // 16:00
-	closingTime_22h := someMidnight.Add(22 * time.Hour)       // 22:00
-	lateStayUsers_23h := someMidnight.Add(23 * time.Hour)     // 23:00
+	now := time.Now()
+	loc, _ := time.LoadLocation("Local")
+	someMidnight := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+
+	nightTime_3h := someMidnight.Add(3 * time.Hour)    // 03:00
+	earlyMorning_7h := someMidnight.Add(7 * time.Hour) // 07:00
+	sunrise_h := astrotime.CalcSunrise(time.Now(), LATITUDE, LONGITUDE)
+	afterSunrise_h := sunrise_h.Add(5 * time.Minute)
+	hackerDaytime_13h := someMidnight.Add(13 * time.Hour) // 13:00
+	closingTime_22h := someMidnight.Add(22 * time.Hour)   // 22:00
+	lateStayUsers_23h := someMidnight.Add(23 * time.Hour) // 23:00
 
 	// After 30 days, non-contact users expire.
 	// So fast forward 31 days, 16:00 in the afternoon.
@@ -286,12 +292,28 @@ func TestTimeLimits(t *testing.T) {
 
 	mockClock.now = earlyMorning_7h
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
-	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, AuthOk, "")
-	ExpectAuthResult(t, auth, "user123", TargetUpstairs,
-		AuthOkButOutsideTime, "outside")
+	if mockClock.now.After(sunrise_h) {
+		ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs,
+			AuthOk, "")
+		ExpectAuthResult(t, auth, "user123", TargetUpstairs,
+			AuthOk, "")
+	} else {
+		ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs,
+			AuthOkButOutsideTime, "")
+		ExpectAuthResult(t, auth, "user123", TargetUpstairs,
+			AuthOkButOutsideTime, "")
+	}
 	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs,
-		AuthOkButOutsideTime, "outside")
+		AuthOk, "")
+
+	mockClock.now = afterSunrise_h
+	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "user123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs,
+		AuthOk, "")
 
 	mockClock.now = hackerDaytime_13h
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
@@ -323,8 +345,8 @@ func TestTimeLimits(t *testing.T) {
 	// Automatic expiry of entries that don't have contact info
 	mockClock.now = anonExpiry_30d
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
-	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, AuthOk, "")
-	ExpectAuthResult(t, auth, "user123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, AuthOkButOutsideTime, "")
+	ExpectAuthResult(t, auth, "user123", TargetUpstairs, AuthOkButOutsideTime, "")
 	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs,
 		AuthExpired, "Code not valid yet/expired")
 	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs,
