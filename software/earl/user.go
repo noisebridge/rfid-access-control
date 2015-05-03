@@ -187,7 +187,7 @@ func (user *User) AccessHours() (from, to time.Time) {
 	case LevelFulltimeUser:
 		return sunrise, midnight // sunrise .. 23:59
 	case LevelUser:
-		return sunrise.Add(3 * time.Hour()), twentyTwoHour // sunrise+3 .. 21:59
+		return sunrise.Add(3 * time.Hour), twentyTwoHour // sunrise+3 .. 21:59
 	}
 	// TODO: for time-restricted users such as users for classes,
 	// we can have custom hours here.
