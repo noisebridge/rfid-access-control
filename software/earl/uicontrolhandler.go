@@ -320,9 +320,9 @@ func (u *UIControlHandler) displayUserInfo(user *User) {
 
 	// Second line
 	if user.InValidityPeriod(time.Now()) {
-		from, to := user.AccessHours()
-		u.t.WriteLCD(1, fmt.Sprintf("Open doors [%d:00-%d:00)",
-			from, to))
+		from, to := user.AccessHours(time.Now())
+		u.t.WriteLCD(1, fmt.Sprintf("Open doors [%s-%s)",
+			from.Format("15:04"), to.Format("15:04")))
 	} else {
 		u.t.WriteLCD(1, "Ask member to renew.")
 	}

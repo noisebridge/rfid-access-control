@@ -169,17 +169,16 @@ func (user *User) ExpiryDate(now time.Time) time.Time {
 
 // Returns the interval in hours this user may open doors. Includes from,
 // excludes to [from...to). So (7, 22) means >= 7:00 && < 22
-func (user *User) AccessHours() (from, to time.Time) {
-	sunrise := astrotime.CalcSunrise(time.Now(), LATITUDE, LONGITUDE)
+func (user *User) AccessHours(when time.Time) (from, to time.Time) {
+	sunrise := astrotime.CalcSunrise(when, LATITUDE, LONGITUDE)
 	loc, err := time.LoadLocation("Local")
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	now := time.Now()
-	zeroHour := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
-	midnight := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, loc)
-	twentyTwoHour := time.Date(now.Year(), now.Month(), now.Day(), 22, 0, 0, 0, loc)
+	zeroHour := time.Date(when.Year(), when.Month(), when.Day(), 0, 0, 0, 0, loc)
+	midnight := zeroHour.Add(24 * time.Hour)
+	twentyTwoHour := zeroHour.Add(22 * time.Hour)
 
 	switch user.UserLevel {
 	case LevelMember:

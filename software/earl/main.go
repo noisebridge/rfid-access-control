@@ -72,7 +72,7 @@ func printUserList(auth *FileBasedAuthenticator) {
 		fmt.Printf("%*s %*s %-12s ",
 			-longest_name, user.Name,
 			-longest_contact, user.ContactInfo, user.UserLevel)
-		timeFrom, timeTo := user.AccessHours()
+		timeFrom, timeTo := user.AccessHours(time.Now())
 		fmt.Printf("\u231a %02d:00..%02d:00 ", timeFrom, timeTo)
 
 		exp := user.ExpiryDate(time.Now())

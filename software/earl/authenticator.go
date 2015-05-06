@@ -490,7 +490,7 @@ func (a *FileBasedAuthenticator) userHasAccess(user *User, target Target) (AuthR
 	// open.
 	space_open_to_public := false
 
-	time_from, time_to := user.AccessHours()
+	time_from, time_to := user.AccessHours(time.Now())
 	current_time := a.clock.Now()
 	isday := space_open_to_public ||
 		(current_time.After(time_from) && current_time.Before(time_to))
