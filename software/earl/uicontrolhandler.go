@@ -155,7 +155,7 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 				u.authUserCode = rfid
 				u.presentMemberActions(user)
 
-			case LevelUser:
+			default:
 				u.displayUserInfo(user)
 			}
 		}
