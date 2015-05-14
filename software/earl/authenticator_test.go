@@ -90,7 +90,8 @@ func TestAddUser(t *testing.T) {
 	u := User{
 		Name:      "Jon Doe",
 		UserLevel: LevelUser}
-	ExpectFalse(t, u.SetAuthCode("short"), "Adding too short code")
+	//ExpectFalse(t, u.SetAuthCode("short"), "Adding too short code")
+	ExpectFalse(t, u.SetAuthCode("sho"), "Adding too short code")
 	ExpectTrue(t, u.SetAuthCode("doe123"), "Adding long enough auth code")
 	// Can't add with bogus member
 	ExpectFalse(t, eatmsg(auth.AddNewUser("non-existent member", u)),
