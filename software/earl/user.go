@@ -32,14 +32,14 @@ const (
 	LevelFulltimeUser = Level("fulltimeuser")
 
 	// User that is not active currently (either because of leave of
-	// absense, or blocked otherwise) - any code should be inactive.
+	// absence, or blocked otherwise) - any code should be inactive.
 	// This allows absent users to be kept in the file.
 	LevelHiatus = Level("hiatus")
 )
 
 const (
 	// Cards that don't have a name or contact info assigned to them are
-	// only valid for a limited period, as it otherwise it hard to find
+	// only valid for a limited period, as it otherwise is hard to find
 	// the right code if it is stolen/lost or needs revocation.
 	// Thus, these will expire automatically.
 	//

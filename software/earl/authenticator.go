@@ -480,7 +480,7 @@ func hashAuthCode(plain string) string {
 func hasMinimalCodeRequirements(code string) bool {
 	// 32Bit Mifare are 8 characters hex, this is more to impose a minimum
 	// 'strength' of a pin.
-	return len(code) >= 6
+	return len(code) >= 5
 }
 
 func (a *FileBasedAuthenticator) userHasAccess(user *User, target Target) (AuthResult, string) {

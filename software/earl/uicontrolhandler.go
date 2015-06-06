@@ -36,6 +36,9 @@ const (
 	// For annoying people...
 	offerSilenceWhenRepeatedRingsUnder = 8 * time.Second
 	silenceDoorbellRatelimit           = 60 * time.Second
+
+	// Should we allow opening the gate with a press of a button ?
+	allowDoorOpeningWithKeypad = false
 )
 
 const (
@@ -128,13 +131,13 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 			u.backToIdle()
 		}
 		if key == '5' {
-			// For now, we allow opening just with a keypress. We
-			// might consider tighten that down with requiring RFID
-			// (which also works).
-			// but let's wait until everyone actually has one.
-			// In that case, just remove this if and change the
-			// display string in startDoorbellRequest()
-			u.openDoorAndShow(u.doorbellTarget, "Key [5] at control")
+			if allowDoorOpeningWithKeypad {
+				u.openDoorAndShow(u.doorbellTarget,
+					"Key [5] at control")
+			} else {
+				// inform people that think [5] works
+				u.t.WriteLCD(1, "Open only with RFID.")
+			}
 		}
 	}
 }
@@ -152,7 +155,7 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 				u.authUserCode = rfid
 				u.presentMemberActions(user)
 
-			case LevelUser:
+			default:
 				u.displayUserInfo(user)
 			}
 		}
@@ -199,10 +202,8 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 
 	case StateDoorbellRequest:
 		// Opening doors is somewhat relaxed; if the person is inside
-		// we assume they are allowed to open the door. TODO: revisit?
-		//
-		// Right now, we also open entirely insecure to open with
-		// pressing [5] as not many people have a RFID yet.
+		// we assume they are allowed to open the door.
+		// TODO: revisit and allow memmbers once their density increases
 		if u.auth.FindUser(rfid) != nil {
 			u.openDoorAndShow(u.doorbellTarget, "via RFID on control")
 			u.backToIdle()
@@ -351,11 +352,10 @@ func (u *UIControlHandler) startDoorOpenUI(target Target, message string) {
 
 	// The hush option always works, but we only show it when there is
 	// some repeated annoyance going on to keep UI simple in the simple case
-	// TODO: "[5] Open" should become "RFID => Open"
 	if now.Sub(u.lastDoorbellRequest) < offerSilenceWhenRepeatedRingsUnder {
-		u.t.WriteLCD(1, "[5] Open | [9] Silence!")
+		u.t.WriteLCD(1, "RFID:Open | [9] Silence!")
 	} else {
-		u.t.WriteLCD(1, "[5] Open | [*] ESC")
+		u.t.WriteLCD(1, "RFID:Open | [*] ESC")
 	}
 
 	u.lastDoorbellRequest = now
