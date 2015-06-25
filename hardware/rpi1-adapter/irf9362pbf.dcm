@@ -1,9 +1,49 @@
 EESchema-DOCLIB  Version 2.0
 #
 $CMP IRF9362PbF
-D IRF9362PbF, Dual HEXFET P-Channel MOSFET, -30V Vds, -8A Id, 21mOhm@-10 Vgs, SO-8
+D IRF9362PbF, Dual HEXFET P-Channel MOSFET, -30V Vds, -8A Id, 21mOhm@-10Vgs, 32mOhm@-4.5Vgs, SO-8
 K Dual MOSFET HEXFET P-Channel transistor
 F http://www.irf.com/product-info/datasheets/data/irf9362pbf.pdf
+$ENDCMP
+$CMP IRF7304PbF
+D IRF7304PbF, Dual HEXFET P-Channel MOSFET, -20V Vds, -4.3A Id, 90mOhm@-4.5Vgs, 140mOhm@-2.7Vgs, SO-8
+K Dual MOSFET HEXFET P-Channel transistor
+F http://www.irf.com/product-info/datasheets/data/irf7304pbf.pdf
+$ENDCMP
+$CMP DMP4050SSD
+D DMP4050SSD, Dual P-Channel MOSFET, -40V Vds, -5.2A Id, 50mOhm@-10Vgs, 79mOhm@-4.5Vgs, SO-8
+K Dual MOSFET P-Channel transistor
+F http://diodes.com/datasheets/DMP4050SSD.pdf
+$ENDCMP
+$CMP DMP3085LSD
+D DMP3085LSD, Dual P-Channel MOSFET, -30V Vds, -3.9A Id, 70mOhm@-10Vgs, 95mOhm@-4.5Vgs, SO-8
+K Dual MOSFET P-Channel transistor
+F http://www.diodes.com/datasheets/DMP3085LSD.pdf
+$ENDCMP
+$CMP DMP3098LSD
+D DMP3098LSD, Dual P-Channel MOSFET, -30V Vds, -4.4A Id, 65mOhm@-10Vgs, 115mOhm@-4.5Vgs, SO-8
+K Dual MOSFET P-Channel transistor
+F http://www.diodes.com/datasheets/ds31448.pdf
+$ENDCMP
+$CMP DMP4047SSD
+D DMP4047SSD, Dual P-Channel MOSFET, -40V Vds, -6.5A Id, 45mOhm@-10Vgs, 55mOhm@-4.5Vgs, SO-8
+K Dual MOSFET P-Channel transistor
+F http://diodes.com/datasheets/DMP4047SSD.pdf
+$ENDCMP
+$CMP DMP2066LSD
+D DMP2066LSD, Dual P-Channel MOSFET, -20V Vds, -5.8A Id, 40mOhm@-4.5Vgs, 70mOhm@-2.5Vgs, SO-8
+K Dual MOSFET P-Channel transistor
+F http://www.diodes.com/datasheets/ds31453.pdf 
+$ENDCMP
+$CMP DMG9933USD
+D DMG9933USD, Dual P-Channel MOSFET, -20V Vds, -4.6A Id, 75mOhm@-4.5Vgs, 110mOhm@-2.5Vgs, SO-8
+K Dual MOSFET P-Channel transistor
+F http://www.diodes.com/datasheets/ds32085.pdf
+$ENDCMP
+$CMP SI9933CDY
+D SI9933CDY, Dual P-Channel MOSFET, -20V Vds, -4A Id, 58mOhm@-4.5Vgs, 94mOhm@-2.5Vgs, SO-8
+K Dual MOSFET P-Channel transistor
+F http://www.vishay.com/docs/68791/si9933cd.pdf
 $ENDCMP
 #
 #End Doc Library
