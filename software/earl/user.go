@@ -35,6 +35,9 @@ const (
 	// absence, or blocked otherwise) - any code should be inactive.
 	// This allows absent users to be kept in the file.
 	LevelHiatus = Level("hiatus")
+
+	// A user with 24/7 access to the space, but who cannot add users.
+	LevelPhilanthropist = Level("philanthropist")
 )
 
 const (
@@ -103,7 +106,7 @@ func NewUserFromCSV(reader *csv.Reader) (user *User, done bool) {
 
 func isValidLevel(input string) bool {
 	switch input {
-	case "member", "user", "fulltimeuser", "hiatus":
+	case "member", "user", "fulltimeuser", "hiatus", "philanthropist":
 		return true
 	default:
 		return false
@@ -165,6 +168,8 @@ func (user *User) ExpiryDate(now time.Time) time.Time {
 func (user *User) AccessHours() (from int, to int) {
 	switch user.UserLevel {
 	case LevelMember:
+		return 0, 24 // all access
+	case LevelPhilanthropist:
 		return 0, 24 // all access
 	case LevelFulltimeUser:
 		return 7, 24 // 7:00 .. 23:59

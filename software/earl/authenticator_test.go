@@ -259,6 +259,13 @@ func TestTimeLimits(t *testing.T) {
 	auth.AddNewUser("root123", u)
 
 	u = User{
+		Name:        "A Philanthropist",
+		ContactInfo: "Philanthropist@noisebridge.net",
+		UserLevel:   LevelPhilanthropist}
+	u.SetAuthCode("philanthropist123")
+	auth.AddNewUser("root123", u)
+
+	u = User{
 		Name:        "User on Hiatus",
 		ContactInfo: "gone@fishing.net",
 		UserLevel:   LevelHiatus}
@@ -277,6 +284,7 @@ func TestTimeLimits(t *testing.T) {
 
 	mockClock.now = nightTime_3h
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "philanthropist123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs,
 		AuthOkButOutsideTime, "outside")
 	ExpectAuthResult(t, auth, "user123", TargetUpstairs,
@@ -287,6 +295,7 @@ func TestTimeLimits(t *testing.T) {
 
 	mockClock.now = earlyMorning_7h
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "philanthropist123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "user123", TargetUpstairs,
 		AuthOkButOutsideTime, "outside")
@@ -296,6 +305,7 @@ func TestTimeLimits(t *testing.T) {
 
 	mockClock.now = hackerDaytime_13h
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "philanthropist123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "user123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "hiatus123", TargetUpstairs,
@@ -304,6 +314,7 @@ func TestTimeLimits(t *testing.T) {
 	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs, AuthOk, "")
 
 	mockClock.now = closingTime_22h // should behave similar to earlyMorning
+	ExpectAuthResult(t, auth, "philanthropist123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "user123", TargetUpstairs,
@@ -312,8 +323,9 @@ func TestTimeLimits(t *testing.T) {
 	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs,
 		AuthOkButOutsideTime, "outside")
 
-	mockClock.now = lateStayUsers_23h // members and fulltimeusers left
+	mockClock.now = lateStayUsers_23h // members, philanthropists, and fulltimeusers left
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "philanthropist123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "user123", TargetUpstairs,
 		AuthOkButOutsideTime, "outside")
@@ -324,6 +336,7 @@ func TestTimeLimits(t *testing.T) {
 	// Automatic expiry of entries that don't have contact info
 	mockClock.now = anonExpiry_30d
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
+	ExpectAuthResult(t, auth, "philanthropist123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "user123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs,
