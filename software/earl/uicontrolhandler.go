@@ -130,7 +130,7 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 			}
 			u.postDoorbellHush("Hush pressed on control-terminal")
 			u.t.WriteLCD(0, fmt.Sprintf("Bell silenced %dsec",
-				u.hushedDoorbellTimeout.Sub(now)/time.Second))
+				u.hushedDoorbellTimeout.Sub(time.Now())/time.Second))
 			// Fall back soon.
 			u.setState(StateDoorbellRequest, 5*time.Second)
 		}
