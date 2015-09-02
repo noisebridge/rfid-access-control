@@ -128,11 +128,12 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 			if u.endDoorbellHush.After(time.Now().Add(maxSilenceDoorbell)) {
 				u.endDoorbellHush = time.Now().Add(maxSilenceDoorbell)
 			}
-			u.postDoorbellHush("Hush pressed on control-terminal")
-			u.t.WriteLCD(0, fmt.Sprintf("Bell silenced %dsec",
-				u.hushedDoorbellTimeout.Sub(time.Now())/time.Second))
+			silenceMsg := fmt.Sprintf("Bell silenced %dsec",
+				u.endDoorbellHush.Sub(time.Now())/time.Second)
+			u.postDoorbellHush("Hush pressed on control-terminal; " + silenceMsg)
+			u.t.WriteLCD(0, silenceMsg)
 			// Fall back soon.
-			u.setState(StateDoorbellRequest, 5*time.Second)
+			u.setState(StateDoorbellRequest, 3*time.Second)
 		}
 		if key == '5' {
 			// inform people that think [5] works (it worked once)
@@ -370,6 +371,11 @@ func (u *UIControlHandler) postDoorbellHush(msg string) {
 	})
 }
 
+func (u *UIControlHandler) resetDoorHush() {
+	u.endDoorbellHush = time.Now().Add(-time.Second) // Expire immediately.
+	u.postDoorbellHush("(unhush)")
+}
+
 func (u *UIControlHandler) openDoorAndShow(where Target, msg string) {
 	u.backends.appEventBus.Post(&AppEvent{
 		Ev:     AppOpenRequest,
@@ -377,8 +383,7 @@ func (u *UIControlHandler) openDoorAndShow(where Target, msg string) {
 		Source: u.t.GetTerminalName(),
 		Msg:    msg,
 	})
-	u.endDoorbellHush = time.Now().Add(-time.Second) // Expire immediately.
-	u.postDoorbellHush("(open door; unhush)")
+	u.resetDoorHush()
 
 	// Note: We will receive this request for opening ourself and will
 	// update the LCD. Why not here directly ? Because we want to also
