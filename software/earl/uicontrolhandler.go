@@ -34,11 +34,9 @@ const (
 	showDoorbellDuration = 45 * time.Second
 
 	// For annoying people...
-	offerSilenceWhenRepeatedRingsUnder = 8 * time.Second
-	silenceDoorbellRatelimit           = 60 * time.Second
-
-	// Should we allow opening the gate with a press of a button ?
-	allowDoorOpeningWithKeypad = false
+	offerSilenceWhenRepeatedRingsUnder = 2 * time.Second
+	silenceDoorbellIncrement           = 60 * time.Second
+	maxSilenceDoorbell                 = 5 * 60 * time.Second
 )
 
 const (
@@ -62,6 +60,7 @@ type UIControlHandler struct {
 	// We allow rate-limiting of the doorbell.
 	lastDoorbellRequest time.Time // To know when to offer hush.
 	doorbellTarget      Target
+	endDoorbellHush     time.Time // Incremented
 
 	// Stuff collected from events we see, mostly to
 	// display on our idle screen.
@@ -121,23 +120,20 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 
 	case StateDoorbellRequest:
 		if key == '9' {
-			u.backends.appEventBus.Post(&AppEvent{
-				Ev:      AppHushBellRequest,
-				Target:  u.doorbellTarget,
-				Source:  u.t.GetTerminalName(),
-				Msg:     "Hush pressed on control-terminal",
-				Timeout: time.Now().Add(silenceDoorbellRatelimit),
-			})
+			// Each press increments by one minute, up to a maximum time.
+			if u.endDoorbellHush.Before(time.Now()) {
+				u.endDoorbellHush = time.Now()
+			}
+			u.endDoorbellHush.Add(silenceDoorbellIncrement)
+			if u.endDoorbellHush.After(time.Now().Add(maxSilenceDoorbell)) {
+				u.endDoorbellHush = time.Now().Add(maxSilenceDoorbell)
+			}
+			u.postDoorbellHush("Hush pressed on control-terminal")
 			u.backToIdle()
 		}
 		if key == '5' {
-			if allowDoorOpeningWithKeypad {
-				u.openDoorAndShow(u.doorbellTarget,
-					"Key [5] at control")
-			} else {
-				// inform people that think [5] works
-				u.t.WriteLCD(1, "Open only with RFID.")
-			}
+			// inform people that think [5] works (it worked once)
+			u.t.WriteLCD(1, "Open only with RFID.")
 		}
 	}
 }
@@ -203,7 +199,7 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 	case StateDoorbellRequest:
 		// Opening doors is somewhat relaxed; if the person is inside
 		// we assume they are allowed to open the door.
-		// TODO: revisit and allow memmbers once their density increases
+		// TODO: revisit and allow memmbers once their density increases ?
 		if u.auth.FindUser(rfid) != nil {
 			u.openDoorAndShow(u.doorbellTarget, "via RFID on control")
 			u.backToIdle()
@@ -361,6 +357,16 @@ func (u *UIControlHandler) startDoorOpenUI(target Target, message string) {
 	u.lastDoorbellRequest = now
 }
 
+func (u *UIControlHandler) postDoorbellHush(msg string) {
+	u.backends.appEventBus.Post(&AppEvent{
+		Ev:      AppHushBellRequest,
+		Target:  u.doorbellTarget,
+		Source:  u.t.GetTerminalName(),
+		Msg:     msg,
+		Timeout: u.endDoorbellHush,
+	})
+}
+
 func (u *UIControlHandler) openDoorAndShow(where Target, msg string) {
 	u.backends.appEventBus.Post(&AppEvent{
 		Ev:     AppOpenRequest,
@@ -368,6 +374,9 @@ func (u *UIControlHandler) openDoorAndShow(where Target, msg string) {
 		Source: u.t.GetTerminalName(),
 		Msg:    msg,
 	})
+	u.endDoorbellHush = time.Now().Add(-time.Second) // Expire immediately.
+	u.postDoorbellHush("(open door; unhush)")
+
 	// Note: We will receive this request for opening ourself and will
 	// update the LCD. Why not here directly ? Because we want to also
 	// show door opening actions triggered externally.
