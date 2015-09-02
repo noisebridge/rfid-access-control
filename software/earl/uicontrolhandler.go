@@ -124,12 +124,15 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 			if u.endDoorbellHush.Before(time.Now()) {
 				u.endDoorbellHush = time.Now()
 			}
-			u.endDoorbellHush.Add(silenceDoorbellIncrement)
+			u.endDoorbellHush = u.endDoorbellHush.Add(silenceDoorbellIncrement)
 			if u.endDoorbellHush.After(time.Now().Add(maxSilenceDoorbell)) {
 				u.endDoorbellHush = time.Now().Add(maxSilenceDoorbell)
 			}
 			u.postDoorbellHush("Hush pressed on control-terminal")
-			u.backToIdle()
+			u.t.WriteLCD(0, fmt.Sprintf("Bell silenced %dsec",
+				u.hushedDoorbellTimeout.Sub(now)/time.Second))
+			// Fall back soon.
+			u.setState(StateDoorbellRequest, 5*time.Second)
 		}
 		if key == '5' {
 			// inform people that think [5] works (it worked once)
@@ -267,8 +270,8 @@ func (u *UIControlHandler) displayIdleScreen() {
 	// Let's see if there is anything interesting to display in
 	// the status screen, otherwise fall back to 'Noisebridge'
 	if u.hushedDoorbellTimeout.After(now) {
-		remaining := u.hushedDoorbellTimeout.Sub(now) / time.Second
-		u.t.WriteLCD(0, fmt.Sprintf("Bell silenced for %dsec", remaining))
+		u.t.WriteLCD(0, fmt.Sprintf("Bell silenced %dsec",
+			u.hushedDoorbellTimeout.Sub(now)/time.Second))
 	} else if doorStatus := u.getDoorStatusString(); doorStatus != "" {
 		u.t.WriteLCD(0, doorStatus)
 	} else {
