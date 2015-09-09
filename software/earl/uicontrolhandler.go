@@ -372,8 +372,10 @@ func (u *UIControlHandler) postDoorbellHush(msg string) {
 }
 
 func (u *UIControlHandler) resetDoorHush() {
-	u.endDoorbellHush = time.Now().Add(-time.Second) // Expire immediately.
-	u.postDoorbellHush("(unhush)")
+	if u.endDoorbellHush.After(time.Now()) {
+		u.endDoorbellHush = time.Now().Add(-time.Second) // Expire immediately.
+		u.postDoorbellHush("(unhush)")
+	}
 }
 
 func (u *UIControlHandler) openDoorAndShow(where Target, msg string) {
