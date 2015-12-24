@@ -69,7 +69,7 @@ func printUserList(auth *FileBasedAuthenticator) {
 	})
 
 	auth.IterateUsers(func(user User) {
-		fmt.Printf("%*s %*s %-12s ",
+		fmt.Printf("%*s %*s %-14s ",
 			-longest_name, user.Name,
 			-longest_contact, user.ContactInfo, user.UserLevel)
 		timeFrom, timeTo := user.AccessHours()

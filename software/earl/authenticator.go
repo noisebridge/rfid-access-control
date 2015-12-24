@@ -331,6 +331,7 @@ func (a *FileBasedAuthenticator) readDatabase() bool {
 	reader.FieldsPerRecord = -1 //variable length fields
 
 	counts := make(map[Level]int)
+	expired_counts := make(map[Level]int)
 	total := 0
 	log.Printf("Reading %s", a.userFilename)
 	for {
@@ -342,12 +343,15 @@ func (a *FileBasedAuthenticator) readDatabase() bool {
 			continue // e.g. due to comment or short line
 		}
 		a.addUserSynchronized(user)
-		counts[user.UserLevel]++
 		total++
+		counts[user.UserLevel]++
+		if !user.InValidityPeriod(a.clock.Now()) {
+			expired_counts[user.UserLevel]++
+		}
 	}
 	log.Printf("Read %d users from %s", total, a.userFilename)
 	for level, count := range counts {
-		log.Printf("%13s %4d", level, count)
+		log.Printf("%14s %4d (%3d good, %3d expired)", level, count, count-expired_counts[level], expired_counts[level])
 	}
 	return true
 }
