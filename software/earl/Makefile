@@ -4,8 +4,10 @@
 
 all : earl test
 
+# Note, our go version on the Pi does not understand the newer main.VERSION=xxx
+# syntax
 earl: *.go
-	go build -ldflags "-X main.VERSION='`git log --date=short --pretty=format:'%h@%cd' -n 1 .`'"
+	go build -ldflags "-X main.VERSION '`git log --date=short --pretty=format:'%h@%cd' -n 1 .`'"
 
 test:
 	go test
