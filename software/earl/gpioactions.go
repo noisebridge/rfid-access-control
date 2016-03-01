@@ -38,6 +38,8 @@ func NewGPIOActions(wavDir string) *GPIOActions {
 	}
 	result.initGPIO(7)
 	result.initGPIO(8)
+	result.initGPIO(9)
+	result.initGPIO(11)
 	return result
 }
 
@@ -72,7 +74,10 @@ func (g *GPIOActions) openDoor(which Target) {
 		gpio_pin = 7
 
 	case TargetUpstairs:
-		gpio_pin = 8
+		gpio_pin = 11
+
+	case TargetElevator:
+		gpio_pin = 9
 
 	default:
 		log.Printf("DoorAction: Don't know how to open '%s'", which)
@@ -96,6 +101,7 @@ func (g *GPIOActions) ringBell(which Target) {
 	_, err := os.Stat(filename)
 	msg := ""
 	if err == nil {
+		go exec.Command("/usr/bin/curl", "-q", "http://10.20.0.22/bell/?tone=" + string(which)).Run()
 		go exec.Command(WavPlayer, filename).Run()
 	} else {
 		msg = ": [ugh, file not found!]"
@@ -127,8 +133,8 @@ func (g *GPIOActions) initGPIO(gpio_pin int) {
 }
 
 func (g *GPIOActions) switchRelay(switch_on bool, gpio_pin int) {
-	if gpio_pin != 7 && gpio_pin != 8 {
-		log.Fatal("You suck - gpio_pin 7 or 8")
+	if gpio_pin != 7 && gpio_pin != 8 && gpio_pin != 9 && gpio_pin != 11 {
+		log.Print("GPIO needs to be one of 7,8,9,11!")
 	}
 
 	gpioFile := fmt.Sprintf("/sys/class/gpio/gpio%d/value", gpio_pin)

@@ -17,7 +17,7 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin
 DAEMON=/usr/local/bin/earl
 PIDFILE=/var/run/earl.pid
 LOGFILE=/var/log/earl
-SERIAL_INTERFACES="/dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyAMA0"
+SERIAL_INTERFACES="/dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyUSB2 /dev/ttyAMA0"
 test -x $DAEMON || exit 5
 
 RUNASUSER=pi
