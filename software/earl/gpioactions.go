@@ -20,7 +20,7 @@ const (
 	defaultDoorOpenRateLimit = 500 * time.Millisecond
 
 	// Don't allow to ring more often than this.
-	defaultDoorbellRatelimit = 3 * time.Second
+	defaultDoorbellRatelimit = 30 * time.Second
 )
 
 type GPIOActions struct {
