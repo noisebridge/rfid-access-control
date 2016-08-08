@@ -20,7 +20,7 @@ const (
 	defaultDoorOpenRateLimit = 500 * time.Millisecond
 
 	// Don't allow to ring more often than this.
-	defaultDoorbellRatelimit = 3 * time.Second
+	defaultDoorbellRatelimit = 15 * time.Second
 )
 
 type GPIOActions struct {
@@ -91,6 +91,9 @@ func (g *GPIOActions) openDoor(which Target) {
 			g.switchRelay(false, gpio_pin)
 		}()
 	}
+
+  // The door was opened, so allow the doorbell to ring again right away.
+	g.nextAllowedRingTime[which] = time.Now()
 }
 
 func (g *GPIOActions) ringBell(which Target) {
