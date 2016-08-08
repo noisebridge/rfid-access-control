@@ -92,7 +92,7 @@ func (g *GPIOActions) openDoor(which Target) {
 		}()
 	}
 
-  // The door was opened, so allow the doorbell to ring again right away.
+	// The door was opened, so allow the doorbell to ring again right away.
 	g.nextAllowedRingTime[which] = time.Now()
 }
 
@@ -104,7 +104,7 @@ func (g *GPIOActions) ringBell(which Target) {
 	_, err := os.Stat(filename)
 	msg := ""
 	if err == nil {
-		go exec.Command("/usr/bin/curl", "-q", "http://10.20.0.22/bell/?tone=" + string(which)).Run()
+		go exec.Command("/usr/bin/curl", "-q", "http://10.20.0.22/bell/?tone="+string(which)).Run()
 		go exec.Command(WavPlayer, filename).Run()
 	} else {
 		msg = ": [ugh, file not found!]"
