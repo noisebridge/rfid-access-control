@@ -20,7 +20,7 @@ const (
 	defaultDoorOpenRateLimit = 500 * time.Millisecond
 
 	// Don't allow to ring more often than this.
-	defaultDoorbellRatelimit = 3 * time.Second
+	defaultDoorbellRatelimit = 15 * time.Second
 )
 
 type GPIOActions struct {
@@ -91,6 +91,9 @@ func (g *GPIOActions) openDoor(which Target) {
 			g.switchRelay(false, gpio_pin)
 		}()
 	}
+
+	// The door was opened, so allow the doorbell to ring again right away.
+	g.nextAllowedRingTime[which] = time.Now()
 }
 
 func (g *GPIOActions) ringBell(which Target) {
@@ -101,7 +104,7 @@ func (g *GPIOActions) ringBell(which Target) {
 	_, err := os.Stat(filename)
 	msg := ""
 	if err == nil {
-		go exec.Command("/usr/bin/curl", "-q", "http://10.20.0.22/bell/?tone=" + string(which)).Run()
+		go exec.Command("/usr/bin/curl", "-q", "http://10.20.0.22/bell/?tone="+string(which)).Run()
 		go exec.Command(WavPlayer, filename).Run()
 	} else {
 		msg = ": [ugh, file not found!]"
