@@ -193,9 +193,10 @@ func TestValidAccessCode(t *testing.T) {
 	PressKeys(testFixture.handlerUnderTest, "123456#")
 	testFixture.FlushAllAppEvents()
 
-	testFixture.mockterm.expectColor("G")
 	testFixture.mockterm.expectBuzz(Buzz{"H", 500})
 	testFixture.ExpectEvent(AppOpenRequest, Target("mock"))
+	// The AppOpenRequest also set the green color.
+	testFixture.mockterm.expectColor("G")
 	testFixture.ExpectNoMoreEvents()
 }
 
