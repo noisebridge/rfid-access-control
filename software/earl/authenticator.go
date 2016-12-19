@@ -32,6 +32,8 @@ const (
 	AuthExpired          = AuthResult(1)
 	AuthOkButOutsideTime = AuthResult(2) // User ok; time-of-day limit.
 	AuthOk               = AuthResult(42)
+	HolidayHiatusBegin   = 1482192000 // 2016-12-20
+	HolidayHiatusEnd     = 1484611200 // 2017-01-07
 )
 
 // Modify a user pointer. Returns 'true' if the changes should be written back.
@@ -518,6 +520,10 @@ func (a *FileBasedAuthenticator) userHasAccess(user *User, target Target) (AuthR
 			return AuthOkButOutsideTime,
 				fmt.Sprintf("Regular user outside %d:00..%d:00",
 					hour_from, hour_to)
+		}
+		now := time.Now().Unix()
+		if now >= HolidayHiatusBegin && now <= HolidayHiatusEnd {
+			return AuthOkButOutsideTime, "Regular user during holiday hiatus period"
 		}
 		return AuthOk, ""
 
