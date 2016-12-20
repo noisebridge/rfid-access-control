@@ -32,8 +32,8 @@ const (
 	AuthExpired          = AuthResult(1)
 	AuthOkButOutsideTime = AuthResult(2) // User ok; time-of-day limit.
 	AuthOk               = AuthResult(42)
-	HolidayHiatusBegin   = 1482192000 // 2016-12-20
-	HolidayHiatusEnd     = 1484611200 // 2017-01-07
+	HolidayHiatusBegin   = 1482278400 // 2016-12-21 UTC
+	HolidayHiatusEnd     = 1484611200 // 2017-01-07 UTC
 )
 
 // Modify a user pointer. Returns 'true' if the changes should be written back.
