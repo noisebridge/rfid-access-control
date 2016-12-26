@@ -521,7 +521,7 @@ func (a *FileBasedAuthenticator) userHasAccess(user *User, target Target) (AuthR
 				fmt.Sprintf("Regular user outside %d:00..%d:00",
 					hour_from, hour_to)
 		}
-		now := time.Now().Unix()
+		now := a.clock.Now().Unix()
 		if now >= HolidayHiatusBegin && now <= HolidayHiatusEnd {
 			return AuthOkButOutsideTime, "Regular user during holiday hiatus period"
 		}
