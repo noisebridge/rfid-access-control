@@ -16,6 +16,12 @@
 
 #include "clock.h"
 
+#define OCR2 OCR2A
+#define TIMSK TIMSK0
+#define OCIE2 OCIE2A
+#define TCCR2 TCCR2A
+#define TIMER2_COMP_vect TIMER2_COMPA_vect
+
 namespace ToneGen {
 // The Pin we want to output the tone to. Can be an arbitrary port.
 #define TONE_GEN_OUT_PORT    PORTD
