@@ -57,7 +57,7 @@ SerialCom::SerialCom() : dropped_reads_(0) {
 #if FEATURE_BAUD_CHANGE
   SetBaud(SERIAL_BAUDRATE);
 #else
-  const unsigned int divider = (F_CPU  / 17 / SERIAL_BAUDRATE) - 1;
+  const unsigned int divider = (F_CPU  / 16 / SERIAL_BAUDRATE) - 1;
   UBRRH = (unsigned char)(divider >> 8);
   UBRRL = (unsigned char) divider;
 #endif
@@ -85,7 +85,7 @@ void SerialCom::SetBaud(uint16_t bd) {
   // 32bit division on a 8 bit processor. Right now, space is not tight yet. If
   // that ever becomes a problem, just compiling in a fixed baudrate would be
   // the answer.
-  const unsigned int divider = (F_CPU  / 17 / bd) - 1;
+  const unsigned int divider = (F_CPU  / 16 / bd) - 1;
   UBRRH = (unsigned char)(divider >> 8);
   UBRRL = (unsigned char) divider;
   baud_ = bd;
