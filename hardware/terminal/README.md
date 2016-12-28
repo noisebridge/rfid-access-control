@@ -124,7 +124,10 @@ TODOs for future versions; learning from previous board
    - Add space for little buzzer on-board.
    - Input for a reed switch to detect open doors ?
 
-[pcb]: https://github.com/hzeller/rfid-access-control/raw/master/img/terminal-pcb.png
+![Schematic][schematic]
+
+[pcb]: ../../img/terminal-pcb.png
+[schematic]: ../../img/terminal-sch.png
 [sp3232-spec]: http://www.exar.com/common/content/document.ashx?id=619
 [rj45-terminal-1]: http://www.allpinouts.org/index.php/Cisco_Console_RJ45_to_DB9_Pin
 [rj45-terminal-2]: http://kb.juniper.net/InfoCenter/index?page=content&id=KB13272
