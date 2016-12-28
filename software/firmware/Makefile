@@ -32,7 +32,7 @@ DEFINES=-DGIT_VERSION='$(GIT_VERSION)' -DF_CPU=8000000UL -DFEATURE_RFID_DEBUG=0 
         -DFEATURE_BAUD_CHANGE=0 -DSERIAL_BAUDRATE=9600 \
         -DFEATURE_LCD=0 # -DFIXED_TERMINAL_NAME='"gate"'
 
-TARGET_ARCH=-mmcu=atmega328p
+TARGET_ARCH=-mmcu=atmega8
 CXX=avr-g++
 CXXFLAGS=-Os -g -Wall -ffunction-sections -fdata-sections -mcall-prologues $(DEFINES)
 AVRDUDE_DEVICE ?= /dev/ttyUSB0
