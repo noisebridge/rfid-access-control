@@ -7,6 +7,22 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
+#define USART_RXC_vect USART_RX_vect
+#define UCSRA UCSR0A
+#define RXC   RXC0
+#define UDR   UDR0
+#define UBRRH UBRR0H
+#define UBRRL UBRR0L
+#define RXCIE RXCIE0
+#define RXEN RXEN0
+#define TXEN TXEN0
+#define UCSRB UCSR0B
+#define UCSRC UCSR0C
+#define URSEL URSE0L
+#define UCSZ1 UCSZ01
+#define UCSZ0 UCSZ00
+#define UDRE UDRE0
+
 template<int BUFFER_BITS> RingBuffer<BUFFER_BITS>::RingBuffer()
   : write_pos_(0), read_pos_(0) {
 }
@@ -62,7 +78,7 @@ SerialCom::SerialCom() : dropped_reads_(0) {
   UBRRL = (unsigned char) divider;
 #endif
   UCSRB = (1<<RXCIE) | (1<<RXEN) | (1<<TXEN);  // read and write; interrupt read
-  UCSRC = (1<<URSEL) /*write-reg*/ | (1<<UCSZ1) | (1<<UCSZ0); /*8bit*/
+  UCSRC = /*(1<<URSEL) write-reg | */ (1<<UCSZ1) | (1<<UCSZ0); /*8bit*/
   sei();  // Enable interrupts.
 }
 
