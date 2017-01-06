@@ -33,7 +33,7 @@ const (
 	AuthOkButOutsideTime = AuthResult(2) // User ok; time-of-day limit.
 	AuthOk               = AuthResult(42)
 	HolidayHiatusBegin   = 1482278400 // 2016-12-21 UTC
-	HolidayHiatusEnd     = 1484611200 // 2017-01-07 UTC
+	HolidayHiatusEnd     = 1483747200 // 2017-01-07 UTC
 )
 
 // Modify a user pointer. Returns 'true' if the changes should be written back.
