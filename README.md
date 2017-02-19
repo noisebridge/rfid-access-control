@@ -14,3 +14,7 @@ Access control system used within the [Noisebridge] hacker space.
 
 [case-image]: https://github.com/hzeller/rfid-access-control/raw/master/img/rfid-reader-case.png
 [Noisebridge]: https://noisebridge.net/
+
+## License
+
+All code and PCB designs are released under the GNU General Public License V2, found in LICENSE
