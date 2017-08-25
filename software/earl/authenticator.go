@@ -209,8 +209,8 @@ func (a *FileBasedAuthenticator) verifyModifyOperationAllowed(auth_code string) 
 	if authMember == nil {
 		return false, "Couldn't find member with authentication code."
 	}
-	if authMember.UserLevel != LevelMember {
-		return false, "Non-member modify attempt"
+	if authMember.UserLevel != LevelMember && authMember.UserLevel != LevelPhilanthropist {
+		return false, "Non-member/philanthropist modify attempt"
 	}
 	if !authMember.InValidityPeriod(a.clock.Now()) {
 		return false, "Auth-Member expired."
