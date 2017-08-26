@@ -161,11 +161,11 @@ func (f *TestFixture) ExpectEvent(ev AppEventType, target Target) {
 	select {
 	case event := <-f.expectEventChannel:
 		if event.Ev != ev || event.Target != target {
-			f.tester.Errorf("Expecting event %d:%s, but got %d:%s\n",
+			f.tester.Errorf("Expecting event %s:%s, but got %s:%s\n",
 				ev, target, event.Ev, event.Target)
 		}
 	case <-time.After(0):
-		f.tester.Errorf("Expecting event %d:%s, but nothing in queue\n",
+		f.tester.Errorf("Expecting event %s:%s, but nothing in queue\n",
 			ev, target)
 	}
 }
