@@ -19,6 +19,8 @@ type Level string
 // TODO: maybe we should qualify the levels with a struct containing the actual
 // constraints, that makes it more readable. Right now the names are defined
 // here, but the constraints codified in authenticator.go
+// (unfortunately, golang is being difficult and does not allow constant
+// struct or struct pointers)
 const (
 	// A member has no time constraints on the access and can add users.
 	LevelMember = Level("member")
@@ -177,7 +179,7 @@ func (user *User) AccessHours() (from int, to int) {
 		return 11, 22 // 11:00 .. 21:59
 	}
 	// TODO: for time-restricted users such as users for classes,
-	// we can have custom hours here.
+	// we can have custom hours here that don't depend on the UserLevel
 
 	return 0, 0 // no access.
 }
@@ -191,4 +193,21 @@ func (user *User) SetAuthCode(code string) bool {
 	}
 	user.Codes = []string{hashAuthCode(code)}
 	return true
+}
+
+func CanLevelModify(l Level) bool {
+	// Philanthropist are allowed to renew user tokens.
+	switch l {
+	case LevelMember, LevelPhilanthropist:
+		return true
+	}
+	return false
+}
+
+func CanLevelAddDelete(l Level) bool {
+	switch l {
+	case LevelMember:
+		return true
+	}
+	return false
 }

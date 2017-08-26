@@ -139,7 +139,7 @@ func (a *FileBasedAuthenticator) AuthUser(code string, target Target) (AuthResul
 }
 
 func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user User) (bool, string) {
-	if auth_ok, auth_msg := a.verifyAddDeleteOperationAllowed(authentication_code); !auth_ok {
+	if auth_ok, auth_msg := a.verifyOpAllowed(authentication_code, CanLevelAddDelete); !auth_ok {
 		return false, auth_msg
 	}
 
@@ -161,7 +161,7 @@ func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user Use
 
 func (a *FileBasedAuthenticator) UpdateUser(authentication_code string,
 	user_code string, updater_fun ModifyFun) (bool, string) {
-	if auth_ok, auth_msg := a.verifyModifyOperationAllowed(authentication_code); !auth_ok {
+	if auth_ok, auth_msg := a.verifyOpAllowed(authentication_code, CanLevelModify); !auth_ok {
 		return false, auth_msg
 	}
 
@@ -188,7 +188,7 @@ func (a *FileBasedAuthenticator) UpdateUser(authentication_code string,
 
 func (a *FileBasedAuthenticator) DeleteUser(
 	authentication_code string, user_code string) (bool, string) {
-	if auth_ok, auth_msg := a.verifyAddDeleteOperationAllowed(authentication_code); !auth_ok {
+	if auth_ok, auth_msg := a.verifyOpAllowed(authentication_code, CanLevelAddDelete); !auth_ok {
 		return false, auth_msg
 	}
 
@@ -203,29 +203,14 @@ func (a *FileBasedAuthenticator) DeleteUser(
 	return a.writeDatabase()
 }
 
-// Members and Philanthropists can modify.
-func (a *FileBasedAuthenticator) verifyModifyOperationAllowed(auth_code string) (bool, string) {
+// Given a test function for the user level, test if operation is allowed
+func (a *FileBasedAuthenticator) verifyOpAllowed(auth_code string, isOpAllowed func(Level) bool) (bool, string) {
 	authMember := a.findUserSynchronized(auth_code, nil)
 	if authMember == nil {
 		return false, "Couldn't find member with authentication code."
 	}
-	if authMember.UserLevel != LevelMember && authMember.UserLevel != LevelPhilanthropist {
-		return false, "Non-member/philanthropist modify attempt"
-	}
-	if !authMember.InValidityPeriod(a.clock.Now()) {
-		return false, "Auth-Member expired."
-	}
-	return true, ""
-}
-
-// Members can add/delete
-func (a *FileBasedAuthenticator) verifyAddDeleteOperationAllowed(auth_code string) (bool, string) {
-	authMember := a.findUserSynchronized(auth_code, nil)
-	if authMember == nil {
-		return false, "Couldn't find member with authentication code."
-	}
-	if authMember.UserLevel != LevelMember {
-		return false, "Non-member add/delete attempt"
+	if !isOpAllowed(authMember.UserLevel) {
+		return false, "User not authorized."
 	}
 	if !authMember.InValidityPeriod(a.clock.Now()) {
 		return false, "Auth-Member expired."
