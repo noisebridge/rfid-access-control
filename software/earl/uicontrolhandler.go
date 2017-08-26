@@ -21,13 +21,12 @@ import (
 type UIState int
 
 const (
-	StateIdle                      = iota // When there is nothing to do; idle screen.
-	StateDisplayInfoMessage               // Interrupt idle screen and show info message
-	StateWaitMemberCommand                // Member showed RFID; awaiting instruction
-	StateWaitPhilanthropistCommand        // Philanthropist can update tokens.
-	StateAddAwaitNewRFID                  // Member adds new user: wait for new user RFID
-	StateUpdateAwaitRFID                  // Member updates user: wait for new user RFID
-	StateDoorbellRequest                  // Someone just rang
+	StateIdle               = iota // When there is nothing to do; idle screen.
+	StateDisplayInfoMessage        // Interrupt idle screen and show info message
+	StateWaitMenuChoice            // Member/Philanthropist showed RFID; awaiting instruction
+	StateAddAwaitNewRFID           // Member adds new user: wait for new user RFID
+	StateUpdateAwaitRFID           // Member/Philanthropist updates user: wait for new user RFID
+	StateDoorbellRequest           // Someone just rang
 )
 
 const (
@@ -81,8 +80,8 @@ func NewControlHandler(backends *Backends) *UIControlHandler {
 }
 
 // Setting the current state. The state will only last for a while until
-// we fall back to the idleScreen
-func (u *UIControlHandler) setState(state UIState, timeout_in time.Duration) {
+// the timeout is reached and we fall back to the idleScreen
+func (u *UIControlHandler) setStateWithTimeout(state UIState, timeout_in time.Duration) {
 	u.state = state
 	u.stateTimeout = time.Now().Add(timeout_in)
 }
@@ -99,6 +98,14 @@ func (u *UIControlHandler) Init(t Terminal) {
 
 func (u *UIControlHandler) HandleShutdown() {}
 
+func (u *UIControlHandler) CurrentAuthLevel() Level {
+	user := u.auth.FindUser(u.authUserCode)
+	if user == nil {
+		return Level("") // should not really happen.
+	}
+	return user.UserLevel
+}
+
 func (u *UIControlHandler) HandleKeypress(key byte) {
 	if key == '*' { // The '*' key is always 'Esc'-equivalent
 		u.backToIdle()
@@ -106,25 +113,17 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 	}
 
 	switch u.state {
-	case StateWaitMemberCommand:
-		switch key {
-		case '1':
+	case StateWaitMenuChoice:
+		level := u.CurrentAuthLevel()
+		if key == '1' && CanLevelAddDelete(level) {
 			u.t.WriteLCD(0, "Read new user RFID")
 			u.t.WriteLCD(1, "[*] Cancel")
-			u.setState(StateAddAwaitNewRFID, 30*time.Second)
-
-		case '2':
-			u.t.WriteLCD(0, "Read user RFID to renew")
-			u.t.WriteLCD(1, "[*] Cancel")
-			u.setState(StateUpdateAwaitRFID, 30*time.Second)
+			u.setStateWithTimeout(StateAddAwaitNewRFID, 30*time.Second)
 		}
-
-	case StateWaitPhilanthropistCommand:
-		switch key {
-		case '2':
+		if key == '2' && CanLevelModify(level) {
 			u.t.WriteLCD(0, "Read user RFID to renew")
 			u.t.WriteLCD(1, "[*] Cancel")
-			u.setState(StateUpdateAwaitRFID, 30*time.Second)
+			u.setStateWithTimeout(StateUpdateAwaitRFID, 30*time.Second)
 		}
 
 	case StateDoorbellRequest:
@@ -142,11 +141,7 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 			u.postDoorbellHush("Hush pressed on control-terminal; " + silenceMsg)
 			u.t.WriteLCD(0, silenceMsg)
 			// Fall back soon.
-			u.setState(StateDoorbellRequest, 3*time.Second)
-		}
-		if key == '5' {
-			// inform people that think [5] works (it worked once)
-			u.t.WriteLCD(1, "Open only with RFID.")
+			u.setStateWithTimeout(StateDoorbellRequest, 3*time.Second)
 		}
 	}
 }
@@ -191,7 +186,7 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 			u.t.WriteLCD(0, "Trouble:"+msg)
 		}
 		u.t.WriteLCD(1, "[*] Done    [1] Add More")
-		u.setState(StateWaitMemberCommand, 5*time.Second)
+		u.setStateWithTimeout(StateWaitMenuChoice, 5*time.Second)
 
 	case StateUpdateAwaitRFID:
 		updateUser := u.auth.FindUser(rfid)
@@ -210,8 +205,8 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 			newExp := updateUser.ExpiryDate(time.Now()).Format("Jan 02")
 			u.t.WriteLCD(0, fmt.Sprintf("Extended to %s", newExp))
 		}
-		u.t.WriteLCD(1, "[*] Done [2] Update More")
-		u.setState(StateWaitMemberCommand, 5*time.Second)
+		u.t.WriteLCD(1, "[*] Done [2] Renew More")
+		u.setStateWithTimeout(StateWaitMenuChoice, 5*time.Second)
 
 	case StateDoorbellRequest:
 		// Opening doors is somewhat relaxed; if the person is inside
@@ -305,14 +300,14 @@ func (u *UIControlHandler) presentMemberActions(member *User) {
 	u.t.WriteLCD(0, fmt.Sprintf("Howdy %s", member.Name))
 	u.t.WriteLCD(1, "[*]ESC [1]Add [2]Renew")
 
-	u.setState(StateWaitMemberCommand, 5*time.Second)
+	u.setStateWithTimeout(StateWaitMenuChoice, 5*time.Second)
 }
 
 func (u *UIControlHandler) presentPhilanthropistActions(member *User) {
 	u.t.WriteLCD(0, fmt.Sprintf("Howdy %s", member.Name))
 	u.t.WriteLCD(1, "[*] ESC [2] Renew token")
 
-	u.setState(StateWaitPhilanthropistCommand, 5*time.Second)
+	u.setStateWithTimeout(StateWaitMenuChoice, 5*time.Second)
 }
 
 func (u *UIControlHandler) displayUserInfo(user *User) {
@@ -347,13 +342,13 @@ func (u *UIControlHandler) displayUserInfo(user *User) {
 		u.t.WriteLCD(1, "Ask member to renew.")
 	}
 
-	u.setState(StateDisplayInfoMessage, 2*time.Second)
+	u.setStateWithTimeout(StateDisplayInfoMessage, 2*time.Second)
 }
 
 func (u *UIControlHandler) startDoorOpenUI(target Target, message string) {
 	now := time.Now()
 
-	u.setState(StateDoorbellRequest, showDoorbellDuration)
+	u.setStateWithTimeout(StateDoorbellRequest, showDoorbellDuration)
 	u.doorbellTarget = target
 	to_display := ""
 	if len(message) == 0 {
