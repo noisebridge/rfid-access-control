@@ -153,9 +153,22 @@ func TestUpdateUser(t *testing.T) {
 	u.SetAuthCode("unchanged123")
 	auth.AddNewUser("root123", u)
 
+	u.Name = "Jon Philanthropist"
+	u.UserLevel = LevelPhilanthropist
+	u.SetAuthCode("phil123")
+	auth.AddNewUser("root123", u)
+
 	ExpectTrue(t, auth.FindUser("doe123") != nil, "Old doe123")
 	ExpectTrue(t, auth.FindUser("unchanged123") != nil, "Unchanged User")
 	ExpectFalse(t, auth.FindUser("newdoe123") != nil, "Not yet newdoe123")
+
+	// Regular user can't update
+	ExpectFalse(t, eatmsg(auth.UpdateUser("doe123", "doe123", func(user *User) bool { return true })),
+		"Regular user attempted to update")
+
+	// .. but Philanthropist is allowed.
+	ExpectTrue(t, eatmsg(auth.UpdateUser("phil123", "doe123", func(user *User) bool { return true })),
+		"Philanthropist should be able to update")
 
 	// Now let the root user modify user identified by doe123
 	auth.UpdateUser("root123", "doe123", func(user *User) bool {
