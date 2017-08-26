@@ -21,12 +21,13 @@ import (
 type UIState int
 
 const (
-	StateIdle               = iota // When there is nothing to do; idle screen.
-	StateDisplayInfoMessage        // Interrupt idle screen and show info message
-	StateWaitMemberCommand         // Member showed RFID; awaiting instruction
-	StateAddAwaitNewRFID           // Member adds new user: wait for new user RFID
-	StateUpdateAwaitRFID           // Member updates user: wait for new user RFID
-	StateDoorbellRequest           // Someone just rang
+	StateIdle                      = iota // When there is nothing to do; idle screen.
+	StateDisplayInfoMessage               // Interrupt idle screen and show info message
+	StateWaitMemberCommand                // Member showed RFID; awaiting instruction
+	StateWaitPhilanthropistCommand        // Philanthropist can update tokens.
+	StateAddAwaitNewRFID                  // Member adds new user: wait for new user RFID
+	StateUpdateAwaitRFID                  // Member updates user: wait for new user RFID
+	StateDoorbellRequest                  // Someone just rang
 )
 
 const (
@@ -113,7 +114,15 @@ func (u *UIControlHandler) HandleKeypress(key byte) {
 			u.setState(StateAddAwaitNewRFID, 30*time.Second)
 
 		case '2':
-			u.t.WriteLCD(0, "Read user RFID to update")
+			u.t.WriteLCD(0, "Read user RFID to renew")
+			u.t.WriteLCD(1, "[*] Cancel")
+			u.setState(StateUpdateAwaitRFID, 30*time.Second)
+		}
+
+	case StateWaitPhilanthropistCommand:
+		switch key {
+		case '2':
+			u.t.WriteLCD(0, "Read user RFID to renew")
 			u.t.WriteLCD(1, "[*] Cancel")
 			u.setState(StateUpdateAwaitRFID, 30*time.Second)
 		}
@@ -154,6 +163,10 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 			case LevelMember:
 				u.authUserCode = rfid
 				u.presentMemberActions(user)
+
+			case LevelPhilanthropist:
+				u.authUserCode = rfid
+				u.presentPhilanthropistActions(user)
 
 			default:
 				u.displayUserInfo(user)
@@ -290,9 +303,16 @@ func (u *UIControlHandler) displayIdleScreen() {
 
 func (u *UIControlHandler) presentMemberActions(member *User) {
 	u.t.WriteLCD(0, fmt.Sprintf("Howdy %s", member.Name))
-	u.t.WriteLCD(1, "[*]ESC [1]Add [2]Update")
+	u.t.WriteLCD(1, "[*]ESC [1]Add [2]Renew")
 
 	u.setState(StateWaitMemberCommand, 5*time.Second)
+}
+
+func (u *UIControlHandler) presentPhilanthropistActions(member *User) {
+	u.t.WriteLCD(0, fmt.Sprintf("Howdy %s", member.Name))
+	u.t.WriteLCD(1, "[*] ESC [2] Renew token")
+
+	u.setState(StateWaitPhilanthropistCommand, 5*time.Second)
 }
 
 func (u *UIControlHandler) displayUserInfo(user *User) {
