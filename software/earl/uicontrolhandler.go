@@ -339,7 +339,7 @@ func (u *UIControlHandler) displayUserInfo(user *User) {
 		u.t.WriteLCD(1, fmt.Sprintf("Open doors [%d:00-%d:00)",
 			from, to))
 	} else {
-		u.t.WriteLCD(1, "Ask member to renew.")
+		u.t.WriteLCD(1, fmt.Sprintf("%s needs renewal.", user.Name))
 	}
 
 	u.setStateWithTimeout(StateDisplayInfoMessage, 2*time.Second)
