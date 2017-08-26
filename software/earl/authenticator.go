@@ -225,7 +225,7 @@ func (a *FileBasedAuthenticator) verifyAddDeleteOperationAllowed(auth_code strin
 		return false, "Couldn't find member with authentication code."
 	}
 	if authMember.UserLevel != LevelMember {
-		return false, "Non-member modify attempt"
+		return false, "Non-member add/delete attempt"
 	}
 	if !authMember.InValidityPeriod(a.clock.Now()) {
 		return false, "Auth-Member expired."

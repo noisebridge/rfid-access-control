@@ -127,6 +127,21 @@ func TestAddUser(t *testing.T) {
 	ExpectFalse(t, eatmsg(auth.AddNewUser("doe123", u)),
 		"John Doe may not add users")
 
+	// Permission testing: see if regular users or philanthropist can
+	// add users (which they shouldn't)
+	// Let's add an Philanthropist as well.
+	u.Name = "Joe Philanthropist"
+	u.UserLevel = LevelPhilanthropist
+	u.SetAuthCode("phil123")
+	auth.AddNewUser("root123", u)
+
+	// Permission testing:
+	ExpectFalse(t, eatmsg(auth.AddNewUser("doe123", u)),
+		"Attempt to add user by non-member")
+
+	ExpectFalse(t, eatmsg(auth.AddNewUser("phil123", u)),
+		"Attempt to add user by non-member")
+
 	// Ok, now let's see if an new authenticator can make sense of the
 	// file we appended to.
 	auth = NewFileBasedAuthenticator(authFile.Name(), NewApplicationBus())
