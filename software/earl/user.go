@@ -176,7 +176,7 @@ func (user *User) AccessHours() (from int, to int) {
 	case LevelFulltimeUser:
 		return 7, 24 // 7:00 .. 23:59
 	case LevelUser:
-		return 11, 23 // 11:00 .. 22:59
+		return 10, 23 // 10:00 .. 22:59
 	}
 	// TODO: for time-restricted users such as users for classes,
 	// we can have custom hours here that don't depend on the UserLevel
