@@ -262,8 +262,8 @@ func TestTimeLimits(t *testing.T) {
 	nightTime_3h := someMidnight.Add(3 * time.Hour)           // 03:00
 	earlyMorning_7h := someMidnight.Add(7 * time.Hour)        // 09:00
 	hackerDaytime_13h := someMidnight.Add(13 * time.Hour)     // 16:00
-	closingTime_22h := someMidnight.Add(22 * time.Hour)       // 22:00
-	lateStayUsers_23h := someMidnight.Add(23 * time.Hour)     // 23:00
+	closingTime_23h := someMidnight.Add(23 * time.Hour)       // 22:00
+	lateStayUsers_23_5h := someMidnight.Add(23 * time.Hour + time.Minute * 30)     // 23:00
 
 	// After 30 days, non-contact users expire.
 	// So fast forward 31 days, 16:00 in the afternoon.
@@ -348,7 +348,7 @@ func TestTimeLimits(t *testing.T) {
 	ExpectAuthResult(t, auth, "member_nocontact", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs, AuthOk, "")
 
-	mockClock.now = closingTime_22h // should behave similar to earlyMorning
+	mockClock.now = closingTime_23h // should behave similar to earlyMorning
 	ExpectAuthResult(t, auth, "philanthropist123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, AuthOk, "")
@@ -358,7 +358,7 @@ func TestTimeLimits(t *testing.T) {
 	ExpectAuthResult(t, auth, "user_nocontact", TargetUpstairs,
 		AuthOkButOutsideTime, "outside")
 
-	mockClock.now = lateStayUsers_23h // members, philanthropists, and fulltimeusers left
+	mockClock.now = lateStayUsers_23_5h // members, philanthropists, and fulltimeusers left
 	ExpectAuthResult(t, auth, "member123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "philanthropist123", TargetUpstairs, AuthOk, "")
 	ExpectAuthResult(t, auth, "fulltimeuser123", TargetUpstairs, AuthOk, "")
@@ -392,8 +392,8 @@ func TestHolidayTimeLimits(t *testing.T) {
 	nightTime_3h := someMidnight.Add(3 * time.Hour)           // 03:00
 	earlyMorning_7h := someMidnight.Add(7 * time.Hour)        // 09:00
 	hackerDaytime_13h := someMidnight.Add(13 * time.Hour)     // 16:00
-	closingTime_22h := someMidnight.Add(22 * time.Hour)       // 22:00
-	lateStayUsers_23h := someMidnight.Add(23 * time.Hour)     // 23:00
+	closingTime_23h := someMidnight.Add(23 * time.Hour)       // 22:00
+	lateStayUsers_23_5h := someMidnight.Add(23 * time.Hour + time.Minute * 30)     // 23:00
 
 	// We 'register' the users a day before
 	mockClock.now = someMidnight.Add(-12 * time.Hour)
@@ -418,11 +418,11 @@ func TestHolidayTimeLimits(t *testing.T) {
 	ExpectAuthResult(t, auth, "user123", TargetUpstairs,
 		AuthOkButOutsideTime, "holiday")
 
-	mockClock.now = closingTime_22h // should behave similar to earlyMorning
+	mockClock.now = closingTime_23h // should behave similar to earlyMorning
 	ExpectAuthResult(t, auth, "user123", TargetUpstairs,
 		AuthOkButOutsideTime, "outside")
 
-	mockClock.now = lateStayUsers_23h
+	mockClock.now = lateStayUsers_23_5h
 	ExpectAuthResult(t, auth, "user123", TargetUpstairs,
 		AuthOkButOutsideTime, "outside")
 }
