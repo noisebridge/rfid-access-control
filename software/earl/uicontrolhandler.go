@@ -31,7 +31,7 @@ const (
 
 const (
 	// Display doorbell for this amount of time
-	showDoorbellDuration = 75 * time.Second
+	showDoorbellDuration = 120 * time.Second
 
 	// For annoying people...
 	offerSilenceWhenRepeatedRingsUnder = 2 * time.Second
