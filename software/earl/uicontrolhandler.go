@@ -304,10 +304,8 @@ func (u *UIControlHandler) presentMemberActions(member *User) {
 }
 
 func (u *UIControlHandler) presentPhilanthropistActions(member *User) {
-	u.t.WriteLCD(0, fmt.Sprintf("Howdy %s", member.Name))
-	u.t.WriteLCD(1, "[*] ESC [2] Renew token")
-
-	u.setStateWithTimeout(StateWaitMenuChoice, 5*time.Second)
+	// Meeting 2018-10-23: Philanthropists can do same as members.
+	u.presentMemberActions(member)
 }
 
 func (u *UIControlHandler) displayUserInfo(user *User) {

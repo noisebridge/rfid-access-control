@@ -132,15 +132,22 @@ func TestAddUser(t *testing.T) {
 	// Let's add an Philanthropist as well.
 	u.Name = "Joe Philanthropist"
 	u.UserLevel = LevelPhilanthropist
+	u.ValidTo = time.Now().Add(1 * time.Hour)
+	u.ContactInfo = "phil@foo"
 	u.SetAuthCode("phil123")
 	auth.AddNewUser("root123", u)
 
 	// Permission testing:
+	u.Name = "Attempt Jon Doe adding"
+	u.SetAuthCode("fromdoe")
 	ExpectFalse(t, eatmsg(auth.AddNewUser("doe123", u)),
 		"Attempt to add user by non-member")
 
-	ExpectFalse(t, eatmsg(auth.AddNewUser("phil123", u)),
-		"Attempt to add user by non-member")
+	// A Philanthropist however, can add a new user.
+	u.Name = "Philanthropist adding"
+	u.SetAuthCode("fromphil")
+	ExpectTrue(t, eatmsg(auth.AddNewUser("phil123", u)),
+		"Philanthropist adding new user")
 
 	// Ok, now let's see if an new authenticator can make sense of the
 	// file we appended to.
