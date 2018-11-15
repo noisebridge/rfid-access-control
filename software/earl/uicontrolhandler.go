@@ -27,11 +27,12 @@ const (
 	StateAddAwaitNewRFID           // Member adds new user: wait for new user RFID
 	StateUpdateAwaitRFID           // Member/Philanthropist updates user: wait for new user RFID
 	StateDoorbellRequest           // Someone just rang
+	StateDooropenRequest           // Someone at control just requested to open a door regardless of doorbell
 )
 
 const (
 	// Display doorbell for this amount of time
-	showDoorbellDuration = 75 * time.Second
+	showDoorbellDuration = 120 * time.Second
 
 	// For annoying people...
 	offerSilenceWhenRepeatedRingsUnder = 2 * time.Second
@@ -60,6 +61,7 @@ type UIControlHandler struct {
 	// We allow rate-limiting of the doorbell.
 	lastDoorbellRequest time.Time // To know when to offer hush.
 	doorbellTarget      Target
+	dooropenTarget      Target
 	endDoorbellHush     time.Time // Incremented
 
 	// Stuff collected from events we see, mostly to
@@ -106,10 +108,31 @@ func (u *UIControlHandler) CurrentAuthLevel() Level {
 	return user.UserLevel
 }
 
+func keyToTarget(key byte) (Target, bool) {
+	switch key {
+	case '4':
+		return TargetDownstairs, false
+	case '5':
+		return TargetUpstairs, false
+	case '6':
+		return TargetElevator, false
+	}
+	return TargetControlUI, true
+}
+
 func (u *UIControlHandler) HandleKeypress(key byte) {
 	if key == '*' { // The '*' key is always 'Esc'-equivalent
 		u.backToIdle()
 		return
+	}
+
+	// If user presses 4,5,6 they are requesting to open a specific door without regard for doorbells or lack thereof
+	target, err := keyToTarget(key)
+	if !err {
+		u.t.WriteLCD(0, fmt.Sprintf("RFID: open at %s", target))
+		u.t.WriteLCD(1, "[*] Cancel")
+		u.dooropenTarget = target
+		u.setStateWithTimeout(StateDooropenRequest, 30*time.Second)
 	}
 
 	switch u.state {
@@ -213,7 +236,14 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 		// we assume they are allowed to open the door.
 		// TODO: revisit and allow memmbers once their density increases ?
 		if u.auth.FindUser(rfid) != nil {
-			u.openDoorAndShow(u.doorbellTarget, "via RFID on control")
+			if u.doorbellTarget == TargetDownstairs {
+				u.openDoorAndShow(u.doorbellTarget, "via RFID on control")
+				u.backToIdle()
+			}
+		}
+	case StateDooropenRequest:
+		if u.auth.FindUser(rfid) != nil {
+			u.openDoorAndShow(u.dooropenTarget, "via RFID on control")
 			u.backToIdle()
 		}
 	}
@@ -363,9 +393,11 @@ func (u *UIControlHandler) startDoorOpenUI(target Target, message string) {
 	}
 	u.t.WriteLCD(0, fmt.Sprintf("%*s", fmt_len, to_display))
 
+	if target != TargetDownstairs {
+		u.t.WriteLCD(1, "[*] ESC | [9] Silence")
 	// The hush option always works, but we only show it when there is
 	// some repeated annoyance going on to keep UI simple in the simple case
-	if now.Sub(u.lastDoorbellRequest) < offerSilenceWhenRepeatedRingsUnder {
+	} else if now.Sub(u.lastDoorbellRequest) < offerSilenceWhenRepeatedRingsUnder {
 		u.t.WriteLCD(1, "RFID:Open | [9] Silence!")
 	} else {
 		u.t.WriteLCD(1, "RFID:Open | [*] ESC")
