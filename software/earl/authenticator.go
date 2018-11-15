@@ -504,7 +504,7 @@ func (a *FileBasedAuthenticator) userHasAccess(user *User, target Target) (AuthR
 	case LevelMember:
 		return AuthOk, "" // Members always have access.
 
-	case LevelPhilanthropist: // Philanthropists also have all-hour access
+	case LevelPhilanthropist, LevelTrustedPhilanthropist: // Philanthropists also have all-hour access
 		return AuthOk, ""
 
 	case LevelFulltimeUser:
