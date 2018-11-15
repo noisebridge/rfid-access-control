@@ -2,8 +2,8 @@
 // A TerminalEventHandler, that interacts with users in the space.
 //
 // Its primary goal is not to open doors and such, but to provide an
-// user-interface to verify RFID cards and convenient way for members to
-// add new users.
+// user-interface to verify RFID cards and convenient way for members
+// and trusted philanthropists to add new users.
 //
 // It is a regular terminal (same serial protocol), but has a LCD attached as
 // output and a Keypad and RFID reader as input.
@@ -24,7 +24,7 @@ const (
 	StateIdle               = iota // When there is nothing to do; idle screen.
 	StateDisplayInfoMessage        // Interrupt idle screen and show info message
 	StateWaitMenuChoice            // Member/Philanthropist showed RFID; awaiting instruction
-	StateAddAwaitNewRFID           // Member adds new user: wait for new user RFID
+	StateAddAwaitNewRFID           // Member/TrustedPhilanthropist adds new user: wait for new user RFID
 	StateUpdateAwaitRFID           // Member/Philanthropist updates user: wait for new user RFID
 	StateDoorbellRequest           // Someone just rang
 	StateDooropenRequest           // Someone at control just requested to open a door regardless of doorbell
@@ -178,6 +178,10 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 			u.t.WriteLCD(1, "Ask a member to register")
 		} else {
 			switch user.UserLevel {
+			case LevelTrustedPhilanthropist:
+				u.authUserCode = rfid
+				u.presentTrustedPhilanthropistActions(user)
+
 			case LevelMember:
 				u.authUserCode = rfid
 				u.presentMemberActions(user)
@@ -329,13 +333,22 @@ func (u *UIControlHandler) displayIdleScreen() {
 func (u *UIControlHandler) presentMemberActions(member *User) {
 	u.t.WriteLCD(0, fmt.Sprintf("Howdy %s", member.Name))
 	u.t.WriteLCD(1, "[*]ESC [1]Add [2]Renew")
+	// @TODO: allow members to make philanthropists trusted philanthropists
+	u.setStateWithTimeout(StateWaitMenuChoice, 5*time.Second)
+}
+
+func (u *UIControlHandler) presentTrustedPhilanthropistActions(member *User) {
+	u.t.WriteLCD(0, fmt.Sprintf("Howdy %s", member.Name))
+	u.t.WriteLCD(1, "[*]ESC [1]Add [2]Renew")
 
 	u.setStateWithTimeout(StateWaitMenuChoice, 5*time.Second)
 }
 
 func (u *UIControlHandler) presentPhilanthropistActions(member *User) {
-	// Meeting 2018-10-23: Philanthropists can do same as members.
-	u.presentMemberActions(member)
+	u.t.WriteLCD(0, fmt.Sprintf("Howdy %s", member.Name))
+	u.t.WriteLCD(1, "[*] ESC [2] Renew token")
+
+	u.setStateWithTimeout(StateWaitMenuChoice, 5*time.Second)
 }
 
 func (u *UIControlHandler) displayUserInfo(user *User) {

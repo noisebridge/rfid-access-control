@@ -40,6 +40,8 @@ const (
 
 	// A user with 24/7 access to the space, but who cannot add users.
 	LevelPhilanthropist = Level("philanthropist")
+	// A philanthropist that has been granted the ability to add tokens by a member.
+	LevelTrustedPhilanthropist = Level("trustedphilanthropist")
 )
 
 const (
@@ -108,7 +110,7 @@ func NewUserFromCSV(reader *csv.Reader) (user *User, done bool) {
 
 func isValidLevel(input string) bool {
 	switch input {
-	case "member", "user", "fulltimeuser", "hiatus", "philanthropist":
+	case "member", "user", "fulltimeuser", "hiatus", "philanthropist", "trustedphilanthropist":
 		return true
 	default:
 		return false
@@ -171,7 +173,7 @@ func (user *User) AccessHours() (from int, to int) {
 	switch user.UserLevel {
 	case LevelMember:
 		return 0, 24 // all access
-	case LevelPhilanthropist:
+	case LevelPhilanthropist, LevelTrustedPhilanthropist:
 		return 0, 24 // all access
 	case LevelFulltimeUser:
 		return 7, 24 // 7:00 .. 23:59
@@ -198,7 +200,7 @@ func (user *User) SetAuthCode(code string) bool {
 func CanLevelModify(l Level) bool {
 	// Philanthropist are allowed to renew user tokens.
 	switch l {
-	case LevelMember, LevelPhilanthropist:
+	case LevelMember, LevelPhilanthropist, LevelTrustedPhilanthropist:
 		return true
 	}
 	return false
@@ -206,8 +208,7 @@ func CanLevelModify(l Level) bool {
 
 func CanLevelAddDelete(l Level) bool {
 	switch l {
-	// Meeting 2018-10-23: Philanthropists also can add new
-	case LevelMember, LevelPhilanthropist:
+	case LevelMember, LevelTrustedPhilanthropist:
 		return true
 	}
 	return false
