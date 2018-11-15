@@ -104,7 +104,9 @@ func (g *GPIOActions) ringBell(which Target) {
 	_, err := os.Stat(filename)
 	msg := ""
 	if err == nil {
-		go exec.Command("/usr/bin/curl", "-q", "http://pegasus.noise/bell/?tone="+string(which)).Run()
+		// Inform pegasus about doorbell, so that it can ring. But
+		// time-out so that network issues don't cause thread-eating.
+		go exec.Command("/usr/bin/curl", "-q", "-m", "3", "http://pegasus.noise/bell/?tone="+string(which)).Run()
 		go exec.Command(WavPlayer, filename).Run()
 	} else {
 		msg = ": [ugh, file not found!]"
