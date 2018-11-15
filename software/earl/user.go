@@ -206,8 +206,7 @@ func CanLevelModify(l Level) bool {
 
 func CanLevelAddDelete(l Level) bool {
 	switch l {
-	// Meeting 2018-10-23: Philanthropists also can add new
-	case LevelMember, LevelPhilanthropist:
+	case LevelMember:
 		return true
 	}
 	return false
