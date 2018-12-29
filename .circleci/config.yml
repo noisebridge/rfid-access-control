@@ -1,0 +1,65 @@
+---
+version: 2.1
+
+jobs:
+  build:
+    docker:
+    - image: circleci/golang:1.11
+
+    steps:
+    - checkout
+    - run: sudo apt-get -y install file
+    - run: go mod download
+    - run: mkdir -v build
+    - run: cd software/earl && make earl
+    - run: cd software/earl && make test
+    - run: mv -v software/earl/earl build/earl-amd64
+    - run: cd software/earl && GOARCH=arm GOARM=5 make earl
+    - run: mv -v software/earl/earl build/earl-armv5
+    - run: file build/*
+    - persist_to_workspace:
+        root: .
+        paths:
+        - build
+    - store_artifacts:
+        path: build
+
+  release:
+    docker:
+    - image: circleci/golang:1.11
+
+    steps:
+    - run: sudo apt-get update
+    - run: sudo apt-get -y install fakeroot
+    - run: mkdir -v -p ${HOME}/bin
+    - run: curl -L 'https://github.com/aktau/github-release/releases/download/v0.7.2/linux-amd64-github-release.tar.bz2' | tar xvjf - --strip-components 3 -C ${HOME}/bin
+    - attach_workspace:
+        at: .
+    - run: cd build && fakeroot tar -czvf ../earl-${CIRCLE_TAG}.amd64.tar.gz earl-amd64
+    - run: cd build && fakeroot tar -czvf ../earl-${CIRCLE_TAG}.armv5.tar.gz earl-armv5
+    - run: >
+        for tarfile in earl-*.tar.gz ; do
+          ${HOME}/bin/github-release upload \
+            --user "${CIRCLE_PROJECT_USERNAME}" \
+            --repo "${CIRCLE_PROJECT_REPONAME}" \
+            --tag "${CIRCLE_TAG}" \
+            --name "${tarfile}" \
+            --file "${tarfile}"
+        done
+
+workflows:
+  version: 2
+  earl:
+    jobs:
+    - build:
+        filters:
+          tags:
+            only: /.*/
+    - release:
+        requires:
+        - build
+        filters:
+          tags:
+            only: /^v.*/
+          branches:
+            ignore: /.*/
