@@ -2,14 +2,15 @@
 # features of 'make'
 ##
 
-VERSION ?= $(shell git log --date=short --pretty=format:'%h@%cd' -n 1 .)
+BRANCH    ?= $(shell git rev-parse --abbrev-ref HEAD)
+BUILDDATE ?= $(shell date --iso-8601=seconds)
+REVISION  ?= $(shell git rev-parse HEAD)
+VERSION   ?= $(shell git log --date=short --pretty=format:'%h@%cd' -n 1 .)
 
 all : earl test
 
-# Note, our go version on the Pi does not understand the newer main.VERSION=xxx
-# syntax
 earl: *.go
-	go build -ldflags "-X main.VERSION='$(VERSION)'"
+	go build -ldflags "-X main.Branch=$(BRANCH) -X main.BuildDate=$(BUILDDATE) -X main.Revision=$(REVISION) -X main.Version=$(VERSION)"
 
 test:
 	go test
