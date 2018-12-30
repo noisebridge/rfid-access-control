@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -216,8 +217,15 @@ func main() {
 	}
 
 	if *httpPort > 0 && *httpPort <= 65535 {
-		apiServer := NewApiServer(appEventBus, *httpPort)
-		go apiServer.Run()
+		mux := http.NewServeMux()
+		server := &http.Server{
+			Addr: fmt.Sprintf(":%d", *httpPort),
+			// JSON events listeners should be kept open for a while
+			WriteTimeout: 3600 * time.Second,
+			Handler:      mux,
+		}
+		NewApiServer(appEventBus, mux)
+		go server.ListenAndServe()
 	}
 
 	if *tcpPort > 0 && *tcpPort <= 65535 {
