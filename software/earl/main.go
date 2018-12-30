@@ -9,11 +9,18 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/common/version"
 )
 
 // Inserted later w/ a linker flag.
 // Check the Makefile for details.
-var VERSION string
+var Branch string
+var BuildDate string
+var Revision string
+var Version string
 
 // Each access point has their own name. The terminals can identify
 // by that name.
@@ -54,7 +61,7 @@ type Backends struct {
 }
 
 func printVersionInfo() {
-	fmt.Printf("Version: %s\n", VERSION)
+	fmt.Printf("Version: %s\n", Version)
 }
 
 func printUserList(auth *FileBasedAuthenticator) {
@@ -152,6 +159,14 @@ func handleSerialDevice(devicepath string, baud int, backends *Backends) {
 	}
 }
 
+func init() {
+	version.Branch = Branch
+	version.BuildDate = BuildDate
+	version.Revision = Revision
+	version.Version = Version
+	prometheus.MustRegister(version.NewCollector("earl"))
+}
+
 func main() {
 	userFileName := flag.String("users", "", "User Authentication file.")
 	logFileName := flag.String("logfile", "", "The log file, default = stdout")
@@ -177,7 +192,7 @@ func main() {
 		log.SetOutput(logfile)
 	}
 
-	log.Printf("Starting... version: %s\n", VERSION)
+	log.Printf("Starting... version: %s\n", Version)
 
 	if len(flag.Args()) < 1 && !*list_users {
 		fmt.Fprintf(os.Stderr,
@@ -224,6 +239,7 @@ func main() {
 			WriteTimeout: 3600 * time.Second,
 			Handler:      mux,
 		}
+		mux.Handle("/metrics", promhttp.Handler())
 		NewApiServer(appEventBus, mux)
 		go server.ListenAndServe()
 	}
@@ -236,7 +252,7 @@ func main() {
 	log.Println("Ready.")
 	backends.appEventBus.Post(&AppEvent{
 		Ev:     AppEarlStarted,
-		Msg:    "Earl version " + VERSION + " started. Ready to serve.",
+		Msg:    "Earl version " + Version + " started. Ready to serve.",
 		Source: "main",
 	})
 
