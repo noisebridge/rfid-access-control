@@ -3,7 +3,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"sort"
 	"sync"
@@ -11,8 +10,7 @@ import (
 )
 
 type ApiServer struct {
-	bus    *ApplicationBus
-	server *http.Server
+	bus *ApplicationBus
 
 	// Remember the last event for each type. Already JSON prepared
 	eventChannel   AppEventChannel
@@ -51,25 +49,16 @@ func JsonEventFromAppEvent(event *AppEvent) *JsonAppEvent {
 	return jev
 }
 
-func NewApiServer(bus *ApplicationBus, port int) *ApiServer {
+func NewApiServer(bus *ApplicationBus, mux *http.ServeMux) *ApiServer {
 	newObject := &ApiServer{
-		bus: bus,
-		server: &http.Server{
-			Addr: fmt.Sprintf(":%d", port),
-			// JSON events listeners should be kept open for a while
-			WriteTimeout: 3600 * time.Second,
-		},
+		bus:          bus,
 		eventChannel: make(AppEventChannel),
 		lastEvents:   make(map[AppEventType]*JsonAppEvent),
 	}
-	newObject.server.Handler = newObject
+	mux.Handle("/api/events", newObject)
 	bus.Subscribe(newObject.eventChannel)
 	go newObject.collectLastEvents()
 	return newObject
-}
-
-func (a *ApiServer) Run() {
-	a.server.ListenAndServe()
 }
 
 func (a *ApiServer) collectLastEvents() {
@@ -125,12 +114,6 @@ func (event *JsonAppEvent) writeJSONEvent(out http.ResponseWriter, jsonp_callbac
 func (a *ApiServer) ServeHTTP(out http.ResponseWriter, req *http.Request) {
 	if req.Method != "GET" && req.Method != "POST" {
 		out.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-	if req.URL.Path != "/api/events" {
-		out.WriteHeader(http.StatusNotFound)
-		out.Write([]byte("Nothing to see here. " +
-			"The cool stuff is happening at /api/events"))
 		return
 	}
 
