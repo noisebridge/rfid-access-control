@@ -10,7 +10,7 @@ Access control system used within the [Noisebridge] hacker space.
    - [Multi RS232 serial interface with RJ45](hardware/multi-interface/README.md)
    - [Earl: Central access control software](software/earl/README.md)
 
-![RFID reader] [case-image]
+![RFID reader][case-image]
 
 [case-image]: https://github.com/hzeller/rfid-access-control/raw/master/img/rfid-reader-case.png
 [Noisebridge]: https://noisebridge.net/
