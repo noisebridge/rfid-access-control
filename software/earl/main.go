@@ -53,7 +53,7 @@ type Backends struct {
 }
 
 func printVersionInfo() {
-	fmt.Printf("Version: %s", VERSION)
+	fmt.Printf("Version: %s\n", VERSION)
 }
 
 func printUserList(auth *FileBasedAuthenticator) {

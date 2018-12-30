@@ -2,7 +2,7 @@
 # features of 'make'
 ##
 
-VERISON ?= $(shell git log --date=short --pretty=format:'%h@%cd' -n 1 .)
+VERSION ?= $(shell git log --date=short --pretty=format:'%h@%cd' -n 1 .)
 
 all : earl test
 
