@@ -408,8 +408,8 @@ func (u *UIControlHandler) startDoorOpenUI(target Target, message string) {
 
 	if target != TargetDownstairs {
 		u.t.WriteLCD(1, "[*] ESC | [9] Silence")
-	// The hush option always works, but we only show it when there is
-	// some repeated annoyance going on to keep UI simple in the simple case
+		// The hush option always works, but we only show it when there is
+		// some repeated annoyance going on to keep UI simple in the simple case
 	} else if now.Sub(u.lastDoorbellRequest) < offerSilenceWhenRepeatedRingsUnder {
 		u.t.WriteLCD(1, "RFID:Open | [9] Silence!")
 	} else {
