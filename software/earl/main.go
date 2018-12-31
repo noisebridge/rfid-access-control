@@ -22,6 +22,9 @@ var BuildDate string
 var Revision string
 var Version string
 
+// Prometheus namespace
+var metricNamespace = "earl"
+
 // Each access point has their own name. The terminals can identify
 // by that name.
 

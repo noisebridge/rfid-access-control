@@ -7,6 +7,35 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+)
+
+func secondsDurationBuckets() []float64 {
+	return []float64{
+		0.005, /* 5ms */
+		0.025, /* 25ms */
+		0.1,   /* 100ms */
+		0.5,   /* 500ms */
+		1.0,   /* 1s */
+		10.0,  /* 10s */
+		30.0,  /* 30s */
+		60.0,  /* 1m */
+		300.0, /* 10m */
+	}
+}
+
+var (
+	httpRequestDurationSeconds = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: metricNamespace,
+			Subsystem: "api",
+			Name:      "request_duration_seconds",
+			Help:      "A histogram of latencies for requests to the API.",
+			Buckets:   secondsDurationBuckets(),
+		},
+		[]string{"method"},
+	)
 )
 
 type ApiServer struct {
@@ -112,6 +141,9 @@ func (event *JsonAppEvent) writeJSONEvent(out http.ResponseWriter, jsonp_callbac
 }
 
 func (a *ApiServer) ServeHTTP(out http.ResponseWriter, req *http.Request) {
+	begin := time.Now()
+	defer httpRequestDurationSeconds.With(prometheus.Labels{"method":req.Method}).Observe(time.Since(begin).Seconds())
+
 	if req.Method != "GET" && req.Method != "POST" {
 		out.WriteHeader(http.StatusMethodNotAllowed)
 		return
