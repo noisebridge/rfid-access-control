@@ -23,9 +23,25 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type AuthResult int
+
+func (a AuthResult) String() string {
+	switch a {
+	case 0:
+		return "failed"
+	case 1:
+		return "expired"
+	case 2:
+		return "ok-but-outside-time"
+	case 42:
+		return "ok"
+	}
+	return "invalid AuthResult"
+}
 
 const (
 	AuthFail             = AuthResult(0) // Not authorized.
@@ -83,6 +99,19 @@ type FileBasedAuthenticator struct {
 	clock    Clock // Our source of time. Useful for simulated clock in tests
 }
 
+var (
+	authSubsystem = "auth"
+	authCounter   = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: metricNamespace,
+			Subsystem: authSubsystem,
+			Name:      "failed_total",
+			Help:      "Number of failed auth attempts",
+		},
+		[]string{"target", "status"},
+	)
+)
+
 func NewFileBasedAuthenticator(userFilename string,
 	bus *ApplicationBus) *FileBasedAuthenticator {
 	a := &FileBasedAuthenticator{
@@ -118,7 +147,9 @@ func (a *FileBasedAuthenticator) IterateUsers(callback func(user User)) {
 }
 
 // Check if access for a given code is granted to a given Target
-func (a *FileBasedAuthenticator) AuthUser(code string, target Target) (AuthResult, string) {
+func (a *FileBasedAuthenticator) AuthUser(code string, target Target) (result AuthResult, message string) {
+	defer authCounter.WithLabelValues(target.String(), result.String()).Inc()
+
 	if !hasMinimalCodeRequirements(code) {
 		return AuthFail, "Auth failed: too short code."
 	}

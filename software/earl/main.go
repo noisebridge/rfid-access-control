@@ -29,6 +29,10 @@ var metricNamespace = "earl"
 // by that name.
 
 type Target string // TODO: find better name for this type
+func (s Target) String() string {
+	return string(s)
+}
+
 const (
 	TargetDownstairs = Target("gate")
 	TargetUpstairs   = Target("upstairs")
