@@ -23,6 +23,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type AuthResult int
@@ -35,6 +37,29 @@ const (
 	HolidayHiatusBegin   = 1482278400 // 2016-12-21 UTC
 	HolidayHiatusEnd     = 1483747200 // 2017-01-07 UTC
 )
+
+var (
+	authResults = []AuthResult{
+		AuthFail,
+		AuthExpired,
+		AuthOkButOutsideTime,
+		AuthOk,
+	}
+)
+
+func (a AuthResult) String() string {
+	switch a {
+	case AuthFail:
+		return "failed"
+	case AuthExpired:
+		return "expired"
+	case AuthOkButOutsideTime:
+		return "ok-but-outside-time"
+	case AuthOk:
+		return "ok"
+	}
+	return "invalid AuthResult"
+}
 
 // Modify a user pointer. Returns 'true' if the changes should be written back.
 type ModifyFun func(user *User) bool
@@ -83,6 +108,27 @@ type FileBasedAuthenticator struct {
 	clock    Clock // Our source of time. Useful for simulated clock in tests
 }
 
+var (
+	authSubsystem = "auth"
+	authCounter   = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: metricNamespace,
+			Subsystem: authSubsystem,
+			Name:      "failed_total",
+			Help:      "Number of failed auth attempts",
+		},
+		[]string{"target", "status"},
+	)
+)
+
+func init() {
+	for _, target := range targets {
+		for _, auth := range authResults {
+			authCounter.WithLabelValues(target.String(), auth.String())
+		}
+	}
+}
+
 func NewFileBasedAuthenticator(userFilename string,
 	bus *ApplicationBus) *FileBasedAuthenticator {
 	a := &FileBasedAuthenticator{
@@ -118,7 +164,9 @@ func (a *FileBasedAuthenticator) IterateUsers(callback func(user User)) {
 }
 
 // Check if access for a given code is granted to a given Target
-func (a *FileBasedAuthenticator) AuthUser(code string, target Target) (AuthResult, string) {
+func (a *FileBasedAuthenticator) AuthUser(code string, target Target) (result AuthResult, message string) {
+	defer authCounter.WithLabelValues(target.String(), result.String()).Inc()
+
 	if !hasMinimalCodeRequirements(code) {
 		return AuthFail, "Auth failed: too short code."
 	}

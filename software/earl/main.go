@@ -22,15 +22,31 @@ var BuildDate string
 var Revision string
 var Version string
 
+// Prometheus namespace
+var metricNamespace = "earl"
+
 // Each access point has their own name. The terminals can identify
 // by that name.
 
 type Target string // TODO: find better name for this type
+func (s Target) String() string {
+	return string(s)
+}
+
 const (
 	TargetDownstairs = Target("gate")
 	TargetUpstairs   = Target("upstairs")
 	TargetElevator   = Target("elevator")
 	TargetControlUI  = Target("control") // UI to add new users.
+)
+
+var (
+	targets = []Target{
+		TargetDownstairs,
+		TargetUpstairs,
+		TargetElevator,
+		TargetControlUI,
+	}
 )
 
 const (
