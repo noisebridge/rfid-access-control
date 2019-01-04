@@ -41,7 +41,7 @@ const (
 )
 
 var (
-	Targets = []Target{
+	targets = []Target{
 		TargetDownstairs,
 		TargetUpstairs,
 		TargetElevator,

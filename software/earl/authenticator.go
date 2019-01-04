@@ -39,7 +39,7 @@ const (
 )
 
 var (
-	AuthResults = []AuthResult{
+	authResults = []AuthResult{
 		AuthFail,
 		AuthExpired,
 		AuthOkButOutsideTime,
@@ -122,8 +122,8 @@ var (
 )
 
 func init() {
-	for _, target := range Targets {
-		for _, auth := range AuthResults {
+	for _, target := range targets {
+		for _, auth := range authResults {
 			authCounter.WithLabelValues(target.String(), auth.String())
 		}
 	}
