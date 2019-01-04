@@ -114,7 +114,7 @@ var (
 		prometheus.CounterOpts{
 			Namespace: metricNamespace,
 			Subsystem: authSubsystem,
-			Name:      "failed_total",
+			Name:      "results_total",
 			Help:      "Number of failed auth attempts",
 		},
 		[]string{"target", "status"},
@@ -169,22 +169,30 @@ func (a *FileBasedAuthenticator) AuthUser(code string, target Target) (result Au
 	defer authCounter.WithLabelValues(target.String(), result.String()).Inc()
 
 	if !hasMinimalCodeRequirements(code) {
-		return AuthFail, "Auth failed: too short code."
+		result = AuthFail
+		return result, "Auth failed: too short code."
 	}
 	user := a.findUserSynchronized(code, nil)
 	if user == nil {
-		return AuthFail, "No user for code"
+		result = AuthFail
+		message = "No user for code"
+		return
 	}
 	// In case of Hiatus users, be a bit more specific with logging: this
 	// might be someone stolen a token of some person on leave or attempt
 	// of a blocked user to get access.
 	if user.UserLevel == LevelHiatus {
-		return AuthFail, fmt.Sprintf("User on hiatus '%s <%s>'", user.Name, user.ContactInfo)
+		result = AuthFail
+		message = fmt.Sprintf("User on hiatus '%s <%s>'", user.Name, user.ContactInfo)
+		return
 	}
 	if !user.InValidityPeriod(a.clock.Now()) {
-		return AuthExpired, "Code not valid yet/expired"
+		result = AuthExpired
+		message = "Code not valid yet/expired"
+		return
 	}
-	return a.userHasAccess(user, target)
+	result, message = a.userHasAccess(user, target)
+	return
 }
 
 func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user User) (bool, string) {
