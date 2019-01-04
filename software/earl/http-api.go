@@ -32,6 +32,12 @@ type ApiServer struct {
 	lastEventsLock sync.Mutex
 }
 
+func init() {
+	prometheus.MustRegister(httpRequestDurationSeconds)
+	httpRequestDurationSeconds.WithLabelValues("GET")
+	httpRequestDurationSeconds.WithLabelValues("POST")
+}
+
 // Similar to AppEvent, but json serialization hints and timestamp being
 // a pointer to be able to omit it.
 type JsonAppEvent struct {
