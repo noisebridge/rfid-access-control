@@ -122,6 +122,7 @@ var (
 )
 
 func init() {
+	prometheus.MustRegister(authCounter)
 	for _, target := range targets {
 		for _, auth := range authResults {
 			authCounter.WithLabelValues(target.String(), auth.String())
