@@ -11,6 +11,7 @@ jobs:
     - run: sudo apt-get -y install file
     - run: go mod download
     - run: mkdir -v build
+    - run: cd software/earl && make style
     - run: cd software/earl && make earl
     - run: cd software/earl && make test
     - run: mv -v software/earl/earl build/earl-amd64

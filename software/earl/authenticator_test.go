@@ -251,12 +251,12 @@ func TestTimeLimits(t *testing.T) {
 		defer syscall.Unlink(authFile.Name())
 	}
 
-	someMidnight, _ := time.Parse("2006-01-02", "2014-10-10") // midnight
-	nightTime_3h := someMidnight.Add(3 * time.Hour)           // 03:00
-	earlyMorning_7h := someMidnight.Add(7 * time.Hour)        // 09:00
-	hackerDaytime_13h := someMidnight.Add(13 * time.Hour)     // 16:00
-	closingTime_22h := someMidnight.Add(23 * time.Hour)       // 22:00
-	lateStayUsers_23h := someMidnight.Add(23 * time.Hour + 30 * time.Minute) // 23:00
+	someMidnight, _ := time.Parse("2006-01-02", "2014-10-10")            // midnight
+	nightTime_3h := someMidnight.Add(3 * time.Hour)                      // 03:00
+	earlyMorning_7h := someMidnight.Add(7 * time.Hour)                   // 09:00
+	hackerDaytime_13h := someMidnight.Add(13 * time.Hour)                // 16:00
+	closingTime_22h := someMidnight.Add(23 * time.Hour)                  // 22:00
+	lateStayUsers_23h := someMidnight.Add(23*time.Hour + 30*time.Minute) // 23:00
 
 	// After 30 days, non-contact users expire.
 	// So fast forward 31 days, 16:00 in the afternoon.
@@ -381,12 +381,12 @@ func TestHolidayTimeLimits(t *testing.T) {
 		defer syscall.Unlink(authFile.Name())
 	}
 
-	someMidnight, _ := time.Parse("2006-01-02", "2016-12-24") // midnight
-	nightTime_3h := someMidnight.Add(3 * time.Hour)           // 03:00
-	earlyMorning_7h := someMidnight.Add(7 * time.Hour)        // 09:00
-	hackerDaytime_13h := someMidnight.Add(13 * time.Hour)     // 16:00
-	closingTime_22h := someMidnight.Add(23 * time.Hour)       // 22:00
-	lateStayUsers_23h := someMidnight.Add(23 * time.Hour + 30 * time.Minute) // 23:00
+	someMidnight, _ := time.Parse("2006-01-02", "2016-12-24")            // midnight
+	nightTime_3h := someMidnight.Add(3 * time.Hour)                      // 03:00
+	earlyMorning_7h := someMidnight.Add(7 * time.Hour)                   // 09:00
+	hackerDaytime_13h := someMidnight.Add(13 * time.Hour)                // 16:00
+	closingTime_22h := someMidnight.Add(23 * time.Hour)                  // 22:00
+	lateStayUsers_23h := someMidnight.Add(23*time.Hour + 30*time.Minute) // 23:00
 
 	// We 'register' the users a day before
 	mockClock.now = someMidnight.Add(-12 * time.Hour)
