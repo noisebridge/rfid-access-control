@@ -1,6 +1,8 @@
 RFID access control
 -------------------
 
+[![CircleCI](https://circleci.com/gh/noisebridge/rfid-access-control.svg?style=svg)](https://circleci.com/gh/noisebridge/rfid-access-control)
+
 Access control system used within the [Noisebridge] hacker space.
 
    - RFID door terminal
