@@ -29,20 +29,6 @@ import (
 
 type AuthResult int
 
-func (a AuthResult) String() string {
-	switch a {
-	case 0:
-		return "failed"
-	case 1:
-		return "expired"
-	case 2:
-		return "ok-but-outside-time"
-	case 42:
-		return "ok"
-	}
-	return "invalid AuthResult"
-}
-
 const (
 	AuthFail             = AuthResult(0) // Not authorized.
 	AuthExpired          = AuthResult(1)
@@ -51,6 +37,29 @@ const (
 	HolidayHiatusBegin   = 1482278400 // 2016-12-21 UTC
 	HolidayHiatusEnd     = 1483747200 // 2017-01-07 UTC
 )
+
+var (
+	AuthResults = []AuthResult{
+		AuthFail,
+		AuthExpired,
+		AuthOkButOutsideTime,
+		AuthOk,
+	}
+)
+
+func (a AuthResult) String() string {
+	switch a {
+	case AuthFail:
+		return "failed"
+	case AuthExpired:
+		return "expired"
+	case AuthOkButOutsideTime:
+		return "ok-but-outside-time"
+	case AuthOk:
+		return "ok"
+	}
+	return "invalid AuthResult"
+}
 
 // Modify a user pointer. Returns 'true' if the changes should be written back.
 type ModifyFun func(user *User) bool
@@ -111,6 +120,14 @@ var (
 		[]string{"target", "status"},
 	)
 )
+
+func init() {
+	for _, target := range Targets {
+		for _, auth := range AuthResults {
+			authCounter.WithLabelValues(target.String(), auth.String())
+		}
+	}
+}
 
 func NewFileBasedAuthenticator(userFilename string,
 	bus *ApplicationBus) *FileBasedAuthenticator {

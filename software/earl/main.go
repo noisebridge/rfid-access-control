@@ -40,6 +40,15 @@ const (
 	TargetControlUI  = Target("control") // UI to add new users.
 )
 
+var (
+	Targets = []Target{
+		TargetDownstairs,
+		TargetUpstairs,
+		TargetElevator,
+		TargetControlUI,
+	}
+)
+
 const (
 	maxLCDRows                  = 2
 	maxLCDCols                  = 24
