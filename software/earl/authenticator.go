@@ -114,8 +114,8 @@ var (
 		prometheus.CounterOpts{
 			Namespace: metricNamespace,
 			Subsystem: authSubsystem,
-			Name:      "failed_total",
-			Help:      "Number of failed auth attempts",
+			Name:      "results_total",
+			Help:      "Number of results auth attempts",
 		},
 		[]string{"target", "status"},
 	)
