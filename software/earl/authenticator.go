@@ -115,7 +115,7 @@ var (
 			Namespace: metricNamespace,
 			Subsystem: authSubsystem,
 			Name:      "results_total",
-			Help:      "Number of failed auth attempts",
+			Help:      "Number of results auth attempts",
 		},
 		[]string{"target", "status"},
 	)
@@ -164,35 +164,29 @@ func (a *FileBasedAuthenticator) IterateUsers(callback func(user User)) {
 	}
 }
 
-// Check if access for a given code is granted to a given Target
+// AuthUser checks if access for a given code is granted to a given Target.
 func (a *FileBasedAuthenticator) AuthUser(code string, target Target) (result AuthResult, message string) {
-	defer authCounter.WithLabelValues(target.String(), result.String()).Inc()
+	defer func() {
+		authCounter.WithLabelValues(target.String(), result.String()).Inc()
+	}()
 
 	if !hasMinimalCodeRequirements(code) {
-		result = AuthFail
-		return result, "Auth failed: too short code."
+		return AuthFail, "Auth failed: too short code."
 	}
 	user := a.findUserSynchronized(code, nil)
 	if user == nil {
-		result = AuthFail
-		message = "No user for code"
-		return
+		return AuthFail, "No user for code"
 	}
 	// In case of Hiatus users, be a bit more specific with logging: this
 	// might be someone stolen a token of some person on leave or attempt
 	// of a blocked user to get access.
 	if user.UserLevel == LevelHiatus {
-		result = AuthFail
-		message = fmt.Sprintf("User on hiatus '%s <%s>'", user.Name, user.ContactInfo)
-		return
+		return AuthFail, fmt.Sprintf("User on hiatus '%s <%s>'", user.Name, user.ContactInfo)
 	}
 	if !user.InValidityPeriod(a.clock.Now()) {
-		result = AuthExpired
-		message = "Code not valid yet/expired"
-		return
+		return AuthExpired, "Code not valid yet/expired"
 	}
-	result, message = a.userHasAccess(user, target)
-	return
+	return a.userHasAccess(user, target)
 }
 
 func (a *FileBasedAuthenticator) AddNewUser(authentication_code string, user User) (bool, string) {
