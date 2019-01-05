@@ -164,9 +164,11 @@ func (a *FileBasedAuthenticator) IterateUsers(callback func(user User)) {
 	}
 }
 
-// Check if access for a given code is granted to a given Target
+// AuthUser checks if access for a given code is granted to a given Target.
 func (a *FileBasedAuthenticator) AuthUser(code string, target Target) (result AuthResult, message string) {
-	defer authCounter.WithLabelValues(target.String(), result.String()).Inc()
+	defer func() {
+		authCounter.WithLabelValues(target.String(), result.String()).Inc()
+	}()
 
 	if !hasMinimalCodeRequirements(code) {
 		return AuthFail, "Auth failed: too short code."
