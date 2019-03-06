@@ -17,6 +17,8 @@ jobs:
     - run: mv -v software/earl/earl build/earl-amd64
     - run: cd software/earl && GOARCH=arm GOARM=5 make earl
     - run: mv -v software/earl/earl build/earl-armv5
+    - run: cd software/earl && GOARCH=arm GOARM=7 make earl
+    - run: mv -v software/earl/earl build/earl-armv7
     - run: file build/*
     - persist_to_workspace:
         root: .
@@ -38,6 +40,7 @@ jobs:
         at: .
     - run: cd build && fakeroot tar -czvf ../earl-${CIRCLE_TAG}.amd64.tar.gz earl-amd64
     - run: cd build && fakeroot tar -czvf ../earl-${CIRCLE_TAG}.armv5.tar.gz earl-armv5
+    - run: cd build && fakeroot tar -czvf ../earl-${CIRCLE_TAG}.armv7.tar.gz earl-armv7
     - run: >
         for tarfile in earl-*.tar.gz ; do
           ${HOME}/bin/github-release upload \
