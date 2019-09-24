@@ -1,7 +1,12 @@
 module github.com/noisebridge/rfid-access-control
 
 require (
-	github.com/prometheus/client_golang v0.9.2
-	github.com/prometheus/common v0.0.0-20181126121408-4724e9255275
+	github.com/prometheus/client_golang v1.1.0
+	github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4 // indirect
+	github.com/prometheus/common v0.7.0
+	github.com/prometheus/procfs v0.0.5 // indirect
 	github.com/tarm/goserial v0.0.0-20151007205400-b3440c3c6355
+	golang.org/x/sys v0.0.0-20190922100055-0a153f010e69 // indirect
 )
+
+go 1.13
