@@ -1,0 +1,34 @@
+---
+project_name: earl
+before:
+  hooks:
+    - go mod download
+builds:
+  - binary: earl
+    dir: software/earl
+    goarch:
+      - amd64
+      - arm
+      - arm64
+    goarm:
+      - 6
+      - 7
+    goos:
+      - linux
+archives:
+  - wrap_in_directory: true
+checksum:
+  name_template: 'checksums.txt'
+# TODO: Add docker org/repo
+#dockers:
+#  - image_templates:
+#      - "noisebridge/earl:latest"
+#      - "noisebridge/earl:{{ .Tag }}"
+snapshot:
+  name_template: "{{ .Tag }}-{{ .ShortCommit }}"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
