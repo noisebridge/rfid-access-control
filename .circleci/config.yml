@@ -28,6 +28,7 @@ jobs:
     executor: golang
 
     steps:
+    - checkout
     - run: go mod download
     - run: curl -sfL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh | sh
     - attach_workspace:
