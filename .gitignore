@@ -1,5 +1,6 @@
 software/earl/earl
 dist
+bin
 
 #Vim turds
 .*.un~
