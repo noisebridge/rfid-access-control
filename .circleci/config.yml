@@ -13,14 +13,10 @@ jobs:
     steps:
     - checkout
     - run: go mod download
-    - run: curl -sfL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh | sh
+    - run: curl -sfL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh | BINDIR=/home/circleci/.local/bin sh
     - run: make -C software/earl style
     - run: make -C software/earl test
-    - run: ./bin/goreleaser release --skip-publish --snapshot
-    - persist_to_workspace:
-        root: .
-        paths:
-        - dist
+    - run: goreleaser release --skip-publish --snapshot
     - store_artifacts:
         path: dist
 
@@ -30,10 +26,8 @@ jobs:
     steps:
     - checkout
     - run: go mod download
-    - run: curl -sfL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh | sh
-    - attach_workspace:
-        at: .
-    - run: ./bin/goreleaser release
+    - run: curl -sfL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh |  BINDIR=/home/circleci/.local/binsh
+    - run: goreleaser release
 
 workflows:
   version: 2
